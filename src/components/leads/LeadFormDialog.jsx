@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import AddressAutocomplete from "../shared/AddressAutocomplete";
 import { supabase } from "@/api/supabaseClient"; 
 import { useAuth } from "@/lib/AuthContext";
-import { Camera, X } from "lucide-react";
+import { Camera, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 export default function LeadFormDialog({ open, onOpenChange, onSave, users = [], lead }) {
@@ -302,7 +302,8 @@ export default function LeadFormDialog({ open, onOpenChange, onSave, users = [],
 
             <div className="flex justify-end gap-2 pt-4 border-t mt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={!form.first_name || !form.surname || saving} className="bg-slate-900 hover:bg-slate-800 text-white min-w-[120px]">
+              <Button type="submit" disabled={!form.first_name || !form.surname || saving} className={`text-white min-w-[120px] ${lead ? "bg-slate-900 hover:bg-slate-800" : "bg-pink-700 hover:bg-pink-800"}`}>
+                {!lead && <Plus aria-hidden="true" className="h-4 w-4 mr-2 text-green-200" />}
                 {saving ? "Saving..." : (lead ? "Update Lead" : "Create Lead")}
               </Button>
             </div>
