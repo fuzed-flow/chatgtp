@@ -1,0 +1,52 @@
+{
+  "name": "KPI",
+  "type": "object",
+  "properties": {
+    "goal_id": {
+      "type": "string",
+      "description": "Associated strategic goal ID"
+    },
+    "name": {
+      "type": "string",
+      "description": "KPI name"
+    },
+    "metric": {
+      "type": "string",
+      "description": "What is being measured"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measurement (%, $, count, etc.)"
+    },
+    "target_value": {
+      "type": "number",
+      "description": "Target value to achieve"
+    },
+    "current_value": {
+      "type": "number",
+      "default": 0,
+      "description": "Current measured value"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "On Track",
+        "At Risk",
+        "Off Track",
+        "Completed"
+      ],
+      "default": "On Track",
+      "description": "KPI status based on current vs target"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "goal_id",
+    "name",
+    "metric",
+    "target_value"
+  ]
+}

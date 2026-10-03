@@ -1,0 +1,31 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of allowed sections/features",
+      "default": []
+    },
+    "approved": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether admin has approved this user's permissions"
+    },
+    "user_role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "manager",
+        "supervisor",
+        "technician",
+        "sub-contractor"
+      ],
+      "default": "technician"
+    }
+  },
+  "required": []
+}

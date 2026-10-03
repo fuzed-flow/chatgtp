@@ -1,0 +1,92 @@
+{
+  "name": "Job",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Job title"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Associated project ID"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Associated client ID"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "In Progress",
+        "On Hold",
+        "Completed",
+        "Cancelled"
+      ],
+      "default": "Pending"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "address": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "sketch_images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "URLs of hand-sketched floor plan images"
+    },
+    "floorplan_png_url": {
+      "type": "string",
+      "description": "URL of generated floor plan PNG"
+    },
+    "floorplan_status": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "processing",
+        "complete",
+        "failed"
+      ],
+      "default": "idle",
+      "description": "Status of floor plan generation"
+    },
+    "floorplan_error": {
+      "type": "string",
+      "description": "Error message if generation failed"
+    },
+    "floorplan_generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "floorplan_version": {
+      "type": "number",
+      "default": 1
+    },
+    "room_labels": {
+      "type": "string",
+      "description": "JSON string of AI-identified rooms with labels and descriptions"
+    },
+    "furniture_suggestions": {
+      "type": "string",
+      "description": "JSON string of AI-generated furniture placement and layout suggestions"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

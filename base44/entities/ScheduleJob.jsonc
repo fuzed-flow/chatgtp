@@ -1,0 +1,45 @@
+{
+  "name": "ScheduleJob",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "task_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "assigned_to": {
+      "type": "string"
+    },
+    "start_date_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_date_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "address": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Scheduled",
+        "En Route",
+        "Complete",
+        "Cancelled"
+      ],
+      "default": "Scheduled"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

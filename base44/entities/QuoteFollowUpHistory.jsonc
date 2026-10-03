@@ -1,0 +1,51 @@
+{
+  "name": "QuoteFollowUpHistory",
+  "type": "object",
+  "properties": {
+    "quote_id": {
+      "type": "string",
+      "description": "Reference to the quote"
+    },
+    "follow_up_number": {
+      "type": "number",
+      "description": "Which follow-up this is (1st, 2nd, etc.)",
+      "default": 1
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the reminder was sent"
+    },
+    "email_sent_to": {
+      "type": "string",
+      "description": "Email address reminder was sent to"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Email subject line used"
+    },
+    "body": {
+      "type": "string",
+      "description": "Email body content sent"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "failed",
+        "bounced"
+      ],
+      "default": "sent",
+      "description": "Status of the follow-up email"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Any notes about this follow-up"
+    }
+  },
+  "required": [
+    "quote_id",
+    "follow_up_number",
+    "email_sent_to"
+  ]
+}

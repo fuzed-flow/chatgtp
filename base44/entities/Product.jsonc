@@ -1,0 +1,56 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "sku": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "ea",
+        "ft",
+        "sqft",
+        "hr",
+        "lft",
+        "m",
+        "sqm",
+        "bag",
+        "box",
+        "roll"
+      ],
+      "default": "ea"
+    },
+    "cost": {
+      "type": "number"
+    },
+    "price": {
+      "type": "number"
+    },
+    "supplier": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "taxable": {
+      "type": "boolean",
+      "default": true
+    },
+    "image_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

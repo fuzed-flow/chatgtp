@@ -1,0 +1,74 @@
+{
+  "name": "Organization",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Company name"
+    },
+    "city": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Company phone number"
+    },
+    "website": {
+      "type": "string",
+      "description": "Company website URL"
+    },
+    "timezone": {
+      "type": "string",
+      "default": "America/Edmonton"
+    },
+    "owner_user_id": {
+      "type": "string"
+    },
+    "gst_rate": {
+      "type": "number",
+      "default": 5
+    },
+    "default_quote_terms": {
+      "type": "string"
+    },
+    "quote_number_prefix": {
+      "type": "string",
+      "default": "QT-"
+    },
+    "invoice_number_prefix": {
+      "type": "string",
+      "default": "INV-"
+    },
+    "project_number_prefix": {
+      "type": "string",
+      "default": "PRJ-"
+    },
+    "po_number_prefix": {
+      "type": "string",
+      "default": "PO-"
+    },
+    "next_quote_number": {
+      "type": "number",
+      "default": 1001
+    },
+    "next_invoice_number": {
+      "type": "number",
+      "default": 1001
+    },
+    "next_project_number": {
+      "type": "number",
+      "default": 1001
+    },
+    "next_po_number": {
+      "type": "number",
+      "default": 1001
+    },
+    "company_logo_url": {
+      "type": "string",
+      "description": "URL of the company logo for documents"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

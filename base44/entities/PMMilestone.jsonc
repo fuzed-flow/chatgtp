@@ -1,0 +1,46 @@
+{
+  "name": "PMMilestone",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project"
+    },
+    "phase_id": {
+      "type": "string",
+      "description": "Reference to PMPhase (optional)"
+    },
+    "title": {
+      "type": "string"
+    },
+    "due_date_target": {
+      "type": "string",
+      "format": "date"
+    },
+    "due_date_actual": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Planned",
+        "At Risk",
+        "Completed"
+      ],
+      "default": "Planned"
+    },
+    "client_visible": {
+      "type": "boolean",
+      "default": true
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "title",
+    "due_date_target"
+  ]
+}

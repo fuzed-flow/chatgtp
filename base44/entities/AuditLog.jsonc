@@ -1,0 +1,36 @@
+{
+  "name": "AuditLog",
+  "type": "object",
+  "properties": {
+    "entity": {
+      "type": "string"
+    },
+    "entity_id": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "Create",
+        "Update",
+        "Delete"
+      ]
+    },
+    "old_value_json": {
+      "type": "string"
+    },
+    "new_value_json": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "user_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "entity",
+    "action"
+  ]
+}

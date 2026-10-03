@@ -1,0 +1,59 @@
+{
+  "name": "PMProject",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Reference to existing Client (optional)"
+    },
+    "address": {
+      "type": "string"
+    },
+    "start_date_target": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date_target": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Lead",
+        "Active",
+        "On Hold",
+        "Completed",
+        "Cancelled"
+      ],
+      "default": "Active"
+    },
+    "budget_target": {
+      "type": "number"
+    },
+    "project_manager_ref": {
+      "type": "string",
+      "description": "User email"
+    },
+    "project_manager_name": {
+      "type": "string"
+    },
+    "linked_quote_id": {
+      "type": "string",
+      "description": "Optional reference to Quote"
+    },
+    "linked_invoice_id": {
+      "type": "string",
+      "description": "Optional reference to Invoice"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

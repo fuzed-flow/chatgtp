@@ -1,0 +1,77 @@
+{
+  "name": "QuoteApproval",
+  "type": "object",
+  "properties": {
+    "quote_id": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Sent",
+        "Viewed",
+        "Signed",
+        "Declined",
+        "Expired"
+      ],
+      "default": "Pending"
+    },
+    "approval_token": {
+      "type": "string",
+      "description": "Unique secure token for approval link"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "viewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "declined_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signer_name": {
+      "type": "string"
+    },
+    "signer_email": {
+      "type": "string"
+    },
+    "signer_ip": {
+      "type": "string"
+    },
+    "signer_user_agent": {
+      "type": "string"
+    },
+    "signature_text": {
+      "type": "string",
+      "description": "Typed signature"
+    },
+    "signature_image_url": {
+      "type": "string"
+    },
+    "client_message": {
+      "type": "string"
+    },
+    "terms_accepted": {
+      "type": "boolean",
+      "default": false
+    },
+    "audit_trail_json": {
+      "type": "string",
+      "description": "JSON log of all actions"
+    }
+  },
+  "required": [
+    "quote_id"
+  ]
+}

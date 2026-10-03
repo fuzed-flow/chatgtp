@@ -1,0 +1,33 @@
+{
+  "name": "EmployeeAnnouncement",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Normal",
+        "Important",
+        "Urgent"
+      ],
+      "default": "Normal"
+    },
+    "visible_to_all": {
+      "type": "boolean",
+      "default": true
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "title",
+    "body"
+  ]
+}

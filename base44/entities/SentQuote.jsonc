@@ -1,0 +1,44 @@
+{
+  "name": "SentQuote",
+  "type": "object",
+  "properties": {
+    "quote_id": {
+      "type": "string",
+      "description": "ID of the quote being sent"
+    },
+    "client_email": {
+      "type": "string",
+      "description": "Email address of the recipient"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Name of the client (optional)"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when email was sent"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "failed"
+      ],
+      "description": "Status of email delivery"
+    },
+    "message_id": {
+      "type": "string",
+      "description": "Internal reference for email delivery logs"
+    },
+    "custom_message": {
+      "type": "string",
+      "description": "Custom message sent with the quote"
+    }
+  },
+  "required": [
+    "quote_id",
+    "client_email",
+    "status"
+  ]
+}

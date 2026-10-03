@@ -1,0 +1,65 @@
+{
+  "name": "InventoryTransaction",
+  "type": "object",
+  "properties": {
+    "inventory_id": {
+      "type": "string"
+    },
+    "product_id": {
+      "type": "string"
+    },
+    "transaction_type": {
+      "type": "string",
+      "enum": [
+        "Purchase",
+        "Sale",
+        "Adjustment",
+        "Transfer",
+        "Project Use",
+        "Return",
+        "Damaged",
+        "Count"
+      ],
+      "description": "Type of inventory movement"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Positive for additions, negative for removals"
+    },
+    "unit_cost": {
+      "type": "number"
+    },
+    "total_cost": {
+      "type": "number"
+    },
+    "reference_type": {
+      "type": "string",
+      "enum": [
+        "PurchaseOrder",
+        "Project",
+        "Invoice",
+        "Manual"
+      ],
+      "description": "Source document type"
+    },
+    "reference_id": {
+      "type": "string",
+      "description": "ID of related document"
+    },
+    "warehouse_location": {
+      "type": "string"
+    },
+    "transaction_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "product_id",
+    "transaction_type",
+    "quantity"
+  ]
+}

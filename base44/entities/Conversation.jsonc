@@ -1,0 +1,34 @@
+{
+  "name": "Conversation",
+  "type": "object",
+  "properties": {
+    "conversation_type": {
+      "type": "string",
+      "enum": [
+        "Direct",
+        "Group"
+      ],
+      "default": "Direct"
+    },
+    "conversation_name": {
+      "type": "string"
+    },
+    "participant_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "last_message": {
+      "type": "string"
+    },
+    "last_message_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "conversation_type"
+  ]
+}

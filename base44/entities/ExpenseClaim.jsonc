@@ -1,0 +1,70 @@
+{
+  "name": "ExpenseClaim",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Materials",
+        "Fuel",
+        "Tools",
+        "Meals",
+        "Accommodation",
+        "Parking",
+        "Other"
+      ]
+    },
+    "amount": {
+      "type": "number"
+    },
+    "description": {
+      "type": "string"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "Personal Card",
+        "Cash",
+        "Company Card",
+        "Other"
+      ],
+      "default": "Personal Card"
+    },
+    "receipt_url": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Submitted",
+        "Under Review",
+        "Approved",
+        "Rejected",
+        "Reimbursed"
+      ],
+      "default": "Submitted"
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_email",
+    "date",
+    "amount",
+    "category"
+  ]
+}

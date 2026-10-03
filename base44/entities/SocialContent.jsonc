@@ -1,0 +1,66 @@
+{
+  "name": "SocialContent",
+  "type": "object",
+  "properties": {
+    "platform": {
+      "type": "string",
+      "enum": [
+        "Facebook",
+        "Instagram",
+        "TikTok",
+        "YouTube",
+        "Google Business"
+      ],
+      "default": "Instagram"
+    },
+    "content_type": {
+      "type": "string",
+      "enum": [
+        "Post",
+        "Reel",
+        "Story",
+        "Video"
+      ],
+      "default": "Post"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Idea",
+        "Draft",
+        "Scheduled",
+        "Posted"
+      ],
+      "default": "Idea"
+    },
+    "shoot_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "post_date_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "caption": {
+      "type": "string"
+    },
+    "hashtags": {
+      "type": "string"
+    },
+    "creative_brief": {
+      "type": "string"
+    },
+    "asset_links": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "project_tag": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "platform"
+  ]
+}

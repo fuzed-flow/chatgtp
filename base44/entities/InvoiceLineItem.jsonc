@@ -1,0 +1,42 @@
+{
+  "name": "InvoiceLineItem",
+  "type": "object",
+  "properties": {
+    "invoice_id": {
+      "type": "string"
+    },
+    "product_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1
+    },
+    "unit": {
+      "type": "string",
+      "default": "ea"
+    },
+    "unit_price": {
+      "type": "number",
+      "default": 0
+    },
+    "taxable": {
+      "type": "boolean",
+      "default": true
+    },
+    "line_total": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "invoice_id",
+    "name"
+  ]
+}

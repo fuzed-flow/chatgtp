@@ -1,0 +1,54 @@
+{
+  "name": "PMMaterial",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Lumber",
+        "Electrical",
+        "Plumbing",
+        "HVAC",
+        "Drywall",
+        "Flooring",
+        "Paint",
+        "Tile",
+        "Cabinets",
+        "Fixtures",
+        "Concrete",
+        "Roofing",
+        "Windows/Doors",
+        "Other"
+      ]
+    },
+    "default_unit": {
+      "type": "string",
+      "enum": [
+        "ea",
+        "box",
+        "sqft",
+        "lf",
+        "sheet",
+        "gallon",
+        "bundle",
+        "other"
+      ],
+      "default": "ea"
+    },
+    "preferred_supplier": {
+      "type": "string"
+    },
+    "sku": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

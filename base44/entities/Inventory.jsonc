@@ -1,0 +1,58 @@
+{
+  "name": "Inventory",
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "description": "Reference to Product entity"
+    },
+    "warehouse_location": {
+      "type": "string",
+      "description": "Storage location or warehouse"
+    },
+    "quantity_on_hand": {
+      "type": "number",
+      "default": 0,
+      "description": "Current stock level"
+    },
+    "quantity_reserved": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantity allocated to projects"
+    },
+    "quantity_available": {
+      "type": "number",
+      "default": 0,
+      "description": "On hand minus reserved"
+    },
+    "reorder_point": {
+      "type": "number",
+      "default": 0,
+      "description": "Minimum quantity before reorder"
+    },
+    "reorder_quantity": {
+      "type": "number",
+      "default": 0,
+      "description": "Standard reorder amount"
+    },
+    "unit_cost": {
+      "type": "number",
+      "description": "Average unit cost"
+    },
+    "total_value": {
+      "type": "number",
+      "description": "Quantity on hand \u00d7 unit cost"
+    },
+    "last_counted_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Last physical inventory count"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "product_id"
+  ]
+}

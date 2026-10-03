@@ -1,0 +1,51 @@
+{
+  "name": "ClientReminder",
+  "type": "object",
+  "properties": {
+    "client_id": {
+      "type": "string",
+      "description": "Associated client ID"
+    },
+    "title": {
+      "type": "string",
+      "description": "Reminder title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Reminder details"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When to follow up"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Completed",
+        "Cancelled"
+      ],
+      "default": "Pending"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "User ID responsible for follow-up"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Urgent"
+      ],
+      "default": "Medium"
+    }
+  },
+  "required": [
+    "client_id",
+    "title",
+    "due_date"
+  ]
+}

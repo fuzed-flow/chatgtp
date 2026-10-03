@@ -1,0 +1,67 @@
+{
+  "name": "PMProjectSubcontractor",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "subcontractor_id": {
+      "type": "string"
+    },
+    "phase_id": {
+      "type": "string"
+    },
+    "role_notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Proposed",
+        "Approved",
+        "Scheduled",
+        "On Site",
+        "Completed",
+        "Removed"
+      ],
+      "default": "Proposed"
+    },
+    "scheduled_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "scheduled_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "agreed_amount": {
+      "type": "number"
+    },
+    "po_number": {
+      "type": "string"
+    },
+    "client_visible": {
+      "type": "boolean",
+      "default": false
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_url": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
+        }
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "project_id",
+    "subcontractor_id"
+  ]
+}

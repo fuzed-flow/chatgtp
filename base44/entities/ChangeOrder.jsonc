@@ -1,0 +1,50 @@
+{
+  "name": "ChangeOrder",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "change_order_number": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Pending Approval",
+        "Approved",
+        "Declined"
+      ],
+      "default": "Draft"
+    },
+    "amount": {
+      "type": "number",
+      "default": 0
+    },
+    "cost": {
+      "type": "number",
+      "default": 0
+    },
+    "requested_by": {
+      "type": "string"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "approved_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "project_id",
+    "title"
+  ]
+}

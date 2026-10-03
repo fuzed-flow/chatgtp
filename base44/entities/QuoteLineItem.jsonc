@@ -1,0 +1,67 @@
+{
+  "name": "QuoteLineItem",
+  "type": "object",
+  "properties": {
+    "quote_id": {
+      "type": "string"
+    },
+    "phase_id": {
+      "type": "string"
+    },
+    "product_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1
+    },
+    "unit": {
+      "type": "string",
+      "default": "ea"
+    },
+    "unit_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "unit_price": {
+      "type": "number",
+      "default": 0
+    },
+    "taxable": {
+      "type": "boolean",
+      "default": true
+    },
+    "line_total": {
+      "type": "number",
+      "default": 0
+    },
+    "display_order": {
+      "type": "number",
+      "description": "Order in which items are displayed within their phase"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Product photo for this line item"
+    },
+    "is_optional": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this line item is optional for client to approve"
+    },
+    "default_selected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this optional line item appears pre-selected to the client"
+    }
+  },
+  "required": [
+    "quote_id",
+    "name"
+  ]
+}

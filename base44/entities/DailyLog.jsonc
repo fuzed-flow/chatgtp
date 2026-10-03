@@ -1,0 +1,41 @@
+{
+  "name": "DailyLog",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "weather": {
+      "type": "string"
+    },
+    "crew_on_site": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "blockers": {
+      "type": "string"
+    },
+    "next_steps": {
+      "type": "string"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_by_user_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "date"
+  ]
+}

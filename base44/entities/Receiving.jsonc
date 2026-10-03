@@ -1,0 +1,28 @@
+{
+  "name": "Receiving",
+  "type": "object",
+  "properties": {
+    "po_id": {
+      "type": "string"
+    },
+    "received_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "received_by_user_id": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "po_id"
+  ]
+}

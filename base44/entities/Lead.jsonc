@@ -1,0 +1,98 @@
+{
+  "name": "Lead",
+  "type": "object",
+  "properties": {
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "site_address": {
+      "type": "string",
+      "description": "Project / site address"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "Facebook",
+        "Instagram",
+        "Google",
+        "Referral",
+        "Website",
+        "Kijiji",
+        "Other"
+      ],
+      "default": "Referral"
+    },
+    "pipeline_stage": {
+      "type": "string",
+      "enum": [
+        "New",
+        "Contacted",
+        "Booked Visit",
+        "Quoted",
+        "Negotiation",
+        "Won",
+        "Lost"
+      ],
+      "default": "New"
+    },
+    "value_estimate": {
+      "type": "number"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Urgent"
+      ],
+      "default": "Medium"
+    },
+    "next_follow_up_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "assigned_to": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Photo URLs uploaded to this lead"
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_url": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
+        }
+      },
+      "default": [],
+      "description": "Documents attached to this lead"
+    }
+  },
+  "required": [
+    "contact_name"
+  ]
+}

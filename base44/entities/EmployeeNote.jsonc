@@ -1,0 +1,31 @@
+{
+  "name": "EmployeeNote",
+  "type": "object",
+  "properties": {
+    "employee_profile_id": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "note_type": {
+      "type": "string",
+      "enum": [
+        "General",
+        "Performance",
+        "Disciplinary",
+        "Praise",
+        "Training",
+        "Other"
+      ],
+      "default": "General"
+    },
+    "added_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "employee_profile_id",
+    "note"
+  ]
+}

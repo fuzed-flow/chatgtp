@@ -1,0 +1,40 @@
+{
+  "name": "EstimateTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Kitchen",
+        "Bathroom",
+        "Basement",
+        "Deck",
+        "Fence",
+        "Flooring",
+        "Painting",
+        "Electrical",
+        "Plumbing",
+        "Custom"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "default_terms": {
+      "type": "string"
+    },
+    "template_subtotal_target": {
+      "type": "number"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

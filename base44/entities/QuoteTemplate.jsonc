@@ -1,0 +1,29 @@
+{
+  "name": "QuoteTemplate",
+  "type": "object",
+  "properties": {
+    "template_name": {
+      "type": "string",
+      "description": "Name of the quote template"
+    },
+    "description": {
+      "type": "string"
+    },
+    "overall_scope": {
+      "type": "string"
+    },
+    "client_message": {
+      "type": "string"
+    },
+    "terms": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "template_name"
+  ]
+}

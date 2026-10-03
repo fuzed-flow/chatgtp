@@ -1,0 +1,33 @@
+{
+  "name": "TaskDependency",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Associated project ID"
+    },
+    "from_task_id": {
+      "type": "string",
+      "description": "Task that must be completed first"
+    },
+    "to_task_id": {
+      "type": "string",
+      "description": "Task that depends on from_task"
+    },
+    "dependency_type": {
+      "type": "string",
+      "enum": [
+        "finish_to_start",
+        "start_to_start",
+        "finish_to_finish"
+      ],
+      "default": "finish_to_start",
+      "description": "Type of dependency relationship"
+    }
+  },
+  "required": [
+    "project_id",
+    "from_task_id",
+    "to_task_id"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "name": "TimeOffRequest",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Vacation",
+        "Sick Day",
+        "Personal Day",
+        "Unpaid Leave"
+      ],
+      "default": "Vacation"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected"
+      ],
+      "default": "Pending"
+    },
+    "admin_notes": {
+      "type": "string"
+    },
+    "total_days": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_email",
+    "start_date",
+    "end_date",
+    "type"
+  ]
+}

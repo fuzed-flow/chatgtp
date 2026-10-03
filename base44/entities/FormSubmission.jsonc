@@ -1,0 +1,43 @@
+{
+  "name": "FormSubmission",
+  "type": "object",
+  "properties": {
+    "form_id": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "lead_id": {
+      "type": "string"
+    },
+    "submitted_by": {
+      "type": "string",
+      "enum": [
+        "Client",
+        "Internal"
+      ],
+      "default": "Client"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "responses_json": {
+      "type": "string",
+      "description": "JSON object with field responses"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "form_id"
+  ]
+}

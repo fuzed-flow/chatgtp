@@ -1,0 +1,32 @@
+{
+  "name": "ProjectChecklistRun",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "checklist_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Open",
+        "Complete"
+      ],
+      "default": "Open"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "project_id",
+    "checklist_id"
+  ]
+}

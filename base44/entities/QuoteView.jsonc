@@ -1,0 +1,35 @@
+{
+  "name": "QuoteView",
+  "type": "object",
+  "properties": {
+    "quote_id": {
+      "type": "string",
+      "description": "ID of the quote being viewed"
+    },
+    "viewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the view event"
+    },
+    "viewer_type": {
+      "type": "string",
+      "enum": [
+        "client",
+        "internal"
+      ],
+      "description": "Who viewed the quote - client or internal user"
+    },
+    "ip_address": {
+      "type": "string",
+      "description": "IP address of the viewer"
+    },
+    "user_agent": {
+      "type": "string",
+      "description": "Browser user agent string"
+    }
+  },
+  "required": [
+    "quote_id",
+    "viewer_type"
+  ]
+}

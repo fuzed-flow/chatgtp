@@ -1,0 +1,30 @@
+{
+  "name": "Form",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "form_type": {
+      "type": "string",
+      "enum": [
+        "LeadIntake",
+        "ProjectKickoff",
+        "Selections",
+        "Warranty",
+        "Custom"
+      ]
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "form_type"
+  ]
+}

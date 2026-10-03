@@ -1,0 +1,106 @@
+{
+  "name": "EmployeeProfile",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "position": {
+      "type": "string"
+    },
+    "role_trade": {
+      "type": "string",
+      "description": "e.g. Carpenter, Electrician, Labourer"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "employment_status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Inactive",
+        "On Leave",
+        "Terminated"
+      ],
+      "default": "Active"
+    },
+    "pay_type": {
+      "type": "string",
+      "enum": [
+        "Hourly",
+        "Salary",
+        "Contract"
+      ],
+      "default": "Hourly"
+    },
+    "hourly_rate": {
+      "type": "number"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "certifications": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "emergency_contact_name": {
+      "type": "string"
+    },
+    "emergency_contact_phone": {
+      "type": "string"
+    },
+    "emergency_contact_relation": {
+      "type": "string"
+    },
+    "vacation_days_total": {
+      "type": "number",
+      "default": 0
+    },
+    "vacation_days_used": {
+      "type": "number",
+      "default": 0
+    },
+    "sick_days_total": {
+      "type": "number",
+      "default": 0
+    },
+    "sick_days_used": {
+      "type": "number",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    },
+    "avatar_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "employee_name"
+  ]
+}

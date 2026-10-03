@@ -1,0 +1,58 @@
+{
+  "name": "PMPhase",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project"
+    },
+    "name": {
+      "type": "string"
+    },
+    "phase_order": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Not Started",
+        "In Progress",
+        "Blocked",
+        "Completed"
+      ],
+      "default": "Not Started"
+    },
+    "start_date_target": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date_target": {
+      "type": "string",
+      "format": "date"
+    },
+    "start_date_actual": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date_actual": {
+      "type": "string",
+      "format": "date"
+    },
+    "percent_complete": {
+      "type": "number",
+      "default": 0
+    },
+    "client_visible": {
+      "type": "boolean",
+      "default": true
+    },
+    "internal_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "name"
+  ]
+}

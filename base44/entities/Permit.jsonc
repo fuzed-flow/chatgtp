@@ -1,0 +1,58 @@
+{
+  "name": "Permit",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "permit_number": {
+      "type": "string",
+      "description": "Official permit number from the authority"
+    },
+    "permit_type": {
+      "type": "string",
+      "description": "Type of permit (e.g. Building, Electrical, Plumbing, Mechanical)"
+    },
+    "issued_by": {
+      "type": "string",
+      "description": "Issuing authority or municipality"
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Active",
+        "Expired",
+        "Closed",
+        "Rejected"
+      ],
+      "default": "Pending"
+    },
+    "description": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "Digital copy of the permit document"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "permit_type"
+  ]
+}

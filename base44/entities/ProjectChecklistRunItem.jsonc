@@ -1,0 +1,29 @@
+{
+  "name": "ProjectChecklistRunItem",
+  "type": "object",
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "checklist_item_id": {
+      "type": "string"
+    },
+    "is_done": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "run_id",
+    "checklist_item_id"
+  ]
+}

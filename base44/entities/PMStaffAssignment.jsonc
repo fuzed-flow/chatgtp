@@ -1,0 +1,51 @@
+{
+  "name": "PMStaffAssignment",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "staff_ref": {
+      "type": "string",
+      "description": "User email"
+    },
+    "staff_name": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "Project Manager",
+        "Site Supervisor",
+        "Carpenter",
+        "Labourer",
+        "Admin",
+        "Other"
+      ],
+      "default": "Other"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "allocation_percent": {
+      "type": "number",
+      "default": 100
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "project_id",
+    "staff_ref"
+  ]
+}

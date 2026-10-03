@@ -1,0 +1,73 @@
+{
+  "name": "PurchaseOrder",
+  "type": "object",
+  "properties": {
+    "po_number": {
+      "type": "string",
+      "description": "Purchase order number"
+    },
+    "vendor_id": {
+      "type": "string",
+      "description": "Supplier/vendor reference"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Associated project"
+    },
+    "purpose": {
+      "type": "string",
+      "description": "What this PO is for"
+    },
+    "vendor_quote_attachment": {
+      "type": "string",
+      "description": "PDF of vendor's quote"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Sent",
+        "Received",
+        "Billed",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "order_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "expected_delivery_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "actual_delivery_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "tax": {
+      "type": "number",
+      "default": 0
+    },
+    "total": {
+      "type": "number",
+      "default": 0
+    },
+    "shipping_address": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "terms": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "vendor_id"
+  ]
+}

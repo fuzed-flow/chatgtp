@@ -1,0 +1,58 @@
+{
+  "name": "PaymentMilestone",
+  "type": "object",
+  "properties": {
+    "payment_schedule_id": {
+      "type": "string"
+    },
+    "milestone_name": {
+      "type": "string"
+    },
+    "due_type": {
+      "type": "string",
+      "enum": [
+        "OnApproval",
+        "OnDate",
+        "OnEvent"
+      ],
+      "default": "OnDate"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "due_event": {
+      "type": "string"
+    },
+    "amount_type": {
+      "type": "string",
+      "enum": [
+        "Fixed",
+        "Percent"
+      ],
+      "default": "Percent"
+    },
+    "amount_value": {
+      "type": "number"
+    },
+    "invoice_id": {
+      "type": "string"
+    },
+    "is_paid": {
+      "type": "boolean",
+      "default": false
+    },
+    "paid_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sort_order": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "payment_schedule_id",
+    "milestone_name"
+  ]
+}

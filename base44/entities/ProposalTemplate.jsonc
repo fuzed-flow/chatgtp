@@ -1,0 +1,32 @@
+{
+  "name": "ProposalTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "header_logo_url": {
+      "type": "string"
+    },
+    "header_color": {
+      "type": "string",
+      "default": "#1e293b"
+    },
+    "default_terms": {
+      "type": "string"
+    },
+    "warranty_text": {
+      "type": "string"
+    },
+    "exclusions_text": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

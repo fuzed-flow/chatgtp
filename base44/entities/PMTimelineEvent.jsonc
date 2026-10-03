@@ -1,0 +1,70 @@
+{
+  "name": "PMTimelineEvent",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "phase_id": {
+      "type": "string"
+    },
+    "event_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "title": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Phase",
+        "Milestone",
+        "Task",
+        "Material",
+        "Subcontractor",
+        "Inspection",
+        "Change",
+        "Payment",
+        "Update",
+        "Issue",
+        "Other"
+      ],
+      "default": "Update"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "Internal Only",
+        "Client Visible"
+      ],
+      "default": "Internal Only"
+    },
+    "created_by_ref": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_url": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
+        }
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "project_id",
+    "event_date",
+    "title"
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "name": "StrategicGoal",
+  "type": "object",
+  "properties": {
+    "goal_type": {
+      "type": "string",
+      "enum": [
+        "Business",
+        "Client"
+      ],
+      "description": "Whether this is a business or client goal"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Client ID if goal_type is Client"
+    },
+    "title": {
+      "type": "string",
+      "description": "Goal title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed goal description"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Not Started",
+        "In Progress",
+        "On Track",
+        "At Risk",
+        "Completed"
+      ],
+      "default": "Not Started",
+      "description": "Current status of the goal"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "default": "Medium"
+    },
+    "target_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Target completion date"
+    },
+    "owner_user_id": {
+      "type": "string",
+      "description": "User responsible for this goal"
+    },
+    "progress_percentage": {
+      "type": "number",
+      "default": 0,
+      "description": "Overall progress percentage"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "goal_type",
+    "title"
+  ]
+}

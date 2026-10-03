@@ -1,0 +1,79 @@
+{
+  "name": "Vendor",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Subcontractor/vendor name"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Primary contact person"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal notes about the subcontractor"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Cabinets",
+        "Deck Builder",
+        "Drywall",
+        "Electrical",
+        "Fence/Deck",
+        "Flooring",
+        "Framing",
+        "General",
+        "Glass & Mirrors",
+        "HVAC",
+        "Painting",
+        "Plumbing",
+        "Roofing",
+        "Stone Work",
+        "Tile Work",
+        "Other"
+      ],
+      "description": "Type of work/trade"
+    },
+    "preferred": {
+      "type": "boolean",
+      "default": false,
+      "description": "Preferred/trusted subcontractor"
+    },
+    "rating": {
+      "type": "number",
+      "description": "Rating out of 5",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "projects_worked_on": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Array of project IDs"
+    },
+    "invoice_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Array of invoice file URLs from this subcontractor"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

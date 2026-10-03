@@ -1,0 +1,42 @@
+{
+  "name": "ProjectCost",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Material",
+        "Subcontract",
+        "Labour",
+        "Equipment",
+        "Other"
+      ]
+    },
+    "vendor": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "attachment_url": {
+      "type": "string"
+    },
+    "entered_by_user_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "amount"
+  ]
+}

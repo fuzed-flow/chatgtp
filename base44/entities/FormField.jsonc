@@ -1,0 +1,42 @@
+{
+  "name": "FormField",
+  "type": "object",
+  "properties": {
+    "form_id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "field_type": {
+      "type": "string",
+      "enum": [
+        "Text",
+        "Number",
+        "Date",
+        "Dropdown",
+        "MultiSelect",
+        "YesNo",
+        "FileUpload",
+        "LongText"
+      ]
+    },
+    "required": {
+      "type": "boolean",
+      "default": false
+    },
+    "options_json": {
+      "type": "string",
+      "description": "JSON array of dropdown/multiselect options"
+    },
+    "sort_order": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "form_id",
+    "label",
+    "field_type"
+  ]
+}

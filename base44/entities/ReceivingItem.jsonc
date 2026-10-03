@@ -1,0 +1,32 @@
+{
+  "name": "ReceivingItem",
+  "type": "object",
+  "properties": {
+    "receiving_id": {
+      "type": "string"
+    },
+    "po_item_id": {
+      "type": "string"
+    },
+    "qty_received": {
+      "type": "number",
+      "default": 0
+    },
+    "condition": {
+      "type": "string",
+      "enum": [
+        "Good",
+        "Damaged",
+        "Backordered"
+      ],
+      "default": "Good"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "receiving_id",
+    "po_item_id"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "name": "MaterialsScheduleItem",
+  "type": "object",
+  "properties": {
+    "schedule_id": {
+      "type": "string",
+      "description": "Associated materials schedule ID"
+    },
+    "phase_id": {
+      "type": "string",
+      "description": "Associated phase ID"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Material item name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Item description"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1
+    },
+    "unit": {
+      "type": "string",
+      "default": "ea"
+    },
+    "arrival_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expected arrival date"
+    },
+    "supplier": {
+      "type": "string",
+      "description": "Supplier name"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Item-specific notes"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Ordered",
+        "In Transit",
+        "Delivered",
+        "Cancelled"
+      ],
+      "default": "Pending"
+    }
+  },
+  "required": [
+    "schedule_id",
+    "item_name"
+  ]
+}

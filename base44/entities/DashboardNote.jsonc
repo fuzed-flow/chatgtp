@@ -1,0 +1,13 @@
+{
+  "name": "DashboardNote",
+  "type": "object",
+  "properties": {
+    "content": {
+      "type": "string",
+      "description": "Note content"
+    }
+  },
+  "required": [
+    "content"
+  ]
+}

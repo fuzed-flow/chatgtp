@@ -1,0 +1,53 @@
+{
+  "name": "PMSubcontractor",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string"
+    },
+    "trade": {
+      "type": "string",
+      "enum": [
+        "Framing",
+        "Electrical",
+        "Plumbing",
+        "HVAC",
+        "Drywall",
+        "Flooring",
+        "Painting",
+        "Cabinets",
+        "Concrete",
+        "Roofing",
+        "Windows/Doors",
+        "Landscaping",
+        "Other"
+      ]
+    },
+    "primary_contact_name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "wcb_policy": {
+      "type": "string"
+    },
+    "insurance_expiry": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "company_name"
+  ]
+}

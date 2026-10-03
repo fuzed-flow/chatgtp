@@ -1,0 +1,52 @@
+{
+  "name": "ResourceAllocation",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Associated project ID"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Associated task ID"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Team member ID"
+    },
+    "allocated_hours": {
+      "type": "number",
+      "description": "Hours allocated for this task"
+    },
+    "utilization_percentage": {
+      "type": "number",
+      "default": 100,
+      "description": "Percentage of time allocated (0-100)"
+    },
+    "allocation_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Start date of resource allocation"
+    },
+    "allocation_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "End date of resource allocation"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Active",
+        "Completed",
+        "On Hold"
+      ],
+      "default": "Pending"
+    }
+  },
+  "required": [
+    "project_id",
+    "task_id",
+    "user_id"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "name": "EmailOutbox",
+  "type": "object",
+  "properties": {
+    "to_email": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body_html": {
+      "type": "string"
+    },
+    "body_text": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Queued",
+        "Sent",
+        "Failed"
+      ],
+      "default": "Draft"
+    },
+    "related_type": {
+      "type": "string",
+      "enum": [
+        "Quote",
+        "Invoice",
+        "Approval",
+        "Reminder"
+      ]
+    },
+    "related_id": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "to_email",
+    "subject"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "name": "AutomationRule",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "is_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "trigger_type": {
+      "type": "string",
+      "enum": [
+        "LeadFollowUp",
+        "QuoteExpiry",
+        "InvoiceOverdue",
+        "ProjectNoUpdate"
+      ]
+    },
+    "schedule_type": {
+      "type": "string",
+      "enum": [
+        "Daily",
+        "Hourly",
+        "SpecificDays"
+      ],
+      "default": "Daily"
+    },
+    "rule_config_json": {
+      "type": "string",
+      "description": "JSON config for trigger conditions"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "CreateTask",
+        "SendEmail",
+        "SendNotification",
+        "UpdateStatus"
+      ]
+    },
+    "last_run_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "name",
+    "trigger_type",
+    "action_type"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

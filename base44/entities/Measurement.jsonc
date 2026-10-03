@@ -1,0 +1,39 @@
+{
+  "name": "Measurement",
+  "type": "object",
+  "properties": {
+    "related_type": {
+      "type": "string",
+      "enum": [
+        "SiteVisit",
+        "Quote",
+        "Project"
+      ]
+    },
+    "related_id": {
+      "type": "string"
+    },
+    "room_name": {
+      "type": "string"
+    },
+    "length": {
+      "type": "number"
+    },
+    "width": {
+      "type": "number"
+    },
+    "height": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "computed_area": {
+      "type": "number"
+    },
+    "computed_perimeter": {
+      "type": "number"
+    }
+  },
+  "required": []
+}

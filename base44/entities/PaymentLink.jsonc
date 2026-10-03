@@ -1,0 +1,39 @@
+{
+  "name": "PaymentLink",
+  "type": "object",
+  "properties": {
+    "invoice_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "Stripe",
+        "Moneris",
+        "Manual",
+        "Other"
+      ],
+      "default": "Manual"
+    },
+    "payment_url": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Paid",
+        "Expired",
+        "Cancelled"
+      ],
+      "default": "Active"
+    },
+    "last_checked_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "invoice_id"
+  ]
+}

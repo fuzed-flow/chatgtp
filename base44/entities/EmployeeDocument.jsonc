@@ -1,0 +1,57 @@
+{
+  "name": "EmployeeDocument",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "Employment Agreement",
+        "Safety Certificate",
+        "Trade Certification",
+        "License",
+        "Company Policy",
+        "Training Acknowledgement",
+        "Other"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "requires_acknowledgement": {
+      "type": "boolean",
+      "default": false
+    },
+    "acknowledged_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "employee_id",
+    "title",
+    "document_type"
+  ]
+}

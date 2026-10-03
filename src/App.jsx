@@ -1,0 +1,193 @@
+import { Toaster } from "@/components/ui/toaster"
+import { useToast } from "@/components/ui/use-toast";
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClientInstance } from '@/lib/query-client'
+
+// --- CORE UTILS & CONTEXT ---
+import NavigationTracker from '@/lib/NavigationTracker'
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { pagesConfig } from './pages.config'
+import RoleGuard from '@/components/RoleGuard';
+import PageNotFound from './lib/PageNotFound';
+
+// --- PUBLIC & UNPROTECTED PAGES ---
+import ContractorPortal from './pages/ContractorPortal';
+import PublicQuoteView from './pages/PublicQuoteView';
+import PublicInvoiceView from "./pages/PublicInvoiceView";
+import PublicPOView from "./pages/PublicPOView";
+import PublicChangeOrderView from "./pages/PublicChangeOrderView";
+import ClientPortal from "./pages/ClientPortal";
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import Login from './pages/Login'; 
+import Signup from './pages/Signup';
+
+// --- EXPLICIT EXPORTED PAGES ---
+import EmployeePortalPage from './pages/EmployeePortal';
+import LeadDetail from './pages/LeadDetail';
+import TeamSettings from './pages/TeamSettings';
+import Tutorials from './pages/Tutorials';
+import FAQ from './pages/FAQ';
+import Contact from './pages/Contact';
+
+// --- COMPONENTS ---
+import AIHelpWidget from "./components/shared/AIHelpWidget";
+
+const { Pages, Layout, mainPage } = pagesConfig;
+const mainPageKey = mainPage ?? Object.keys(Pages)[0];
+const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
+
+const LayoutWrapper = ({ children, currentPageName }) => Layout ? 
+  <Layout currentPageName={currentPageName}>{children}</Layout> 
+  : <>{children}</>;
+
+const AuthenticatedApp = () => {
+  const { loading, user } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <>
+      <Routes>
+        {/* 🟢 EVERYONE (Default entry for Employees) */}
+        <Route path="/EmployeePortal" element={
+          <LayoutWrapper currentPageName="EmployeePortal">
+            <EmployeePortalPage />
+          </LayoutWrapper>
+        } />
+        
+        {/* 🟡 MANAGERS & ADMINS ONLY (Employees get kicked back to EmployeePortal) */}
+        <Route path="/" element={
+          <RoleGuard allowedRoles={['admin', 'manager']}>
+            <LayoutWrapper currentPageName={mainPageKey}>
+              <MainPage />
+            </LayoutWrapper>
+          </RoleGuard>
+        } />
+        
+        {/* 🟡 MANAGERS & ADMINS: Dynamically mapped pages from config */}
+        {Object.entries(Pages)
+          // 🛡️ FILTER OUT THE ADMIN-ONLY PAGES SO MANAGERS CANNOT ACCESS THEM
+          .filter(([path]) => path !== 'Invoices' && path !== 'HumanResources' && path !== 'AdminSettings')
+          .map(([path, Page]) => (
+            <Route
+              key={path}
+              path={`/${path}`}
+              element={
+                <RoleGuard allowedRoles={['admin', 'manager']}>
+                  <LayoutWrapper currentPageName={path}>
+                    <Page />
+                  </LayoutWrapper>
+                </RoleGuard>
+              }
+            />
+          ))}
+        
+        {/* 🟡 EXPLICIT MANAGER & ADMIN ROUTES */}
+        <Route path="/LeadDetail" element={
+          <RoleGuard allowedRoles={['admin', 'manager']}>
+            <LayoutWrapper currentPageName="LeadDetail"><LeadDetail /></LayoutWrapper>
+          </RoleGuard>
+        } />
+        <Route path="/Tutorials" element={
+          <RoleGuard allowedRoles={['admin', 'manager']}>
+            <LayoutWrapper currentPageName="Tutorials"><Tutorials /></LayoutWrapper>
+          </RoleGuard>
+        } />
+        <Route path="/FAQ" element={
+          <RoleGuard allowedRoles={['admin', 'manager']}>
+            <LayoutWrapper currentPageName="FAQ"><FAQ /></LayoutWrapper>
+          </RoleGuard>
+        } />
+        <Route path="/Contact" element={
+          <RoleGuard allowedRoles={['admin', 'manager']}>
+            <LayoutWrapper currentPageName="Contact"><Contact /></LayoutWrapper>
+          </RoleGuard>
+        } />
+        <Route path="/Settings" element={
+          <RoleGuard allowedRoles={['admin', 'manager']}>
+            <LayoutWrapper currentPageName="Team Settings"><TeamSettings /></LayoutWrapper>
+          </RoleGuard>
+        } />
+
+        <Route path="/AdminSettings" element={
+          <RoleGuard allowedRoles={['admin', 'manager']}>
+            <LayoutWrapper currentPageName="Admin Settings"><Pages.AdminSettings /></LayoutWrapper>
+          </RoleGuard>
+        } />
+
+        {/* 🔴 ADMIN ONLY EXPLICIT ROUTES */}
+        <Route path="/Invoices" element={
+          <RoleGuard allowedRoles={['admin']}>
+            <LayoutWrapper currentPageName="Invoices"><Pages.Invoices /></LayoutWrapper>
+          </RoleGuard>
+        } />
+        
+        <Route path="/HumanResources" element={
+          <RoleGuard allowedRoles={['admin']}>
+            <LayoutWrapper currentPageName="HumanResources"><Pages.HumanResources /></LayoutWrapper>
+          </RoleGuard>
+        } />
+
+        {/* Catch-All 404 */}
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+
+      {/* 🤖 GLOBAL AI HELP WIDGET FOR AUTHENTICATED USERS */}
+      <AIHelpWidget />
+    </>
+  );
+};
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClientInstance}>
+      <Router>
+        <NavigationTracker />
+        
+        <Routes>
+          {/* 🟢 PUBLIC / UNPROTECTED ROUTES (Bypasses AuthProvider) */}
+<Route path="/ContractorPortal" element={<ContractorPortal />} />
+<Route path="/contractor-portal" element={<ContractorPortal />} />
+<Route path="/login" element={<Login />} />
+<Route path="/SignIn" element={<Navigate to="/login" replace />} />
+<Route path="/signin" element={<Navigate to="/login" replace />} />
+<Route path="/signup" element={<Signup />} />
+<Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          
+          {/* Public Client & Vendor Views */}
+          <Route path="/PublicQuoteView" element={<PublicQuoteView />} />
+          <Route path="/ClientPortal" element={<ClientPortal />} />
+          <Route path="/PublicInvoiceView" element={<PublicInvoiceView />} />
+          <Route path="/PublicChangeOrderView" element={<PublicChangeOrderView />} />
+          <Route path="/PublicPOView" element={<PublicPOView />} />
+
+          {/* 🔴 PROTECTED APP ROUTES */}
+          {/* Only these routes pass through the AuthProvider */}
+          <Route 
+            path="/*" 
+            element={
+              <AuthProvider>
+                <AuthenticatedApp />
+              </AuthProvider>
+            } 
+          />
+        </Routes>
+
+      </Router>
+      <Toaster />
+    </QueryClientProvider>
+  )
+}
+
+export default App;

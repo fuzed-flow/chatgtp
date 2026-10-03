@@ -1,0 +1,98 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "invoice_number": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "quote_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "MASTER",
+        "CHILD"
+      ],
+      "default": "MASTER",
+      "description": "Master invoice (summary) or child invoice (payment installment)"
+    },
+    "master_invoice_id": {
+      "type": "string",
+      "description": "Reference to master invoice for child invoices"
+    },
+    "sequence_index": {
+      "type": "integer",
+      "description": "For child invoices: sequential number (1, 2, 3...)"
+    },
+    "schedule_source_json": {
+      "type": "string",
+      "description": "JSON storing the payment schedule item data that generated this child invoice"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Sent",
+        "Paid",
+        "Overdue",
+        "Void"
+      ],
+      "default": "Draft"
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "tax": {
+      "type": "number",
+      "default": 0
+    },
+    "total": {
+      "type": "number",
+      "default": 0
+    },
+    "amount_paid": {
+      "type": "number",
+      "default": 0
+    },
+    "balance_due": {
+      "type": "number",
+      "default": 0
+    },
+    "deposit_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Initial deposit amount"
+    },
+    "has_payment_schedule": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this invoice has a payment schedule"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "pdf_customization_settings_json": {
+      "type": "string",
+      "description": "JSON string storing PDF customization settings for this invoice"
+    }
+  },
+  "required": [
+    "client_id"
+  ]
+}

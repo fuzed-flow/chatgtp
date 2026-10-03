@@ -1,0 +1,52 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "client_id": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "sender_type": {
+      "type": "string",
+      "enum": [
+        "Client",
+        "Team"
+      ],
+      "description": "Whether the message was sent by the client or team"
+    },
+    "sender_name": {
+      "type": "string"
+    },
+    "sender_user_id": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "message_body": {
+      "type": "string"
+    },
+    "attachment_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false
+    },
+    "replied_to_message_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sender_type",
+    "sender_name",
+    "subject",
+    "message_body"
+  ]
+}

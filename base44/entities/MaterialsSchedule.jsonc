@@ -1,0 +1,39 @@
+{
+  "name": "MaterialsSchedule",
+  "type": "object",
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "description": "Associated job ID"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Associated project ID"
+    },
+    "schedule_name": {
+      "type": "string",
+      "description": "Name of the materials schedule"
+    },
+    "client_address": {
+      "type": "string",
+      "description": "Delivery address"
+    },
+    "notes": {
+      "type": "string",
+      "description": "General notes for the schedule"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Submitted",
+        "In Progress",
+        "Complete"
+      ],
+      "default": "Draft"
+    }
+  },
+  "required": [
+    "schedule_name"
+  ]
+}

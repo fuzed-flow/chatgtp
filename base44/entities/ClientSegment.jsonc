@@ -1,0 +1,27 @@
+{
+  "name": "ClientSegment",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Segment name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description"
+    },
+    "filters": {
+      "type": "string",
+      "description": "JSON string of filter criteria"
+    },
+    "is_shared": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this segment is shared with all users"
+    }
+  },
+  "required": [
+    "name",
+    "filters"
+  ]
+}

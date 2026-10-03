@@ -1,0 +1,77 @@
+{
+  "name": "Project",
+  "type": "object",
+  "properties": {
+    "project_number": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "quote_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Not Started",
+        "In Progress",
+        "On Hold",
+        "Completed",
+        "Cancelled"
+      ],
+      "default": "Not Started"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "target_end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "site_address": {
+      "type": "string"
+    },
+    "budget": {
+      "type": "number"
+    },
+    "budget_revenue": {
+      "type": "number"
+    },
+    "budget_cost": {
+      "type": "number"
+    },
+    "budget_margin": {
+      "type": "number"
+    },
+    "actual_revenue": {
+      "type": "number",
+      "default": 0
+    },
+    "actual_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "actual_margin": {
+      "type": "number",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    },
+    "manager_user_id": {
+      "type": "string"
+    },
+    "last_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

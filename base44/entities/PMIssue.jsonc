@@ -1,0 +1,60 @@
+{
+  "name": "PMIssue",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "phase_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "default": "Medium"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Open",
+        "Investigating",
+        "Waiting",
+        "Resolved",
+        "Closed"
+      ],
+      "default": "Open"
+    },
+    "owner_ref": {
+      "type": "string"
+    },
+    "owner_name": {
+      "type": "string"
+    },
+    "client_visible": {
+      "type": "boolean",
+      "default": false
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "project_id",
+    "title"
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "name": "Timesheet",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string",
+      "description": "EmployeeProfile ID"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "clock_in": {
+      "type": "string",
+      "description": "HH:MM"
+    },
+    "clock_out": {
+      "type": "string",
+      "description": "HH:MM"
+    },
+    "break_minutes": {
+      "type": "number",
+      "default": 0
+    },
+    "total_hours": {
+      "type": "number",
+      "default": 0
+    },
+    "overtime_hours": {
+      "type": "number",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected"
+      ],
+      "default": "Pending"
+    },
+    "admin_notes": {
+      "type": "string"
+    },
+    "is_manual": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "user_email",
+    "date"
+  ]
+}

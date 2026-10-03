@@ -1,0 +1,61 @@
+{
+  "name": "ClientCommunication",
+  "type": "object",
+  "properties": {
+    "client_id": {
+      "type": "string",
+      "description": "Associated client ID"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Email",
+        "Phone Call",
+        "Meeting",
+        "Text Message",
+        "Other"
+      ],
+      "default": "Email",
+      "description": "Type of communication"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject line or title of communication"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message content or notes"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "Outbound",
+        "Inbound"
+      ],
+      "default": "Outbound",
+      "description": "Direction of communication"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Sent",
+        "Failed",
+        "Delivered",
+        "Read"
+      ],
+      "default": "Sent"
+    },
+    "sent_to": {
+      "type": "string",
+      "description": "Recipient email or phone"
+    },
+    "sent_by": {
+      "type": "string",
+      "description": "User who sent the communication"
+    }
+  },
+  "required": [
+    "client_id",
+    "type"
+  ]
+}

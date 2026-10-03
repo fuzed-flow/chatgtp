@@ -1,0 +1,62 @@
+{
+  "name": "TimeEntries",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string"
+    },
+    "employee_email": {
+      "type": "string"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "clock_in_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "clock_out_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_hours": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Clocked In",
+        "Clocked Out"
+      ],
+      "default": "Clocked In"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "location": {
+      "type": "string"
+    },
+    "device": {
+      "type": "string"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected"
+      ],
+      "default": "Pending"
+    }
+  },
+  "required": [
+    "employee_email",
+    "clock_in_time",
+    "date",
+    "status"
+  ]
+}

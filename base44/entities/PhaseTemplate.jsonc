@@ -1,0 +1,32 @@
+{
+  "name": "PhaseTemplate",
+  "type": "object",
+  "properties": {
+    "template_name": {
+      "type": "string",
+      "description": "Name of the phase/room template"
+    },
+    "description": {
+      "type": "string"
+    },
+    "phase_name": {
+      "type": "string",
+      "description": "Default phase/room name"
+    },
+    "scope_of_work": {
+      "type": "string"
+    },
+    "line_items_json": {
+      "type": "string",
+      "description": "JSON string of default line items for this phase"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "template_name",
+    "phase_name"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "Checklist",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Pre-Start",
+        "Rough-In",
+        "Final Walkthrough",
+        "Safety",
+        "Quality",
+        "Custom"
+      ]
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

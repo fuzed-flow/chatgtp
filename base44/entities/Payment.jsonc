@@ -1,0 +1,38 @@
+{
+  "name": "Payment",
+  "type": "object",
+  "properties": {
+    "invoice_id": {
+      "type": "string",
+      "description": "Associated invoice ID"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Payment amount"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "bank_transfer",
+        "credit_card",
+        "check",
+        "cash",
+        "other"
+      ],
+      "default": "bank_transfer",
+      "description": "How the payment was made"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Reference number, check #, transaction ID, etc."
+    },
+    "schedule_item_id": {
+      "type": "string",
+      "description": "The specific payment schedule item this payment is applied to (if any)"
+    }
+  },
+  "required": [
+    "invoice_id",
+    "amount"
+  ]
+}

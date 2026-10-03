@@ -1,0 +1,49 @@
+{
+  "name": "AutomationStep",
+  "type": "object",
+  "properties": {
+    "automation_id": {
+      "type": "string",
+      "description": "Parent automation ID"
+    },
+    "step_order": {
+      "type": "number",
+      "description": "Order in which this step executes"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "send_email",
+        "create_task",
+        "update_entity",
+        "send_notification",
+        "call_function",
+        "conditional",
+        "delay"
+      ],
+      "description": "Type of action to perform"
+    },
+    "action_config": {
+      "type": "string",
+      "description": "JSON string containing action configuration (email template, task details, etc.)"
+    },
+    "condition_config": {
+      "type": "string",
+      "description": "JSON string for conditional logic (if step_order is conditional)"
+    },
+    "delay_seconds": {
+      "type": "number",
+      "description": "Seconds to delay before executing this step (if action_type is delay)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this step is active"
+    }
+  },
+  "required": [
+    "automation_id",
+    "step_order",
+    "action_type"
+  ]
+}

@@ -1,0 +1,223 @@
+{
+  "name": "Quote",
+  "type": "object",
+  "properties": {
+    "quote_number": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "lead_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "site_address": {
+      "type": "string",
+      "description": "Site/project address"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Sent",
+        "Approved",
+        "Declined",
+        "Expired",
+        "Template"
+      ],
+      "default": "Draft"
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "tax": {
+      "type": "number",
+      "default": 0
+    },
+    "total": {
+      "type": "number",
+      "default": 0
+    },
+    "margin": {
+      "type": "number"
+    },
+    "margin_adjustment_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "fixed",
+        "percentage"
+      ],
+      "default": "none",
+      "description": "Type of margin adjustment applied"
+    },
+    "deposit_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Initial deposit amount"
+    },
+    "discount_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Discount amount to apply to the quote"
+    },
+    "discount_type": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "percentage"
+      ],
+      "default": "fixed",
+      "description": "Whether discount is fixed dollar or percentage"
+    },
+    "discount_percentage": {
+      "type": "number",
+      "description": "Discount percentage (if discount_type is percentage)"
+    },
+    "show_discount_amount": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to show discount amount to the client"
+    },
+    "has_payment_schedule": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this quote has a payment schedule"
+    },
+    "payment_schedule_json": {
+      "type": "string",
+      "description": "JSON string storing payment schedule items array"
+    },
+    "client_selected_items_json": {
+      "type": "string",
+      "description": "JSON string storing client's selections for optional items when quote is accepted"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal notes (not shown to client)"
+    },
+    "client_message": {
+      "type": "string",
+      "description": "Message shown to the client on the quote"
+    },
+    "terms": {
+      "type": "string"
+    },
+    "proposal_template_id": {
+      "type": "string"
+    },
+    "scope_sections_selected_json": {
+      "type": "string"
+    },
+    "cover_page_title": {
+      "type": "string"
+    },
+    "cover_page_subtitle": {
+      "type": "string"
+    },
+    "client_goals_notes": {
+      "type": "string"
+    },
+    "inclusions_text": {
+      "type": "string"
+    },
+    "exclusions_text": {
+      "type": "string"
+    },
+    "warranty_text": {
+      "type": "string"
+    },
+    "overall_scope": {
+      "type": "string"
+    },
+    "show_overall_scope": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to show overall scope in client view"
+    },
+    "hero_image_url": {
+      "type": "string",
+      "description": "Hero banner image shown at the top of the quote"
+    },
+    "end_photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Photos of past projects to showcase"
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_url": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
+        }
+      },
+      "default": [],
+      "description": "Documents attached to the quote"
+    },
+    "pdf_customization_settings_json": {
+      "type": "string",
+      "description": "JSON string storing PDF customization settings for this quote"
+    },
+    "enable_follow_ups": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether automated follow-ups are enabled"
+    },
+    "follow_up_days": {
+      "type": "number",
+      "default": 7,
+      "description": "Days after sending before first follow-up"
+    },
+    "follow_up_interval_days": {
+      "type": "number",
+      "default": 3,
+      "description": "Days between subsequent follow-ups"
+    },
+    "follow_up_max_reminders": {
+      "type": "number",
+      "default": 3,
+      "description": "Maximum number of follow-up reminders to send"
+    },
+    "follow_up_template": {
+      "type": "string",
+      "description": "Custom template for follow-up emails"
+    },
+    "last_follow_up_sent": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the last follow-up was sent"
+    },
+    "is_template": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this quote is a template"
+    },
+    "template_category": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

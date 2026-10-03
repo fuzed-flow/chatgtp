@@ -1,0 +1,86 @@
+{
+  "name": "PMMaterialScheduleItem",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "phase_id": {
+      "type": "string"
+    },
+    "material_id": {
+      "type": "string"
+    },
+    "custom_material_name": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1
+    },
+    "unit": {
+      "type": "string",
+      "default": "ea"
+    },
+    "needed_by_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "order_by_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Not Planned",
+        "Planned",
+        "Ordered",
+        "Delivered",
+        "Backordered",
+        "Installed",
+        "Cancelled"
+      ],
+      "default": "Planned"
+    },
+    "supplier": {
+      "type": "string"
+    },
+    "cost_estimated": {
+      "type": "number"
+    },
+    "cost_actual": {
+      "type": "number"
+    },
+    "location_on_site": {
+      "type": "string"
+    },
+    "client_visible": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_url": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
+        }
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "project_id",
+    "quantity",
+    "needed_by_date"
+  ]
+}

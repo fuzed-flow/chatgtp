@@ -1,0 +1,56 @@
+{
+  "name": "TimeEntry",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "clock_in": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "clock_out": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_hours": {
+      "type": "number",
+      "default": 0
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "Clock",
+        "Manual"
+      ],
+      "default": "Clock"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected"
+      ],
+      "default": "Pending"
+    },
+    "approved_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "employee_name",
+    "date"
+  ]
+}

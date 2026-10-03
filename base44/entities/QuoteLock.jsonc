@@ -1,0 +1,32 @@
+{
+  "name": "QuoteLock",
+  "type": "object",
+  "properties": {
+    "quote_id": {
+      "type": "string",
+      "description": "ID of the locked quote"
+    },
+    "locked_by_user_id": {
+      "type": "string",
+      "description": "User ID who has the lock"
+    },
+    "locked_by_user_name": {
+      "type": "string",
+      "description": "Name of user for display"
+    },
+    "locked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the lock was acquired"
+    },
+    "last_heartbeat": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last activity timestamp"
+    }
+  },
+  "required": [
+    "quote_id",
+    "locked_by_user_id"
+  ]
+}

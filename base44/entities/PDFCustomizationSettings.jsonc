@@ -1,0 +1,137 @@
+{
+  "name": "PDFCustomizationSettings",
+  "type": "object",
+  "properties": {
+    "template": {
+      "type": "string",
+      "enum": [
+        "professional",
+        "modern",
+        "minimal"
+      ],
+      "default": "professional",
+      "description": "PDF template style"
+    },
+    "primary_color": {
+      "type": "string",
+      "default": "#0f172a",
+      "description": "Primary brand color (hex)"
+    },
+    "accent_color": {
+      "type": "string",
+      "default": "#f59e0b",
+      "description": "Accent color (hex)"
+    },
+    "header_background_color": {
+      "type": "string",
+      "default": "#0f172a",
+      "description": "Header background color (hex)"
+    },
+    "header_text_color": {
+      "type": "string",
+      "default": "#ffffff",
+      "description": "Header text color (hex)"
+    },
+    "footer_text": {
+      "type": "string",
+      "description": "Footer text content"
+    },
+    "footer_color": {
+      "type": "string",
+      "default": "#64748b",
+      "description": "Footer text color (hex)"
+    },
+    "show_logo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Display company logo"
+    },
+    "show_company_info": {
+      "type": "boolean",
+      "default": true,
+      "description": "Display company contact info"
+    },
+    "show_payment_terms": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show payment terms section"
+    },
+    "font_family": {
+      "type": "string",
+      "enum": [
+        "sans-serif",
+        "serif",
+        "monospace"
+      ],
+      "default": "sans-serif",
+      "description": "Font family"
+    },
+    "font_size_base": {
+      "type": "number",
+      "default": 11,
+      "description": "Base font size in points"
+    },
+    "page_layout": {
+      "type": "string",
+      "enum": [
+        "single-column",
+        "two-column"
+      ],
+      "default": "single-column",
+      "description": "Page layout for line items"
+    },
+    "page_margins": {
+      "type": "object",
+      "properties": {
+        "top": {
+          "type": "number",
+          "default": 0.75,
+          "description": "Top margin in inches"
+        },
+        "bottom": {
+          "type": "number",
+          "default": 0.75,
+          "description": "Bottom margin in inches"
+        },
+        "left": {
+          "type": "number",
+          "default": 0.75,
+          "description": "Left margin in inches"
+        },
+        "right": {
+          "type": "number",
+          "default": 0.75,
+          "description": "Right margin in inches"
+        }
+      }
+    },
+    "line_spacing": {
+      "type": "number",
+      "default": 1.5,
+      "description": "Line spacing multiplier"
+    },
+    "show_line_item_images": {
+      "type": "boolean",
+      "default": false,
+      "description": "Show product images in line items"
+    },
+    "highlight_totals": {
+      "type": "boolean",
+      "default": true,
+      "description": "Highlight totals section with color"
+    },
+    "item_border_style": {
+      "type": "string",
+      "enum": [
+        "none",
+        "light",
+        "solid"
+      ],
+      "default": "light",
+      "description": "Border style for line items"
+    }
+  },
+  "required": [
+    "template"
+  ]
+}
