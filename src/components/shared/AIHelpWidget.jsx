@@ -1,17 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation } from "react-router-dom"; // 👈 Import useLocation
+import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient"; 
 import { MessageCircle, X, Send, Bot, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import Draggable from "react-draggable";
+import * as Dialog from "@radix-ui/react-dialog";
 
 export default function AIHelpWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const messageListRef = useRef(null);
+  const [viewport, setViewport] = useState(null);
   
   // 👈 Get the current page URL
   const location = useLocation(); 
@@ -22,10 +23,26 @@ export default function AIHelpWidget() {
   ]);
 
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    if (messageListRef.current) messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
   }, [messages, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const visualViewport = window.visualViewport;
+    const updateViewport = () => setViewport({
+      height: visualViewport?.height ?? window.innerHeight,
+      inset: Math.max(0, window.innerHeight - (visualViewport?.height ?? window.innerHeight) - (visualViewport?.offsetTop ?? 0)),
+    });
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    visualViewport?.addEventListener("resize", updateViewport);
+    visualViewport?.addEventListener("scroll", updateViewport);
+    return () => {
+      window.removeEventListener("resize", updateViewport);
+      visualViewport?.removeEventListener("resize", updateViewport);
+      visualViewport?.removeEventListener("scroll", updateViewport);
+    };
+  }, [isOpen]);
 
   // 2. Hide widget on specific portal pages
   const hiddenRoutes = ["/client", "/employee", "/contractor", "/public"];
@@ -36,7 +53,7 @@ export default function AIHelpWidget() {
 
   const handleSend = async (e) => {
     e?.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
     const userText = input.trim();
     setInput("");
@@ -65,37 +82,39 @@ export default function AIHelpWidget() {
   };
   
   return (
-    <Draggable bounds="parent">
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-        {isOpen && (
-          <Card className="w-[350px] sm:w-[400px] h-[500px] mb-4 shadow-2xl flex flex-col overflow-hidden border-slate-200 animate-in slide-in-from-bottom-5 fade-in duration-200">
-            <div className="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-2">
+    <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog.Trigger asChild>
+        <button type="button" aria-label="Open AI help"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-40 flex h-14 items-center gap-2 rounded-full bg-slate-900 px-4 text-white shadow-xl touch-manipulation hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6">
+          <MessageCircle className="h-6 w-6" aria-hidden="true" />
+          <span className="text-sm font-semibold">AI Help</span>
+        </button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[60] bg-slate-950/40" />
+        <Dialog.Content
+          style={viewport ? { "--help-viewport-height": `${viewport.height}px`, "--help-keyboard-inset": `${viewport.inset}px` } : undefined}
+          className="fixed left-3 right-3 bottom-[calc(var(--help-keyboard-inset,0px)+env(safe-area-inset-bottom)+0.75rem)] z-[61] flex h-[min(34rem,calc(var(--help-viewport-height,100dvh)-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem))] min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl focus:outline-none sm:left-auto sm:right-6 sm:bottom-6 sm:w-[400px] sm:h-[min(36rem,calc(var(--help-viewport-height,100dvh)-3rem))]">
+            <div className="bg-slate-900 text-white px-3 py-2 flex justify-between items-center gap-2 shrink-0">
+              <div className="flex min-w-0 items-center gap-2">
                 <Bot className="h-5 w-5" />
-                <h3 className="font-semibold text-sm">FuzedFlow Helper</h3> 
+                <Dialog.Title className="font-semibold text-sm">FuzedFlow Helper</Dialog.Title>
               </div>
-              
-              {/* NEW: Contact Support Link & Close Button Container */}
-              <div className="flex items-center gap-2">
-                <a 
-                  href="/Contact" 
-                  className="text-xs text-slate-300 hover:text-white underline-offset-2 hover:underline transition-all"
-                >
-                  Contact Support
-                </a>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-white hover:bg-slate-800 rounded-full" onClick={() => setIsOpen(false)}>
-                  <X className="h-4 w-4" />
+              <Dialog.Close asChild>
+                <Button variant="ghost" size="icon" aria-label="Close AI help" className="h-12 w-12 shrink-0 touch-manipulation text-slate-200 hover:text-white hover:bg-slate-800 rounded-full">
+                  <X className="h-6 w-6" aria-hidden="true" />
                 </Button>
-              </div>
+              </Dialog.Close>
             </div>
+            <Dialog.Description className="sr-only">Ask for help using FuzedFlow or contact support.</Dialog.Description>
 
-            <div className="flex-1 p-4 overflow-y-auto bg-slate-50 space-y-4 custom-scrollbar">
+            <div ref={messageListRef} role="log" aria-label="Help conversation" aria-live="polite" aria-busy={isLoading} className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto overscroll-contain bg-slate-50 space-y-4 custom-scrollbar">
               {messages.map((msg, idx) => (
                 <div key={idx} className={`flex gap-3 max-w-[85%] ${msg.role === "user" ? "ml-auto flex-row-reverse" : ""}`}>
                   <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${msg.role === "user" ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-700"}`}>
                     {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                   </div>
-                  <div className={`p-3 rounded-2xl text-sm ${msg.role === "user" ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm"}`}>
+                  <div className={`min-w-0 break-words [overflow-wrap:anywhere] p-3 rounded-2xl text-sm ${msg.role === "user" ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm"}`}>
                     {msg.text}
                   </div>
                 </div>
@@ -116,19 +135,15 @@ export default function AIHelpWidget() {
 
             <div className="p-3 bg-white border-t border-slate-200 shrink-0">
               <form onSubmit={handleSend} className="flex items-center gap-2">
-                <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask a question..." className="flex-1 bg-slate-50 border-slate-200 focus-visible:ring-blue-500" disabled={isLoading} />
-                <Button type="submit" size="icon" disabled={!input.trim() || isLoading} className="bg-blue-600 hover:bg-blue-700 shrink-0">
+                <Input aria-label="Your question" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask a question..." className="h-12 min-w-0 flex-1 text-base sm:text-base bg-slate-50 border-slate-200 focus-visible:ring-blue-500" disabled={isLoading} />
+                <Button type="submit" size="icon" aria-label={isLoading ? "Sending question" : "Send question"} disabled={!input.trim() || isLoading} className="h-12 w-12 touch-manipulation bg-blue-600 hover:bg-blue-700 shrink-0">
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </form>
+              <Link to="/Contact" onClick={() => setIsOpen(false)} className="mt-1 flex min-h-11 items-center justify-center rounded-lg px-3 text-sm font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 touch-manipulation">Contact Support</Link>
             </div>
-          </Card>
-        )}
-
-        <button onClick={() => setIsOpen(!isOpen)} className={`cursor-move ${isOpen ? "bg-slate-800 rotate-90" : "bg-slate-900 hover:scale-105"} transition-all duration-200 text-white p-4 rounded-full shadow-xl flex items-center justify-center`}>
-          {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
-        </button>
-      </div>
-    </Draggable>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
