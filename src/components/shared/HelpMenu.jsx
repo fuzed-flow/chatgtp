@@ -5,7 +5,13 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 
 export default function HelpMenu({ onCloseSidebar }) {
   return <DropdownMenu>
-    <DropdownMenuTrigger asChild><button type="button" aria-label="Open help menu" className="flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold bg-amber-500 text-slate-900 touch-manipulation hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"><HelpCircle className="h-5 w-5" aria-hidden="true" /><span>Help</span></button></DropdownMenuTrigger>
+    <DropdownMenuTrigger asChild>
+      <button type="button" aria-label="Open help menu" className="group flex h-12 min-w-12 shrink-0 items-center justify-center rounded-lg px-1 text-sm font-semibold text-slate-900 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
+        <span className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-amber-500 px-2 transition-colors group-hover:bg-amber-400">
+          <HelpCircle className="h-5 w-5" aria-hidden="true" /><span>Help</span>
+        </span>
+      </button>
+    </DropdownMenuTrigger>
     <DropdownMenuContent align="end" sideOffset={8} className="z-[70] w-64 max-w-[calc(100vw-2rem)] rounded-xl p-1.5">
       <DropdownMenuLabel className="text-xs text-slate-500">FuzedFlow support</DropdownMenuLabel>
       <DropdownMenuSeparator />
