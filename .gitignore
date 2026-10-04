@@ -27,6 +27,12 @@ dist-ssr
 *.sln
 *.sw?
 
-.env
 .vercel
 .gemini/
+
+# Supabase CLI metadata is regenerated when linking the project.
+/supabase/.temp/
+
+# Local backup archives and downloaded tools.
+/fuzedflow-backup.zip
+/stripe_*_linux_*.tar.gz

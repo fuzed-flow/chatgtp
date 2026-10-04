@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import VirtualAssistant from "./components/VirtualAssistant";
 import GlobalSearch from "./components/shared/GlobalSearch";
 import OnboardingTour from "./components/shared/OnboardingTour";
 import AccessibilityEnhancer from "./components/shared/AccessibilityEnhancer";

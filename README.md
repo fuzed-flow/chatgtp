@@ -1,39 +1,35 @@
-**Welcome to your Base44 project** 
+# FuzedFlow
 
-**About**
+FuzedFlow is a React application built with Vite and Tailwind CSS. The active backend uses Supabase for authentication, data, storage, and Edge Functions. GitHub updates to `main` trigger the connected Vercel production deployment.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+## Local development
 
-This project contains everything you need to run your app locally.
+Install the dependencies with `npm ci`. Create an untracked `.env.local` file containing the public Supabase connection settings:
 
-**Edit the code in your local development environment**
-
-Any change pushed to the repo will also be reflected in the Base44 Builder.
-
-**Prerequisites:** 
-
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
-
-```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
+```dotenv
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-public-anon-key
 ```
 
-Run the app: `npm run dev`
+Run `npm run dev` to start the development server. Run `npm run build` to create the production output in `dist`, and `npm run preview` to preview that output locally.
 
-**Publish your changes**
+## Project folders
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+- `src`: application pages, components, routes, and Supabase client.
+- `public`: static assets, including the app manifest.
+- `supabase/functions`: backend Edge Function source and its deployment configuration.
+- `supabase/migrations`: versioned database migrations; keep applied migrations in source control.
+- `tests`: notification regression tests and synthetic browser fixtures for notifications, AI help, and PM tasks. Fixtures do not use customer records.
+- `docs`: feature documentation, including [notification behavior and workflow limits](docs/notifications.md).
+- `base44`: original entity definitions and function source retained as migration references. Some legacy feature modules still refer to Base44 APIs, so this folder has not been removed as part of repository cleanup.
 
-**Docs & Support**
+## Verification
 
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
+```sh
+npm run build
+npm run test:notifications
+```
 
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+The notification tests use synthetic browser records and an isolated in-memory PostgreSQL database. The fixture Vite configurations under `tests/*/browser` can also be used for focused browser previews.
+
+Backup archives, downloaded CLI binaries, build output, dependencies, and Supabase CLI link/cache metadata are excluded from source control. Earlier versions of removed files remain available in Git history.
