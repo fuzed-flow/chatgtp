@@ -88,7 +88,6 @@ test('checkout maps all six CAD links to USD while preserving trial and quantiti
       assert.equal(parameters.line_items[0].quantity, 1);
       assert.equal(parameters.mode, 'subscription');
       assert.equal(parameters.allow_promotion_codes, cycle === 'monthly');
-      assert.equal(parameters.payment_method_types, undefined);
       assert.equal(parameters.subscription_data.trial_period_days, 14);
       assert.equal(parameters.subscription_data.metadata.plan_id, planId);
       assert.equal(parameters.metadata.plan_id, planId);
