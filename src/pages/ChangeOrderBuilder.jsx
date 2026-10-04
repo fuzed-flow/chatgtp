@@ -549,11 +549,14 @@ export default function ChangeOrderBuilder() {
       const newBudgetCost = safeNum(project?.budget_cost) + grandCost;
       const newTotalBudget = safeNum(project?.budget) + grandTotal;
 
-      await supabase.from("projects").update({
+      const { error: budgetError } = await supabase.from("projects").update({
         budget_revenue: newBudgetRevenue,
         budget_cost: newBudgetCost,
         budget: newTotalBudget
       }).eq("id", form.project_id);
+      if (budgetError) throw budgetError;
+      const { error: syncError } = await supabase.from("change_orders").update({ budget_synced_at: new Date().toISOString() }).eq("id", savedId).eq("company_id", companyId);
+      if (syncError) throw syncError;
 
       for (const phase of phases) {
         if (!isPhaseActive(phase)) continue;

@@ -155,6 +155,7 @@ export default function PublicChangeOrderView() {
         await supabase.functions.invoke('company-notifier', {
           body: {
             event_key: "co_viewed",
+            document_uuid: changeOrder.id,
             document_id: changeOrder.change_order_number || "CO",
             company_id: activeCompanyId, 
             message_body: `${clientName} just viewed Change Order ${changeOrder.change_order_number || ''}`
@@ -246,6 +247,7 @@ export default function PublicChangeOrderView() {
         await supabase.functions.invoke('company-notifier', {
           body: { 
             event_key: "co_approved", 
+            document_uuid: changeOrder.id,
             document_id: changeOrder.change_order_number,
             company_id: activeCompanyId, 
             message_body: `🎉 ${clientName} just APPROVED Change Order ${changeOrder.change_order_number}!`
@@ -268,33 +270,16 @@ export default function PublicChangeOrderView() {
   const handleRequestChanges = async () => {
     if (!changesMessage.trim()) { toast.error("Please describe the changes you'd like to request"); return; }
     setSubmittingChanges(true);
-    
     try {
-      // ⚡ NEW: Trigger Edge Function Email/SMS for Change Requests
-      try {
-        const clientName = client?.name || changeOrder?.client_name || "A client";
-        const activeCompanyId = company?.id || changeOrder?.company_id;
-
-        await supabase.functions.invoke('company-notifier', {
-          body: { 
-            event_key: "change_order_requested", 
-            document_id: changeOrder.change_order_number,
-            company_id: activeCompanyId, 
-            message_body: `⚠️ ${clientName} requested changes to CO ${changeOrder.change_order_number}:\n\n"${changesMessage}"`
-          }
-        });
-      } catch (emailError) {
-        console.error("Change request notification failed:", emailError);
-      }
-
-      toast.success("Change request submitted! The team has been notified.");
-      setChangesDialogOpen(false); 
-      setChangesMessage("");
-    } catch (error) { 
-      toast.error("Failed to submit change request"); 
-    } finally { 
-      setSubmittingChanges(false); 
-    }
+      const { error } = await supabase.functions.invoke('company-notifier', {
+        body: { event_key: 'change_order_requested', document_uuid: changeOrder.id, document_id: changeOrder.id,
+          company_id: changeOrder.company_id, message_body: changesMessage.trim().slice(0, 2000) }
+      });
+      if (error) throw error;
+      toast.success("Change request submitted. The team has been notified.");
+      setChangesDialogOpen(false); setChangesMessage("");
+    } catch (error) { toast.error("Could not submit the change request. Please retry."); }
+    finally { setSubmittingChanges(false); }
   };
 
   // --- 7. RENDER ---

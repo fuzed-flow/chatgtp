@@ -29,6 +29,19 @@ export default function NotesFeed({ relatedType = "Project", relatedId = null, c
 
   // --- NEW NOTE STATE ---
   const [newNote, setNewNote] = useState("");
+  const [mentions, setMentions] = useState([]);
+  const { data: mentionMembers = [] } = useQuery({
+    queryKey: ["mentionMembers", companyId, relatedType, relatedId], enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, full_name, role").eq("company_id", companyId).eq("is_active", true);
+      if (error) throw error;
+      if (relatedType !== "Project" || !relatedId) return (data || []).filter(p => ["owner", "admin", "office"].includes(p.role));
+      const { data: staff, error: staffError } = await supabase.from("project_staff").select("user_id").eq("company_id", companyId).eq("project_id", relatedId).eq("is_active", true);
+      if (staffError) throw staffError;
+      const assigned = new Set((staff || []).map(s => s.user_id));
+      return (data || []).filter(p => ["owner", "admin", "office"].includes(p.role) || assigned.has(p.id));
+    },
+  });
   const [isPinned, setIsPinned] = useState(false);
   const [category, setCategory] = useState("General");
   const [linkedProject, setLinkedProject] = useState("none");
@@ -113,6 +126,7 @@ export default function NotesFeed({ relatedType = "Project", relatedId = null, c
         company_id: companyId,
         user_id: profile?.id,
         summary: newNote.trim(), 
+        mention_user_ids: mentions,
         category: category,
         date: format(new Date(), "yyyy-MM-dd"),
         project_id: relatedType === "Project" ? relatedId : (linkedProject !== "none" ? linkedProject : null),
@@ -132,6 +146,7 @@ export default function NotesFeed({ relatedType = "Project", relatedId = null, c
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notes", companyId] });
       setNewNote("");
+      setMentions([]);
       setIsPinned(false);
       setCategory("General");
       setLinkedProject("none");
@@ -314,6 +329,23 @@ export default function NotesFeed({ relatedType = "Project", relatedId = null, c
       <div className="shrink-0 pt-4 border-t border-slate-200 mt-2 bg-slate-50">
         <div className="bg-white rounded-xl border border-slate-300 shadow-sm overflow-hidden focus-within:border-amber-400 focus-within:ring-1 focus-within:ring-amber-400 transition-all flex flex-col">
           
+          <div className="flex flex-wrap gap-2 p-3 pb-0">
+            <label className="text-xs text-slate-600 flex items-center gap-2">Mention a teammate
+              <select aria-label="Mention a teammate" value="" onChange={e => {
+                const member = mentionMembers.find(m => m.id === e.target.value);
+                if (member) {
+                  setMentions(previous => [...new Set([...previous, member.id])]);
+                  setNewNote(previous => previous + (previous ? " " : "") + "@" + member.full_name + " ");
+                }
+              }} className="rounded border border-slate-200 p-1 max-w-40">
+                <option value="">Choose teammate</option>
+                {mentionMembers.filter(m => !mentions.includes(m.id)).map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+              </select>
+            </label>
+            {mentions.map(id => <button key={id} type="button" onClick={() => setMentions(previous => previous.filter(value => value !== id))} className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700" aria-label={"Remove mention of " + mentionMembers.find(m => m.id === id)?.full_name}>
+              @{mentionMembers.find(m => m.id === id)?.full_name} ×
+            </button>)}
+          </div>
           <Textarea 
             placeholder="Log an update, email summary, call notes..." 
             value={newNote}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { Badge } from "@/components/ui/badge";
@@ -36,11 +36,13 @@ export default function EPTasks({ currentUser, companyId }) {
     queryKey: ["tasks_mine", currentUser?.id],
     enabled: !!companyId && !!currentUser?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("project_tasks")
-        .select("*")
-        .eq("company_id", companyId)
-        .order("created_at", { ascending: false });
+      const results = await Promise.all(["project_tasks", "tasks"].map(table =>
+        supabase.from(table).select("*").eq("company_id", companyId).order("created_at", { ascending: false })
+          .then(result => ({ ...result, table }))));
+      const error = results.find(result => result.error)?.error;
+      const data = results.flatMap(result => (result.data || []).map(task => ({
+        ...task, source_table: result.table, due_date: task.due_date_target || task.due_date,
+      })));
       
       if (error) {
         console.warn("Tasks error:", error.message);
@@ -51,8 +53,8 @@ export default function EPTasks({ currentUser, companyId }) {
       
       const myTasks = (data || []).filter(task => {
         if (!task.assigned_to) return false;
-        if (Array.isArray(task.assigned_to)) return task.assigned_to.includes(myId);
-        if (typeof task.assigned_to === "string") return task.assigned_to.includes(myId);
+        if (Array.isArray(task.assigned_to)) return task.assigned_to.includes(myId) || task.assigned_to.includes(currentUser.email);
+        if (typeof task.assigned_to === "string") return task.assigned_to.includes(myId) || task.assigned_to.includes(currentUser.email);
         return false;
       });
 
@@ -60,10 +62,16 @@ export default function EPTasks({ currentUser, companyId }) {
     }
   });
 
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("notificationTask");
+    const task = tasks.find(t => t.id === id);
+    if (task) setSelectedTask(task);
+  }, [tasks]);
+
   // 4. Toggle Task Status Mutation
   const toggleMutation = useMutation({
     mutationFn: async ({ id, newStatus }) => {
-      const { error } = await supabase.from("project_tasks").update({ status: newStatus }).eq("id", id);
+      const { error } = await supabase.from(tasks.find(t => t.id === id)?.source_table || "project_tasks").update({ status: newStatus }).eq("company_id", companyId).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

@@ -94,6 +94,7 @@ export default function EPTimesheets({ currentUser, companyId }) {
       const dbPayload = {
         company_id: companyId,
         employee_name: currentUser.full_name,
+        user_id: currentUser.id,
         project_id: payload.project_id === "none" ? null : payload.project_id,
         date: payload.date,
         clock_in: clockInTs,

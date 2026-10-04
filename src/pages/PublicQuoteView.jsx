@@ -160,6 +160,7 @@ export default function PublicQuoteView() {
         await supabase.functions.invoke('company-notifier', {
           body: {
             event_key: "quote_viewed",
+            document_uuid: quote.id,
             document_id: quote.quote_number,
             company_id: activeCompanyId, 
             message_body: `${clientName} just viewed Quote ${quote.quote_number}: ${quote.title}`
@@ -308,6 +309,7 @@ export default function PublicQuoteView() {
         await supabase.functions.invoke('company-notifier', {
           body: { 
             event_key: "quote_approved", 
+            document_uuid: quote.id,
             document_id: quote.quote_number,
             company_id: activeCompanyId, 
             message_body: `🎉 ${clientName} just APPROVED Quote ${quote.quote_number}: ${quote.title}!`
@@ -328,33 +330,16 @@ export default function PublicQuoteView() {
   const handleRequestChanges = async () => {
     if (!changesMessage.trim()) { toast.error("Please describe the changes you'd like to request"); return; }
     setSubmittingChanges(true);
-    
     try {
-      // ⚡ REMOVED the broken frontend database insert. The Edge Function handles it now!
-      try {
-        const clientName = client?.name || quote?.client_name || "A client";
-        const activeCompanyId = company?.id || quote?.company_id;
-
-        await supabase.functions.invoke('company-notifier', {
-          body: { 
-            event_key: "change_order_requested", 
-            document_id: quote.quote_number,
-            company_id: activeCompanyId, 
-            message_body: `⚠️ ${clientName} requested changes to Quote ${quote.quote_number}:\n\n"${changesMessage}"`
-          }
-        });
-      } catch (emailError) {
-        console.error("Change request notification failed:", emailError);
-      }
-
-      toast.success("Change request submitted! The team has been notified.");
-      setChangesDialogOpen(false); 
-      setChangesMessage("");
-    } catch (error) { 
-      toast.error("Failed to submit change request"); 
-    } finally { 
-      setSubmittingChanges(false); 
-    }
+      const { error } = await supabase.functions.invoke('company-notifier', {
+        body: { event_key: 'quote_change_requested', document_uuid: quote.id, document_id: quote.id,
+          company_id: quote.company_id, message_body: changesMessage.trim().slice(0, 2000) }
+      });
+      if (error) throw error;
+      toast.success("Change request submitted. The team has been notified.");
+      setChangesDialogOpen(false); setChangesMessage("");
+    } catch (error) { toast.error("Could not submit the change request. Please retry."); }
+    finally { setSubmittingChanges(false); }
   };
 
   const handlePayDeposit = async () => {

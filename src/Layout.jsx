@@ -93,7 +93,7 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   const userRole = profile?.role || profile?.user_role || "user";
-  const isEmployeeRole = userRole === "employee";
+  const isEmployeeRole = ["employee", "subcontractor"].includes(userRole);
 
   useEffect(() => {
     if (isEmployeeRole && currentPageName && currentPageName !== "EmployeePortal") {
@@ -112,7 +112,7 @@ export default function Layout({ children, currentPageName }) {
     if (item.allUsers) return true;
     
     if (userRole === "admin" || userRole === "owner") return true;
-    if (item.adminOnly && (userRole !== "admin" && userRole !== "owner")) return false;
+    if (item.adminOnly && !["admin", "owner", "office"].includes(userRole)) return false;
     
     if (!profile.permissions || profile.permissions.length === 0) {
       return !item.adminOnly;

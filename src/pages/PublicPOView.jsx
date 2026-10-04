@@ -82,6 +82,7 @@ export default function PublicPOView() {
           await supabase.functions.invoke('company-notifier', {
             body: {
               event_key: "po_viewed",
+              document_uuid: po.id,
               document_id: po.po_number || "PO",
               company_id: org.id, 
               message_body: `${vendorName} just viewed Purchase Order ${po.po_number || ''}`

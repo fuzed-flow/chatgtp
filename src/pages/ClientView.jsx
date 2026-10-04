@@ -387,22 +387,16 @@ export default function QuoteView() {
   const handleAcceptQuote = async () => {
     try {
       // LOCK IN CLIENT SELECTIONS UPON APPROVAL
-      await supabase.from("quotes").update({ 
+      const { error: approvalError } = await supabase.from("quotes").update({
         status: "Approved",
         subtotal: dynamicSubtotal,
         tax: dynamicTax,
         total: dynamicTotal,
         client_selected_items_json: JSON.stringify(localSelections)
       }).eq("id", quote.id);
+      if (approvalError) throw approvalError;
 
-      await supabase.from("notifications").insert([{
-        company_id: quote.company_id,
-        type: "ApprovalSigned",
-        title: "Quote Accepted",
-        body: `${client?.name || "Client"} has accepted quote ${quote?.quote_number}. Total locked: ${formatCurrencyUSD(dynamicTotal)}`,
-        related_type: "Quote",
-        related_id: quote.id,
-      }]);
+      // Approval notifications are created atomically by the database trigger.
       toast.success("Quote accepted! The team has been notified.");
       queryClient.invalidateQueries(["quote", quoteId]);
     } catch (error) {
@@ -412,29 +406,18 @@ export default function QuoteView() {
   };
 
   const handleRequestChanges = async () => {
-    if (!changesMessage.trim()) {
-      toast.error("Please describe the changes you'd like to request");
-      return;
-    }
+    if (!changesMessage.trim()) { toast.error("Please describe the changes you'd like to request"); return; }
     setSubmittingChanges(true);
     try {
-      await supabase.from("notifications").insert([{
-        company_id: quote.company_id,
-        type: "System",
-        title: "Quote Change Request",
-        body: `${client?.name || "Client"} has requested changes to quote ${quote?.quote_number}:\n\n${changesMessage}`,
-        related_type: "Quote",
-        related_id: quote.id,
-      }]);
-      toast.success("Change request submitted! The team has been notified.");
-      setChangesDialogOpen(false);
-      setChangesMessage("");
-    } catch (error) {
-      console.error("Error submitting changes:", error);
-      toast.error("Failed to submit change request");
-    } finally {
-      setSubmittingChanges(false);
-    }
+      const { error } = await supabase.functions.invoke('company-notifier', {
+        body: { event_key: 'quote_change_requested', document_uuid: quote.id, document_id: quote.id,
+          company_id: quote.company_id, message_body: changesMessage.trim().slice(0, 2000) }
+      });
+      if (error) throw error;
+      toast.success("Change request submitted. The team has been notified.");
+      setChangesDialogOpen(false); setChangesMessage("");
+    } catch (error) { toast.error("Could not submit the change request. Please retry."); }
+    finally { setSubmittingChanges(false); }
   };
 
   if (!quote) return (

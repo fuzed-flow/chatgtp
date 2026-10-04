@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { 
   ArrowLeft, LayoutDashboard, GitBranch, Users, Wrench, Package, 
   MessageSquare, Eye, CalendarRange, ShieldCheck, FileText, 
@@ -46,7 +46,12 @@ const ALL_TABS = [
 export default function PMProjectWorkspace() {
   const params = new URLSearchParams(window.location.search);
   const projectId = params.get("id");
-  const [tab, setTab] = useState("overview");
+  const { search } = useLocation();
+  const [tab, setTab] = useState(() => params.get("tab") || "overview");
+  useEffect(() => {
+    const requested = new URLSearchParams(search).get("tab");
+    if (ALL_TABS.some(t => t.value === requested)) setTab(requested);
+  }, [search]);
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", projectId],

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -137,6 +137,12 @@ export default function Tasks() {
   const leadMap = useMemo(() => Object.fromEntries(leads.map(l => [l.id, l.contact_name])), [leads]);
   const vendorMap = useMemo(() => Object.fromEntries(vendors.map(v => [v.id, v.name])), [vendors]);
   const userMap = useMemo(() => Object.fromEntries(users.map(u => [u.id, u.full_name])), [users]);
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("notificationTask");
+    const task = allTasks.find(t => t.id === requested);
+    if (task) setViewingTask(task);
+  }, [allTasks]);
 
   const safeEditClientId = clients.some(c => String(c.id) === String(editForm.client_id)) ? String(editForm.client_id) : "none";
   const safeEditProjectId = projects.some(p => String(p.id) === String(editForm.project_id)) ? String(editForm.project_id) : "none";

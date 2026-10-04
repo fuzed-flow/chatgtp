@@ -50,16 +50,6 @@ export default function Timesheet() {
   const createEntryMutation = useMutation({
     mutationFn: async (data) => {
       const entry = await base44.entities.TimeEntry.create(data);
-      
-      // Send notification to admins
-      await base44.entities.Notification.create({
-        type: "System",
-        title: "New Timesheet Entry Pending Approval",
-        body: `${currentUser.full_name} submitted a timesheet entry for ${format(new Date(data.date), "MMM d, yyyy")} - ${data.total_hours?.toFixed(2) || "pending"} hours`,
-        related_type: "TimeEntry",
-        related_id: entry.id,
-      });
-      
       return entry;
     },
     onSuccess: () => {
@@ -71,18 +61,6 @@ export default function Timesheet() {
   const updateEntryMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const entry = await base44.entities.TimeEntry.update(id, data);
-      
-      // Send notification to admins when clocking out
-      if (data.clock_out) {
-        await base44.entities.Notification.create({
-          type: "System",
-          title: "New Timesheet Entry Pending Approval",
-          body: `${currentUser.full_name} submitted a timesheet entry for ${format(new Date(data.clock_out), "MMM d, yyyy")} - ${data.total_hours?.toFixed(2)} hours`,
-          related_type: "TimeEntry",
-          related_id: id,
-        });
-      }
-      
       return entry;
     },
     onSuccess: () => {

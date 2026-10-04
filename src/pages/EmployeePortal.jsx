@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
+import { useLocation } from "react-router-dom";
 import { checkAccess } from '@/lib/planConfig'; 
 import UpgradeWall from '@/components/shared/UpgradeWall';
 import { 
   Clock, DollarSign, Palmtree, FileText, 
   Receipt, CheckCircle2, Package, BookOpen, User, 
-  Menu, X, ChevronRight, Briefcase 
+  Menu, X, ChevronRight, Briefcase, Calendar
 } from "lucide-react";
 
 // Existing Sub-Components
@@ -20,6 +21,7 @@ import EPProfile from "@/components/employee/EPProfile";
 import EPVacationTracker from "@/components/employee/EPVacationTracker";
 import EPTimeClock from "@/components/employee/EPTimeClock";
 import EPInventory from "@/components/employee/EPInventory";
+import EPAssignedWork from "@/components/employee/EPAssignedWork";
 
 export default function EmployeePortal() {
   const { profile: authProfile, settings, company } = useAuth();
@@ -27,6 +29,12 @@ export default function EmployeePortal() {
   const authUserId = authProfile?.id;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { search } = useLocation();
+  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(search).get("tab") || "time_clock");
+  useEffect(() => {
+    const requested = new URLSearchParams(search).get("tab");
+    if (["time_clock","timesheets","payroll","vacation_tracker","expenses","daily_logs","tasks","inventory","profile","projects","schedule"].includes(requested)) setActiveTab(requested);
+  }, [search]);
 
   // Fetch strictly the logged-in user
   const { data: currentUser } = useQuery({
@@ -74,6 +82,8 @@ export default function EmployeePortal() {
   ].filter(t => t.enabled);
 
   const PROJECT_TABS = [
+    { key: "projects", label: "My Projects", mobileLabel: "Projects", icon: Briefcase, enabled: true },
+    { key: "schedule", label: "My Schedule", mobileLabel: "Schedule", icon: Calendar, enabled: true },
     { key: "daily_logs", label: "Project Notes", mobileLabel: "Logs", icon: BookOpen, enabled: companySettings.enable_project_notes },
     { key: "tasks", label: "My Tasks", mobileLabel: "Tasks", icon: CheckCircle2, enabled: companySettings.enable_tasks },
     { key: "inventory", label: "Inventory", mobileLabel: "Inventory", icon: Package, enabled: companySettings.enable_inventory },
@@ -82,7 +92,7 @@ export default function EmployeePortal() {
   const allTabs = [...MY_HR_TABS, ...PROJECT_TABS, { key: "profile", label: "Profile", mobileLabel: "Profile", icon: User }];
   
   // Safely set the default tab to the first available HR tab, or fallback to profile
-  const [activeTab, setActiveTab] = useState(MY_HR_TABS.length > 0 ? MY_HR_TABS[0].key : "profile");
+
   const activeTabInfo = allTabs.find(t => t.key === activeTab) || allTabs[0];
 
   const handleTabChange = (key) => {
@@ -103,6 +113,8 @@ export default function EmployeePortal() {
       case "daily_logs": return <EPDailyLogs {...sharedProps} />;
       case "tasks": return <EPTasks {...sharedProps} />;
       case "inventory": return <EPInventory {...sharedProps} />;
+      case "projects": return <EPAssignedWork {...sharedProps} />;
+      case "schedule": return <EPAssignedWork {...sharedProps} mode="schedule" />;
       case "profile": return <EPProfile {...sharedProps} />;
       default: return <EPProfile {...sharedProps} />;
     }

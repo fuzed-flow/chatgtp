@@ -1,232 +1,171 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Bell, Check, Trash2, Clock, AlertCircle, Loader2, DollarSign, Hammer, FileText, Settings, User } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Bell, AlertCircle, Loader2, DollarSign, Hammer, FileText, Settings, AtSign, Calendar, Clock } from "lucide-react";
+import { formatDistanceToNow, isValid } from "date-fns";
+import { toast } from "sonner";
+import { notificationLink } from "@/lib/notificationLinks";
 
-// Map categories to specific icons matching your FuzedFlow UI
-const CATEGORY_ICONS = {
-  Financial: DollarSign,
-  Projects: Hammer,
-  Documents: FileText,
-  Mentions: User,
-  System: AlertCircle
+const ICONS = { Financial: DollarSign, Projects: Hammer, Documents: FileText, Mentions: AtSign, Scheduling: Calendar, Timesheets: Clock };
+const FILTERS = ["Unread", "All", "Mentions", "Projects", "Financial", "Action Required"];
+const PRIORITIES = {
+  "Action Required": "bg-red-50 text-red-700 border-red-200",
+  Important: "bg-amber-50 text-amber-800 border-amber-200",
+  FYI: "bg-blue-50 text-blue-700 border-blue-200",
 };
-
-const FILTERS = ["Unread", "All", "Action Required", "Projects", "Financial", "Mentions"];
+const PAGE_SIZE = 30;
 
 export default function EnhancedNotificationCenter({ onCloseSidebar }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
   const { profile } = useAuth();
   const companyId = profile?.company_id;
+  const userId = profile?.id;
+  const actionOnly = !!profile?.notify_action_required_only;
+  const enabled = !!userId && !!companyId && profile?.is_active !== false;
   const [open, setOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("Unread");
+  const [filter, setFilter] = useState("Unread");
+  const [page, setPage] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const scope = ["notifications", companyId, userId];
 
-  // 1. FETCH NOTIFICATIONS
-  const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ["notifications", profile?.id],
-    enabled: !!profile?.id && !!companyId,
+  function scopedQuery(query, view) {
+    query = query.eq("company_id", companyId).eq("user_id", userId);
+    if (actionOnly || view === "Action Required") query = query.eq("severity", "Action Required");
+    if (view === "Unread") query = query.eq("is_read", false);
+    if (["Mentions", "Projects", "Financial"].includes(view)) query = query.eq("category", view);
+    return query;
+  }
+
+  const { data: unreadCount = 0, isError: countError } = useQuery({
+    queryKey: [...scope, "count", actionOnly, profile?.role], enabled, refetchInterval: 60000,
     queryFn: async () => {
-      let query = supabase
-        .from("notifications")
-        .select("*")
-        .eq("company_id", companyId)
-        .eq("user_id", profile.id)
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      // Apply Profile Preference
-      if (profile?.notify_action_required_only) {
-        query = query.eq("severity", "Action Required");
-      }
-
-      const { data, error } = await query;
+      const { count, error } = await scopedQuery(supabase.from("notifications").select("id", { count: "exact", head: true }), "Unread");
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+  const feed = useQuery({
+    queryKey: [...scope, "feed", actionOnly, profile?.role, filter, page], enabled: enabled && open,
+    refetchInterval: 60000,
+    queryFn: async () => {
+      const { data, error } = await scopedQuery(supabase.from("notifications").select("*"), filter)
+        .order("created_at", { ascending: false }).order("id", { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) throw error;
       return data || [];
     },
   });
-
-  // 2. REAL-TIME SUBSCRIPTION
   useEffect(() => {
-    if (!profile?.id) return;
-    const channel = supabase.channel('realtime-notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${profile.id}` }, 
-      () => queryClient.invalidateQueries({ queryKey: ["notifications"] }))
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [profile?.id, queryClient]);
+    if (!enabled) return;
+    const channel = supabase.channel(`notifications:${companyId}:${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        () => qc.invalidateQueries({ queryKey: ["notifications", companyId, userId] })).subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [companyId, userId, enabled, qc]);
 
-  // 3. MUTATIONS
-  const markAsReadMutation = useMutation({
-    mutationFn: async (id) => await supabase.from("notifications").update({ is_read: true }).eq("id", id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  const invalidate = () => qc.invalidateQueries({ queryKey: scope });
+  const markRead = useMutation({
+    mutationFn: async (id) => {
+      const { data, error } = await supabase.from("notifications").update({ is_read: true, status: "read" })
+        .eq("company_id", companyId).eq("user_id", userId).eq("id", id).select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("This notification is no longer available.");
+    },
+    onSuccess: invalidate,
+    onError: () => toast.error("Could not mark the notification read. Please retry."),
+  });
+  const markView = useMutation({
+    mutationFn: async () => {
+      const { error } = await scopedQuery(supabase.from("notifications").update({ is_read: true, status: "read" }), filter).eq("is_read", false);
+      if (error) throw error;
+    },
+    onSuccess: () => { setPage(0); invalidate(); },
+    onError: () => toast.error("Could not mark this view read. Please retry."),
+  });
+  const preference = useMutation({
+    mutationFn: async (value) => {
+      const { data, error } = await supabase.from("profiles").update({ notify_action_required_only: value })
+        .eq("id", userId).eq("company_id", companyId).select("notify_action_required_only").single();
+      if (error) throw error;
+      return data.notify_action_required_only;
+    },
+    onSuccess: (value) => {
+      qc.setQueryData(["profile", userId], (previous) => ({ ...previous, notify_action_required_only: value }));
+      setPage(0); invalidate();
+    },
+    onError: () => toast.error("Could not save your notification preference."),
   });
 
-  const markAllAsReadMutation = useMutation({
-    mutationFn: async () => await supabase.from("notifications").update({ is_read: true }).eq("user_id", profile.id).eq("is_read", false),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
-  });
-
-  const togglePreferenceMutation = useMutation({
-    mutationFn: async (newValue) => await supabase.from("profiles").update({ notify_action_required_only: newValue }).eq("id", profile.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
-  });
-
-  // 4. FILTERING LOGIC
-  const filteredNotifications = notifications.filter(n => {
-    if (activeFilter === "Unread") return !n.is_read;
-    if (activeFilter === "All") return true;
-    if (activeFilter === "Action Required") return n.severity === "Action Required";
-    return n.category === activeFilter;
-  });
-
-  const unreadCount = notifications.filter(n => !n.is_read).length;
-
+  const notifications = feed.data || [];
   return (
-    <Dialog open={open} onOpenChange={(val) => { setOpen(val); if (val && onCloseSidebar) onCloseSidebar(); }}>
+    <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (value) { setPage(0); onCloseSidebar?.(); } }}>
       <DialogTrigger asChild>
-        <button className="relative p-2 rounded-lg hover:bg-slate-800 transition-all group outline-none">
-          <Bell className="h-5 w-5 text-slate-400 group-hover:text-white transition-colors" />
-          {unreadCount > 0 && (
-            <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-black shadow-sm ring-2 ring-slate-900">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
+        <button type="button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}${countError ? ", unavailable" : ""}`}
+          className="relative p-2 rounded-lg hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-blue-400">
+          <Bell className="h-5 w-5 text-slate-400" />
+          {unreadCount > 0 && <span className="absolute -top-0.5 -right-1 min-w-5 px-1 h-5 bg-red-600 text-white text-[10px] rounded-full flex items-center justify-center font-bold">{unreadCount > 99 ? "99+" : unreadCount}</span>}
         </button>
       </DialogTrigger>
-      
-      <DialogContent className="sm:max-w-lg bg-white border-slate-200 shadow-xl p-0 overflow-hidden z-[100]" aria-describedby={undefined}>
-        
-        {/* HEADER */}
-        <DialogHeader className="p-4 pr-12 border-b border-slate-200 bg-slate-50 flex flex-row items-center justify-between">
-          <DialogTitle className="font-black text-lg text-slate-900 flex items-center gap-2">
-            Activity Feed
-          </DialogTitle>
-          <div className="flex items-center gap-2">
-            {unreadCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => markAllAsReadMutation.mutate()} className="text-xs font-bold text-blue-600 hover:bg-blue-50 h-8">
-                Mark all read
-              </Button>
-            )}
-            <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)} className="h-8 w-8 text-slate-400 hover:text-slate-900">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </DialogHeader>
-
-        {/* SETTINGS PANEL (Hidden by default) */}
-        {showSettings && (
-          <div className="p-4 bg-slate-100 border-b border-slate-200 animate-in slide-in-from-top-2">
-            <label className="flex items-center justify-between cursor-pointer">
-              <div>
-                <p className="text-sm font-bold text-slate-900">Action Required Only</p>
-                <p className="text-xs text-slate-500">Mute FYI and standard updates</p>
-              </div>
-              <input 
-                type="checkbox" 
-                checked={profile?.notify_action_required_only || false}
-                onChange={(e) => togglePreferenceMutation.mutate(e.target.checked)}
-                className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer"
-              />
-            </label>
-          </div>
-        )}
-
-        {/* HORIZONTAL FILTER PILLS */}
-        <div className="flex overflow-x-auto gap-2 p-3 border-b border-slate-100 custom-scrollbar hide-scroll-bar">
-          {FILTERS.map(filter => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                activeFilter === filter 
-                  ? "bg-slate-900 text-white shadow-sm" 
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {filter} {filter === "Unread" && unreadCount > 0 && `(${unreadCount})`}
-            </button>
-          ))}
-        </div>
-
-        {/* NOTIFICATIONS LIST */}
-        <div className="max-h-[60vh] overflow-y-auto p-0">
-          {isLoading ? (
-             <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
-          ) : filteredNotifications.length === 0 ? (
-            <div className="text-center py-12 px-4">
-              <Bell className="h-10 w-10 text-slate-200 mx-auto mb-3" />
-              <p className="text-sm font-bold text-slate-500">No {activeFilter.toLowerCase()} activity to show.</p>
+      <DialogContent className="sm:max-w-xl bg-white p-0 overflow-hidden z-[100]" aria-describedby="notification-description">
+        <DialogHeader className="p-4 pr-12 border-b bg-slate-50">
+          <div className="flex flex-wrap gap-2 items-center justify-between">
+            <DialogTitle className="text-lg font-bold text-slate-900">Notifications</DialogTitle>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" disabled={markView.isPending || !notifications.some(n => !n.is_read)} onClick={() => markView.mutate()} className="text-xs text-blue-700">Mark this view read</Button>
+              <Button variant="ghost" size="icon" aria-label="Notification settings" aria-expanded={showSettings} onClick={() => setShowSettings(v => !v)} className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
             </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {filteredNotifications.map((n) => {
-                const Icon = CATEGORY_ICONS[n.category] || AlertCircle;
-                const isActionReq = n.severity === "Action Required";
-                
-                return (
-                  <div
-                    key={n.id}
-                    onClick={() => {
-                      if (!n.is_read) markAsReadMutation.mutate(n.id);
-                      if (n.action_url) { setOpen(false); navigate(n.action_url); }
-                    }}
-                    className={`relative p-4 transition-all cursor-pointer hover:bg-slate-50 flex gap-4 ${
-                      !n.is_read ? "bg-white" : "bg-slate-50/50 opacity-75"
-                    }`}
-                  >
-                    {/* Action Required Red Indicator Strip */}
-                    {isActionReq && !n.is_read && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>}
-
-                    {/* Icon */}
-                    <div className="mt-0.5 shrink-0">
-                      {isActionReq && !n.is_read ? (
-                        <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center border border-red-200">
-                          <Icon className="h-5 w-5 text-red-600" />
-                        </div>
-                      ) : (
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${n.is_read ? 'bg-slate-100 text-slate-400' : 'bg-blue-50 text-blue-600'}`}>
-                          <Icon className="h-5 w-5" />
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Content (Matches Screenshot Layout) */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start mb-0.5">
-                        <p className={`text-sm ${isActionReq && !n.is_read ? 'font-black text-red-900' : 'font-bold text-slate-900'} truncate pr-4`}>
-                          {n.title}
-                        </p>
-                      </div>
-                      
-                      {/* Secondary Context (Italicized and lighter) */}
-                      <p className="text-sm font-medium text-slate-600 whitespace-pre-wrap mb-1.5 italic">
-                        {n.body}
-                      </p>
-                      
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-                        </span>
-                        {n.category && (
-                          <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-sm uppercase">
-                            {n.category}
-                          </span>
-                        )}
-                      </div>
+          </div>
+          <p id="notification-description" className="text-xs text-slate-500">Updates for your role and assigned work.{actionOnly ? " Showing action required only." : ""}</p>
+        </DialogHeader>
+        {showSettings && <div className="p-4 border-b bg-slate-50">
+          <label className="flex items-start justify-between gap-4 text-sm">
+            <span><span className="block font-semibold">Notify me only when action is required</span><span className="block text-xs text-slate-500 mt-1">Hide Important and FYI updates. Turn this off to see them again.</span></span>
+            <input type="checkbox" checked={actionOnly} disabled={preference.isPending} onChange={e => preference.mutate(e.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-blue-600" />
+          </label>
+        </div>}
+        <div className="flex overflow-x-auto gap-2 p-3 border-b" aria-label="Notification filters">
+          {FILTERS.map(value => <button type="button" key={value} aria-pressed={filter === value} onClick={() => { setFilter(value); setPage(0); }}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold focus-visible:ring-2 focus-visible:ring-blue-400 ${filter === value ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+            {value}{value === "Unread" && unreadCount > 0 ? ` (${unreadCount})` : ""}
+          </button>)}
+        </div>
+        <div className="max-h-[55vh] overflow-y-auto" aria-live="polite" aria-busy={feed.isFetching}>
+          {feed.isPending ? <div className="py-12 flex justify-center" role="status"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /><span className="sr-only">Loading notifications</span></div>
+            : feed.isError ? <div className="p-8 text-center text-sm text-slate-600"><p role="alert">Could not load your notifications.</p><Button variant="outline" className="mt-3" onClick={() => feed.refetch()}>Retry</Button></div>
+            : !notifications.length ? <div className="text-center py-12 px-4"><Bell className="h-9 w-9 text-slate-300 mx-auto mb-3" /><p className="text-sm text-slate-600">No {filter.toLowerCase()} notifications to show.</p>{actionOnly && <p className="text-xs text-slate-500 mt-2">Your action-only preference is on.</p>}</div>
+            : <ul className="divide-y divide-slate-100">{notifications.map(n => {
+              const Icon = ICONS[n.category] || AlertCircle;
+              const priority = PRIORITIES[n.severity] ? n.severity : "FYI";
+              const link = notificationLink(n, profile?.role);
+              const created = new Date(n.created_at);
+              return <li key={n.id} className={n.is_read ? "bg-slate-50/50" : "bg-white"}>
+                <button type="button" className="w-full p-4 text-left flex gap-3 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+                  onClick={() => { if (!n.is_read) markRead.mutate(n.id); if (link) { setOpen(false); navigate(link); } }}>
+                  <div className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${n.is_read ? "bg-slate-100 text-slate-400" : "bg-blue-50 text-blue-600"}`}><Icon className="h-4 w-4" /></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex gap-2 items-start"><p className="font-semibold text-sm text-slate-900 flex-1">{n.title || "Activity update"}</p>{!n.is_read && <span className="h-2 w-2 mt-1.5 rounded-full bg-blue-600 shrink-0" aria-label="Unread" />}</div>
+                    <p className="text-sm text-slate-600 whitespace-pre-wrap break-words mt-1">{n.body}</p>
+                    <div className="flex flex-wrap gap-2 items-center mt-2 text-[10px]">
+                      <span className={`px-2 py-0.5 rounded-full border font-semibold ${PRIORITIES[priority]}`}>{priority}</span>
+                      <span className="text-slate-500">{n.category || "System"}</span>
+                      <time className="text-slate-400" dateTime={isValid(created) ? created.toISOString() : undefined}>{isValid(created) ? formatDistanceToNow(created, { addSuffix: true }) : ""}</time>
+                      {link && <span className="text-blue-700 ml-auto">Open →</span>}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </button>
+              </li>;
+            })}</ul>}
         </div>
+        {(page > 0 || notifications.length === PAGE_SIZE) && <div className="flex justify-between items-center px-4 py-3 border-t text-xs text-slate-500">
+          <Button variant="outline" size="sm" disabled={page === 0 || feed.isFetching} onClick={() => setPage(p => p - 1)}>Previous</Button>
+          <span>Page {page + 1}</span>
+          <Button variant="outline" size="sm" disabled={notifications.length < PAGE_SIZE || feed.isFetching} onClick={() => setPage(p => p + 1)}>Next</Button>
+        </div>}
       </DialogContent>
     </Dialog>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
+import { useLocation } from "react-router-dom";
 import { checkAccess } from '@/lib/planConfig'; 
 import UpgradeWall from '@/components/shared/UpgradeWall';
 import { 
@@ -62,6 +63,15 @@ export default function HumanResources() {
   const { profile, settings, company } = useAuth();
   const companyId = profile?.company_id;
   const qc = useQueryClient();
+  const { search: notificationSearch } = useLocation();
+  const [activeView, setActiveView] = useState(() => {
+    const tab = new URLSearchParams(notificationSearch).get("tab");
+    return ["timesheets", "expenses"].includes(tab) ? tab : "directory";
+  });
+  useEffect(() => {
+    const tab = new URLSearchParams(notificationSearch).get("tab");
+    if (["timesheets", "expenses"].includes(tab)) setActiveView(tab);
+  }, [notificationSearch]);
 
   // 👇 1. THE GATEKEEPER 👇
   const canAccessHR = checkAccess(company?.plan_id, 'hasHR');
@@ -78,7 +88,6 @@ export default function HumanResources() {
   };
 
   // --- UI STATE ---
-  const [activeView, setActiveView] = useState("directory"); 
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [search, setSearch] = useState("");
   

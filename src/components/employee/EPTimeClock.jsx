@@ -66,6 +66,7 @@ export default function EPTimeClock({ currentUser, companyId }) {
       const payload = {
         company_id: companyId,
         employee_name: currentUser.full_name,
+        user_id: currentUser.id,
         clock_in: new Date().toISOString(),
         date: today,
         status: "Clocked In",

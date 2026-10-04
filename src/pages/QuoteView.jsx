@@ -331,65 +331,30 @@ export default function QuoteView() {
     return { totalViews: quoteViews.length, lastViewedAt: quoteViews[0]?.viewed_at };
   };
 
+
+
   const handleAcceptQuote = async () => {
     try {
-      // 1. Lock in the quote
-      await supabase.from("quotes").update({ status: "Approved", subtotal: dynamicSubtotal, tax: dynamicTotalTax, total: dynamicTotal, client_selected_items_json: JSON.stringify(localSelections) }).eq("id", quote.id);
-      
-      // 2. Fetch all team members in the company
-      const { data: teamMembers } = await supabase.from("profiles").select("id").eq("company_id", quote.company_id);
-
-      // 3. Create a unique notification row for EACH team member
-      if (teamMembers && teamMembers.length > 0) {
-        const notificationsToInsert = teamMembers.map(member => ({
-          company_id: quote.company_id,
-          user_id: member.id, // ⚡ This ensures everyone gets their own copy!
-          type: "ApprovalSigned",
-          title: "Quote Accepted! 🎉",
-          body: `${client?.name || "A client"} just accepted Quote #${quote?.quote_number} for ${project?.name || "their project"}. Total locked in: ${formatCurrencyUSD(dynamicTotal)}.`,
-          related_type: "Quote",
-          related_id: quote.id
-        }));
-        
-        await supabase.from("notifications").insert(notificationsToInsert);
-      }
-
-      toast.success("Quote accepted! The team has been notified.");
-      queryClient.invalidateQueries(["quote", quoteId]);
-    } catch (error) { 
-      toast.error("Failed to accept quote"); 
-    }
+      const { error } = await supabase.from("quotes").update({ status: "Approved", subtotal: dynamicSubtotal, tax: dynamicTotalTax, total: dynamicTotal, client_selected_items_json: JSON.stringify(localSelections) }).eq("id", quote.id);
+      if (error) throw error;
+      toast.success("Quote accepted. The team has been notified.");
+      queryClient.invalidateQueries({ queryKey: ["quote", quoteId] });
+    } catch (error) { toast.error("Could not accept the quote. Please retry."); }
   };
 
   const handleRequestChanges = async () => {
     if (!changesMessage.trim()) { toast.error("Please describe the changes you'd like to request"); return; }
     setSubmittingChanges(true);
     try {
-      // Fetch team members
-      const { data: teamMembers } = await supabase.from("profiles").select("id").eq("company_id", quote.company_id);
-
-      // Insert dedicated notifications
-      if (teamMembers && teamMembers.length > 0) {
-        const notificationsToInsert = teamMembers.map(member => ({
-          company_id: quote.company_id,
-          user_id: member.id, // ⚡ Dedicated row per user
-          type: "quote_change_request",
-          title: "Quote Change Request 📝",
-          body: `${client?.name || "A client"} has requested changes to Quote #${quote?.quote_number}:\n\n"${changesMessage}"`,
-          related_type: "Quote",
-          related_id: quote.id
-        }));
-        await supabase.from("notifications").insert(notificationsToInsert);
-      }
-
-      toast.success("Change request submitted! The team has been notified.");
-      setChangesDialogOpen(false); 
-      setChangesMessage("");
-    } catch (error) { 
-      toast.error("Failed to submit change request"); 
-    } finally { 
-      setSubmittingChanges(false); 
-    }
+      const { error } = await supabase.functions.invoke('company-notifier', {
+        body: { event_key: 'quote_change_requested', document_uuid: quote.id, document_id: quote.id,
+          company_id: quote.company_id, message_body: changesMessage.trim().slice(0, 2000) }
+      });
+      if (error) throw error;
+      toast.success("Change request submitted. The team has been notified.");
+      setChangesDialogOpen(false); setChangesMessage("");
+    } catch (error) { toast.error("Could not submit the change request. Please retry."); }
+    finally { setSubmittingChanges(false); }
   };
 
  return (

@@ -68,7 +68,7 @@ const AuthenticatedApp = () => {
         
         {/* 🟡 MANAGERS & ADMINS ONLY (Employees get kicked back to EmployeePortal) */}
         <Route path="/" element={
-          <RoleGuard allowedRoles={['admin', 'manager']}>
+          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName={mainPageKey}>
               <MainPage />
             </LayoutWrapper>
@@ -84,7 +84,7 @@ const AuthenticatedApp = () => {
               key={path}
               path={`/${path}`}
               element={
-                <RoleGuard allowedRoles={['admin', 'manager']}>
+                <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
                   <LayoutWrapper currentPageName={path}>
                     <Page />
                   </LayoutWrapper>
@@ -95,46 +95,46 @@ const AuthenticatedApp = () => {
         
         {/* 🟡 EXPLICIT MANAGER & ADMIN ROUTES */}
         <Route path="/LeadDetail" element={
-          <RoleGuard allowedRoles={['admin', 'manager']}>
+          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName="LeadDetail"><LeadDetail /></LayoutWrapper>
           </RoleGuard>
         } />
         <Route path="/Tutorials" element={
-          <RoleGuard allowedRoles={['admin', 'manager']}>
+          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName="Tutorials"><Tutorials /></LayoutWrapper>
           </RoleGuard>
         } />
         <Route path="/FAQ" element={
-          <RoleGuard allowedRoles={['admin', 'manager']}>
+          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName="FAQ"><FAQ /></LayoutWrapper>
           </RoleGuard>
         } />
         <Route path="/Contact" element={
-          <RoleGuard allowedRoles={['admin', 'manager']}>
+          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName="Contact"><Contact /></LayoutWrapper>
           </RoleGuard>
         } />
         <Route path="/Settings" element={
-          <RoleGuard allowedRoles={['admin', 'manager']}>
+          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName="Team Settings"><TeamSettings /></LayoutWrapper>
           </RoleGuard>
         } />
 
         <Route path="/AdminSettings" element={
-          <RoleGuard allowedRoles={['admin', 'manager']}>
+          <RoleGuard allowedRoles={['admin', 'owner', 'manager']}>
             <LayoutWrapper currentPageName="Admin Settings"><Pages.AdminSettings /></LayoutWrapper>
           </RoleGuard>
         } />
 
         {/* 🔴 ADMIN ONLY EXPLICIT ROUTES */}
         <Route path="/Invoices" element={
-          <RoleGuard allowedRoles={['admin']}>
+          <RoleGuard allowedRoles={['admin', 'owner', 'office']}>
             <LayoutWrapper currentPageName="Invoices"><Pages.Invoices /></LayoutWrapper>
           </RoleGuard>
         } />
         
         <Route path="/HumanResources" element={
-          <RoleGuard allowedRoles={['admin']}>
+          <RoleGuard allowedRoles={['admin', 'owner', 'office']}>
             <LayoutWrapper currentPageName="HumanResources"><Pages.HumanResources /></LayoutWrapper>
           </RoleGuard>
         } />

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; 
-import { Download, CheckCircle, Building2, Calendar, MapPin, GripVertical, Receipt, Zap, MessageSquare, FileText, ArrowLeft, FolderKanban } from "lucide-react";
+import { Download, CheckCircle, Building2, Calendar, MapPin, GripVertical, Receipt, Zap, MessageSquare, FileText, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -257,15 +257,12 @@ export default function ChangeOrderView() {
 
   const handleAcceptChangeOrder = async () => {
     try {
-      await supabase.from("change_orders").update({ 
+      const { error: approvalError } = await supabase.from("change_orders").update({
         status: "Approved", subtotal: dynamicSubtotal, tax: dynamicTotalTax, total: dynamicTotal, client_selected_items_json: JSON.stringify(localSelections)
       }).eq("id", changeOrder.id);
+      if (approvalError) throw approvalError;
 
-      await supabase.from("notifications").insert([{
-        company_id: changeOrder.company_id, type: "ApprovalSigned", title: "Change Order Accepted",
-        body: `${client?.name || "Client"} has accepted Change Order ${changeOrder?.change_order_number}. Total locked: ${formatCurrencyUSD(dynamicTotal)}`,
-        related_type: "ChangeOrder", related_id: changeOrder.id,
-      }]);
+      // Approval notifications are created atomically by the database trigger.
       toast.success("Change Order accepted! The team has been notified.");
       queryClient.invalidateQueries(["change_order", changeOrderId]);
     } catch (error) { toast.error("Failed to accept Change Order"); }
@@ -275,14 +272,15 @@ export default function ChangeOrderView() {
     if (!changesMessage.trim()) { toast.error("Please describe the changes you'd like to request"); return; }
     setSubmittingChanges(true);
     try {
-      await supabase.from("notifications").insert([{
-        company_id: changeOrder.company_id, type: "System", title: "Change Order Modification Request",
-        body: `${client?.name || "Client"} has requested changes to CO ${changeOrder?.change_order_number}:\n\n${changesMessage}`,
-        related_type: "ChangeOrder", related_id: changeOrder.id,
-      }]);
-      toast.success("Change request submitted! The team has been notified.");
+      const { error } = await supabase.functions.invoke('company-notifier', {
+        body: { event_key: 'change_order_requested', document_uuid: changeOrder.id, document_id: changeOrder.id,
+          company_id: changeOrder.company_id, message_body: changesMessage.trim().slice(0, 2000) }
+      });
+      if (error) throw error;
+      toast.success("Change request submitted. The team has been notified.");
       setChangesDialogOpen(false); setChangesMessage("");
-    } catch (error) { toast.error("Failed to submit change request"); } finally { setSubmittingChanges(false); }
+    } catch (error) { toast.error("Could not submit the change request. Please retry."); }
+    finally { setSubmittingChanges(false); }
   };
 
   if (!changeOrder) return (

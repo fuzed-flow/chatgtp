@@ -167,7 +167,7 @@ export default function NotificationSettings() {
             <NotificationRow 
               title="Changes Requested" 
               description="When a client requests an adjustment to a quote" 
-              eventKey="change_order_requested" 
+              eventKey="quote_change_requested"
             />
           </div>
         </section>

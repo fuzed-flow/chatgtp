@@ -113,6 +113,7 @@ export default function PublicInvoiceView() {
         await supabase.functions.invoke('company-notifier', {
           body: {
             event_key: "invoice_viewed",
+            document_uuid: invoice.id,
             document_id: invoice.invoice_number,
             company_id: activeCompanyId, 
             message_body: `${clientName} just viewed Invoice ${invoice.invoice_number}`

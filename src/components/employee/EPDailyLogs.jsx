@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +17,17 @@ export default function EPDailyLogs({ currentUser, companyId }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
+  const notificationLog = new URLSearchParams(window.location.search).get("notificationLog");
+  const { data: notifiedLog } = useQuery({
+    queryKey: ["notifiedDailyLog", companyId, currentUser?.id, notificationLog],
+    enabled: !!notificationLog && !!companyId && !!currentUser?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_notified_daily_log", { p_log: notificationLog });
+      if (error) throw error;
+      return data || null;
+    },
+  });
+  useEffect(() => { if (notifiedLog) setSelectedLog(notifiedLog); }, [notifiedLog]);
   const [uploading, setUploading] = useState(false);
   
   // THE FIX: default project_id is now empty, forcing them to pick one!
@@ -52,6 +62,7 @@ export default function EPDailyLogs({ currentUser, companyId }) {
       const { data, error } = await supabase
         .from("project_daily_logs")
         .select("*")
+        .eq("company_id", companyId)
         .eq("user_id", currentUser.id)
         .order("date", { ascending: false });
       

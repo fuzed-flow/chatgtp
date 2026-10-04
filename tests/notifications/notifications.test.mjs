@@ -1,0 +1,123 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+import { notificationLink } from '../../src/lib/notificationLinks.js';
+
+test('notification links stay inside the app and respect field access', () => {
+  assert.equal(notificationLink({ action_url: '/QuoteBuilder?id=123' }, 'owner'), '/QuoteBuilder?id=123');
+  for (const action_url of ['https://evil.example', '//evil.example', '/login', '/\\evil.example']) {
+    assert.equal(notificationLink({ action_url }, 'admin'), null);
+  }
+  assert.equal(notificationLink({ action_url: '/InvoiceBuilder?id=123' }, 'employee'), null);
+  assert.equal(notificationLink({ metadata: { employee_url: '/EmployeePortal?tab=tasks&notificationTask=123' } }, 'subcontractor'), '/EmployeePortal?tab=tasks&notificationTask=123');
+});
+
+test('database delivery, reminders and authorization across two tenants and six roles', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(await readFile(new URL('./schema.sql', import.meta.url), 'utf8'));
+    await db.exec("alter table profiles add constraint profiles_legacy_role_check check (role in ('admin','manager','employee')); insert into notifications(title,is_read,status) values('Legacy read state',null,null)");
+    await db.exec(await readFile(new URL('../../supabase/migrations/20261003220500_role_based_notifications.sql', import.meta.url), 'utf8'));
+    assert.equal((await db.query("select is_read from notifications where title='Legacy read state'")).rows[0].is_read, false);
+    const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+    const C = id(1), OTHER = id(2), PROJECT = id(3), TASK = id(4), INVOICE = id(5);
+    const roles = ['owner','admin','manager','office','employee','subcontractor'];
+    const people = Object.fromEntries(roles.map((role,i) => [role,id(10+i)]));
+    const actor = async value => db.query("select set_config('request.jwt.claim.sub',$1,false)", [value || '']);
+    const rows = async (sql, params=[]) => (await db.query(sql,params)).rows;
+    await db.query("insert into companies(id,name,timezone) values($1,'Tenant A','America/Edmonton'),($2,'Tenant B','UTC')",[C,OTHER]);
+    for (const [role,user] of Object.entries(people)) await db.query('insert into profiles(id,company_id,role,full_name,is_active) values($1,$2,$3,$3,true)',[user,C,role]);
+    await db.query("insert into profiles(id,company_id,role,full_name,is_active) values($1,$2,'admin','Other tenant',true),($3,$4,'admin','Inactive',false)",[id(20),OTHER,id(21),C]);
+    await db.query("insert into projects(id,company_id,name,status,budget_cost) values($1,$2,'Assigned project','Active',1000)",[PROJECT,C]);
+    for (const role of ['manager','employee','subcontractor']) await db.query('insert into project_staff(company_id,project_id,user_id,is_active) values($1,$2,$3,true)',[C,PROJECT,people[role]]);
+    await db.exec('delete from notifications');
+    await actor(people.admin);
+    await db.query("insert into project_tasks(id,company_id,project_id,title,status,assigned_to,due_date_target,estimated_hours) values($1,$2,$3,'Install doors','To Do',$4,'2026-10-05',10)",[TASK,C,PROJECT,[people.employee]]);
+    let delivered = await rows("select user_id,severity,category,action_url from notifications where event_key='task_assigned'");
+    assert.deepEqual(delivered.map(r=>r.user_id),[people.employee]);
+    assert.equal(delivered[0].severity,'Action Required');
+    assert.equal(delivered[0].category,'Projects');
+    assert.equal(delivered[0].action_url,`/EmployeePortal?tab=tasks&notificationTask=${TASK}`);
+    assert.equal((await rows('select count(*)::int as n from notifications where company_id=$1 or user_id=$2',[OTHER,id(21)]))[0].n,0);
+    await db.query("insert into invoices(id,company_id,invoice_number,status,total,amount_paid,due_date,project_id) values($1,$2,'INV-1','Sent',100,0,'2026-10-05',$3)",[INVOICE,C,PROJECT]);
+    delivered=await rows("select distinct user_id from notifications where event_key like 'invoice_%'");
+    assert.deepEqual(new Set(delivered.map(r=>r.user_id)),new Set([people.owner,people.office]));
+    await db.query('update invoices set amount_paid=50 where id=$1',[INVOICE]);
+    await db.query('insert into payments(company_id,invoice_id,amount) values($1,$2,50)',[C,INVOICE]);
+    assert.equal((await rows("select count(*)::int n from notifications where event_key='partial_payment_received' and user_id=$1",[people.owner]))[0].n,1);
+    const LOG=id(30), SHEET=id(31), CO=id(32);
+    await db.query("insert into project_daily_logs(id,company_id,project_id,user_id,date,summary,mention_user_ids) values($1,$2,$3,$4,'2026-10-05','Review this site update',$5)",[LOG,C,PROJECT,people.admin,[people.employee,id(20)]]);
+    const mentioned=await rows("select user_id from notifications where event_key='mentioned' and related_id=$1",[LOG]);
+    assert.deepEqual(mentioned.map(r=>r.user_id),[people.employee],'mentions stay within the company and project');
+    await db.query("insert into time_entries(id,company_id,project_id,employee_name,date,total_hours,status) values($1,$2,$3,'employee','2026-10-05',8,'Pending')",[SHEET,C,PROJECT]);
+    assert.equal((await rows('select user_id from time_entries where id=$1',[SHEET]))[0].user_id,people.employee);
+    await db.query("update time_entries set status='Approved' where id=$1",[SHEET]);
+    assert.equal((await rows("select count(*)::int n from notifications where event_key='timesheet_approved' and user_id=$1",[people.employee]))[0].n,1);
+    await db.query("insert into change_orders(id,company_id,project_id,title,status,total) values($1,$2,$3,'Scope change','Draft',200)",[CO,C,PROJECT]);
+    await db.query("update change_orders set status='Approved' where id=$1",[CO]);
+    await db.query('update change_orders set budget_synced_at=now() where id=$1',[CO]);
+    assert.equal((await rows("select count(*)::int n from notifications where event_key='co_added_to_total' and user_id=$1",[people.owner]))[0].n,1);
+    await db.query("insert into auth.users(id,email,encrypted_password) values($1,'synthetic@example.invalid','synthetic-old')",[people.employee]);
+    await db.query("update auth.users set encrypted_password='synthetic-new' where id=$1",[people.employee]);
+    assert.equal((await rows("select count(*)::int n from notifications where event_key='password_changed' and user_id=$1",[people.employee]))[0].n,1);
+    await actor(null);
+    await db.exec("select notification_private.reminders('2026-10-05T16:00:00Z')");
+    const first=(await rows('select count(*)::int n from notifications'))[0].n;
+    await db.exec("select notification_private.reminders('2026-10-05T17:00:00Z')");
+    assert.equal((await rows('select count(*)::int n from notifications'))[0].n,first,'repeated cron runs are idempotent');
+    assert.equal((await rows("select count(*)::int n from notifications where event_key='task_due_today' and user_id=$1",[people.employee]))[0].n,1);
+    await db.exec("select notification_private.reminders('2026-10-06T16:00:00Z')");
+    assert.equal((await rows("select count(*)::int n from notifications where event_key='task_overdue' and user_id=$1",[people.employee]))[0].n,1);
+    // Completion stops future task reminders.
+    await db.query("update project_tasks set status='Done' where id=$1",[TASK]);
+    const before=(await rows("select count(*)::int n from notifications where event_key='task_overdue'"))[0].n;
+    await db.exec("select notification_private.reminders('2026-10-07T16:00:00Z')");
+    assert.equal((await rows("select count(*)::int n from notifications where event_key='task_overdue'"))[0].n,before);
+    // An employee cannot self-promote, change another profile, or forge project membership.
+    await actor(people.employee);
+    await assert.rejects(db.query("update profiles set role='admin' where id=$1",[people.employee]),/administrator/);
+    await assert.rejects(db.query("update profiles set notify_action_required_only=true where id=$1",[people.owner]),/administrator/);
+    await assert.rejects(db.query('insert into project_staff(company_id,project_id,user_id) values($1,$2,$3)',[C,PROJECT,people.office]),/administrators/);
+    await assert.rejects(db.query("insert into team_invites(company_id,email,role) values($1,'synthetic@example.invalid','admin')",[C]),/administrators/);
+    await db.query('update profiles set notify_action_required_only=true where id=$1',[people.employee]);
+    assert.equal((await rows('select notify_action_required_only from profiles where id=$1',[people.employee]))[0].notify_action_required_only,true);
+    // Impersonate the actual authenticated SQL role, exercising RLS and column grants.
+    await db.exec('set role authenticated');
+    delivered=await rows('select * from notifications');
+    assert.ok(delivered.length>0);
+    assert.ok(delivered.every(r=>r.user_id===people.employee && r.company_id===C));
+    assert.ok(delivered.every(r=>!r.event_key.startsWith('invoice_') && !r.event_key.includes('payment')));
+    assert.equal((await rows('select public.get_notified_daily_log($1) log',[LOG]))[0].log.id,LOG);
+    await db.query('update notifications set is_read=true where id=$1',[delivered[0].id]);
+    assert.equal((await rows('select status from notifications where id=$1',[delivered[0].id]))[0].status,'read');
+    await assert.rejects(db.query("update notifications set title='forged' where id=$1",[delivered[0].id]),/permission denied/);
+    await assert.rejects(db.query("insert into notifications(company_id,user_id,title) values($1,$2,'forged')",[C,people.employee]),/permission denied/);
+    await assert.rejects(db.exec("select notification_private.emit(null,'invoice_created','Invoice',null,null,null,'forged','forged')"),/permission denied/);
+    await assert.rejects(db.query('select public.record_document_notification($1,$2,$3,$4)',['invoice_viewed',INVOICE,C,'fake']),/permission denied/);
+    await db.exec('reset role');
+    // Role revocation prevents access to historical financial notifications too.
+    await actor(null);
+    await db.query("update profiles set role='employee' where id=$1",[people.office]);
+    await actor(people.office);
+    await db.exec('set role authenticated');
+    assert.equal((await rows("select count(*)::int n from notifications where category='Financial'"))[0].n,0);
+    await db.exec('reset role');
+    await actor(id(20)); await db.exec('set role authenticated');
+    assert.equal((await rows('select count(*)::int n from notifications'))[0].n,0,'other company cannot read tenant A');
+    assert.equal((await rows('select count(*)::int n from project_staff where company_id=$1',[C]))[0].n,0,'other company cannot read project membership');
+    assert.equal((await rows('select public.get_notified_daily_log($1) log',[LOG]))[0].log,null);
+    await db.exec('reset role');
+    await actor(null); await db.exec('set role anon');
+    await assert.rejects(db.exec('select * from notifications'),/permission denied/);
+    await db.exec('reset role');
+    // Public portal events deduplicate and validate document tenant.
+    const firstView=(await rows('select public.record_document_notification($1,$2,$3,$4) n',['invoice_viewed',INVOICE,C,'view']))[0].n;
+    assert.ok(firstView>0);
+    assert.equal((await rows('select public.record_document_notification($1,$2,$3,$4) n',['invoice_viewed',INVOICE,C,'view']))[0].n,0);
+    await assert.rejects(db.query('select public.record_document_notification($1,$2,$3,$4)',['invoice_viewed',INVOICE,OTHER,'view']),/Document not found/);
+    assert.equal((await rows('select public.process_portal_notification($1,$2,$3,$4) claimed',[C,INVOICE,'invoice_viewed','view']))[0].claimed,true);
+    assert.equal((await rows('select public.process_portal_notification($1,$2,$3,$4) claimed',[C,INVOICE,'invoice_viewed','view']))[0].claimed,false);
+    console.log('Validated recipient routing, inactive users, payment dedupe, date-based reminders, read-state sync, role revocation, tenant isolation and privileged API denial.');
+  } finally { await db.close(); }
+});

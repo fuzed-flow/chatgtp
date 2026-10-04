@@ -344,7 +344,7 @@ export default function TeamManagementSettings() {
                       </span>
                     ) : (
                       <span className="flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
-                        <HardHat className="h-3.5 w-3.5 text-amber-600" /> Employee
+                        <HardHat className="h-3.5 w-3.5 text-amber-600" /> {user.role === "office" ? "Office" : user.role === "subcontractor" ? "Subcontractor" : user.role === "owner" ? "Owner" : "Employee"}
                       </span>
                     )}
                   </div>
@@ -420,7 +420,9 @@ export default function TeamManagementSettings() {
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="employee">Employee (Field Only)</SelectItem>
-                    <SelectItem value="manager">Manager (Ops Access)</SelectItem>
+                    <SelectItem value="manager">Project Manager (Ops Access)</SelectItem>
+                    <SelectItem value="office">Office Staff (Office Access)</SelectItem>
+                    <SelectItem value="subcontractor">Subcontractor (Field Only)</SelectItem>
                     <SelectItem value="admin">Admin (Full Access)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -483,7 +485,9 @@ export default function TeamManagementSettings() {
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="employee">Employee (Field Only)</SelectItem>
-                      <SelectItem value="manager">Manager (Ops Access)</SelectItem>
+                      <SelectItem value="manager">Project Manager (Ops Access)</SelectItem>
+                    <SelectItem value="office">Office Staff (Office Access)</SelectItem>
+                    <SelectItem value="subcontractor">Subcontractor (Field Only)</SelectItem>
                       <SelectItem value="admin">Admin (Full Access)</SelectItem>
                     </SelectContent>
                   </Select>
