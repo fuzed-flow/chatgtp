@@ -14,7 +14,7 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("Missing Authorization header.");
+    if (!authHeader) return Response.json({error:'Sign in to connect payments.'},{status:401,headers:corsHeaders});
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -28,7 +28,7 @@ serve(async (req) => {
     // 1. Authenticate user session
     const token = authHeader.replace("Bearer ", "").trim();
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) throw new Error("Unauthorized user access.");
+    if (authError || !user) return Response.json({error:'Sign in to connect payments.'},{status:401,headers:corsHeaders});
 
     // 2. Fetch the company profile
     const { data: profile, error: profileError } = await supabase
@@ -37,7 +37,7 @@ serve(async (req) => {
       .eq("id", user.id)
       .single();
 
-    if (profileError || !profile?.company_id || profile.is_active === false || !["admin","owner"].includes(profile.role)) throw new Error("User profile or company mapping not found.");
+    if (profileError || !profile?.company_id || profile.is_active === false || !["admin","owner"].includes(profile.role)) return Response.json({error:'Only your company administrator can connect payments.'},{status:403,headers:corsHeaders});
 
     const { data: company, error: companyError } = await supabase
       .from("companies")
