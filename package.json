@@ -11,7 +11,8 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "test:notifications": "node --test tests/notifications/*.test.mjs",
-    "test:help": "node --test tests/help-center/*.test.mjs"
+    "test:help": "node --test tests/help-center/*.test.mjs",
+    "test:search": "node --test tests/global-search/*.test.mjs"
   },
   "dependencies": {
     "@babel/runtime": "^8.0.0",
