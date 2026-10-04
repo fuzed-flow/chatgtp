@@ -185,6 +185,7 @@ export default function GlobalSearch({ onCloseSidebar }) {
     <>
       {/* ⚡ RENDERS ON MOBILE ONLY */}
       <Button
+        aria-label="Open search"
         variant="ghost" 
         size="icon" 
         onClick={() => {
