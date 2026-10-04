@@ -1,4 +1,6 @@
 {
+  "buildCommand": "vite build --config tests/notifications/browser/vite.config.mjs",
+  "outputDirectory": "tests/notifications/browser/dist",
   "rewrites": [
     {
       "source": "/(.*)",
