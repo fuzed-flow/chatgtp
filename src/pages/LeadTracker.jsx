@@ -331,8 +331,8 @@ export default function LeadTracker() {
               />
             </div>
           </div>
-          <Button aria-label="Create a new lead" onClick={() => { setEditingLead(null); setDialogOpen(true); }} className="order-4 sm:order-4 bg-pink-700 hover:bg-pink-800 text-white shadow-sm shrink-0">
-            <Plus aria-hidden="true" className="h-4 w-4 sm:mr-2 text-green-200" /> <span className="hidden sm:inline">New Lead</span>
+          <Button aria-label="Create a new lead" onClick={() => { setEditingLead(null); setDialogOpen(true); }} className="order-4 sm:order-4 bg-amber-500 hover:bg-amber-600 text-white shadow-sm shrink-0">
+            <Plus aria-hidden="true" className="h-4 w-4 sm:mr-2 text-white" /> <span className="hidden sm:inline">New Lead</span>
           </Button>
         </div>
       </div>

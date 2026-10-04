@@ -302,8 +302,8 @@ export default function LeadFormDialog({ open, onOpenChange, onSave, users = [],
 
             <div className="flex justify-end gap-2 pt-4 border-t mt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={!form.first_name || !form.surname || saving} className={`text-white min-w-[120px] ${lead ? "bg-slate-900 hover:bg-slate-800" : "bg-pink-700 hover:bg-pink-800"}`}>
-                {!lead && <Plus aria-hidden="true" className="h-4 w-4 mr-2 text-green-200" />}
+              <Button type="submit" disabled={!form.first_name || !form.surname || saving} className={`text-white min-w-[120px] ${lead ? "bg-slate-900 hover:bg-slate-800" : "bg-amber-500 hover:bg-amber-600"}`}>
+                {!lead && <Plus aria-hidden="true" className="h-4 w-4 mr-2 text-white" />}
                 {saving ? "Saving..." : (lead ? "Update Lead" : "Create Lead")}
               </Button>
             </div>
