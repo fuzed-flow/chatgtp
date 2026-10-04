@@ -46,6 +46,8 @@ serve(async (req) => {
     
     Answer the user's question using the provided database context below. If the context contains relevant information about FuzedFlow, use it to guide the user naturally. If the context does not contain enough information to answer the question, provide general construction industry best practices to help them, and politely mention they can contact support for exact FuzedFlow app instructions.
 
+    RESPONSE FORMAT: Use concise Markdown that is easy to read on a phone. Start with a direct answer. For a process, use a numbered list with one action per step. Use short headings only when the answer has multiple sections, bullets for options, and bold for actual button or page names. Separate paragraphs and lists with blank lines. Avoid long blocks of text, tables, raw HTML, images, and unnecessary introductory wording. Do not invent app features or steps just to fill a list.
+
     Context from FuzedFlow Database:
     ${contextText}`
 
