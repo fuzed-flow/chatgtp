@@ -1,3 +1,4 @@
+import { getPlanIdFromPrice, getUsdPriceId } from "../_shared/subscriptionPlans.js";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import Stripe from 'npm:stripe@^14.0.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -21,7 +22,15 @@ serve(async (req) => {
 
   try {
     // 👇 FIX 1: Catch the company_id sent from Dashboard.jsx
-    const { price_id, plan_id, company_id } = await req.json();
+    const { price_id, company_id } = await req.json();
+    const usdPriceId = getUsdPriceId(price_id);
+    if (!usdPriceId) {
+      return new Response(JSON.stringify({ error: "Invalid subscription price" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+    const plan_id = getPlanIdFromPrice(usdPriceId);
 
     const authHeader = req.headers.get('Authorization')!;
     const supabaseClient = createClient(
@@ -36,7 +45,7 @@ serve(async (req) => {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: price_id,
+          price: usdPriceId,
           quantity: 1,
         },
       ],
