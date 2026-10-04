@@ -59,6 +59,7 @@ export default function StripePaymentsTab() {
 
   const clientMap = Object.fromEntries(clients.map(c => [c.id, c]));
   const selectedQuote = quotes.find(q => q.id === selectedQuoteId);
+  useEffect(()=>{setDepositAmount(selectedQuote ? String(Math.max(0,Number(selectedQuote.deposit_amount||0)-Number(selectedQuote.deposit_paid_amount||0))) : "");},[selectedQuote?.id,selectedQuote?.deposit_amount,selectedQuote?.deposit_paid_amount]);
   const selectedClient = selectedQuote ? clientMap[selectedQuote.client_id] : null;
 
   const handleCreateCheckout = async () => {
@@ -120,7 +121,7 @@ export default function StripePaymentsTab() {
             <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
             <div>
               <p className="font-black text-emerald-900">Stripe is Connected</p>
-              <p className="text-sm font-medium text-emerald-700">Your Stripe account is successfully linked and ready to process client payments.</p>
+              <p className="text-sm font-medium text-emerald-700">Your Stripe account is linked. Complete Stripe onboarding and payment verification before collecting client payments.</p>
             </div>
           </div>
         </Card>
@@ -146,7 +147,7 @@ export default function StripePaymentsTab() {
         </div>
         
         <p className="text-sm font-medium text-slate-500">
-          Select an approved quote and enter a deposit amount to generate a secure Stripe checkout link. You can send this link directly to your client via email or SMS.
+          Select an approved quote to generate a secure Stripe checkout link for its remaining deposit. You can send this link directly to your client via email or SMS.
         </p>
 
         <div className="grid md:grid-cols-2 gap-6 pt-2">
@@ -171,14 +172,14 @@ export default function StripePaymentsTab() {
           </div>
           
           <div>
-            <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Deposit Amount to Collect</Label>
+            <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Remaining Approved Deposit</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">$</span>
               <Input
                 type="number"
                 placeholder="0.00"
                 value={depositAmount}
-                onChange={e => setDepositAmount(e.target.value)}
+                readOnly
                 disabled={!isConnected}
                 className="pl-7 font-black bg-slate-50 border-slate-200 h-11 text-lg"
               />

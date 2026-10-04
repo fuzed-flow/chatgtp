@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
+import Stripe from 'npm:stripe@22.6.0'
+import { checkoutReturnUrl } from '../_shared/checkout.js'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -8,7 +9,7 @@ const corsHeaders = {
 }
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
-  apiVersion: '2022-11-15',
+  apiVersion: '2026-08-26.dahlia',
   httpClient: Stripe.createFetchHttpClient(),
 });
 
@@ -35,11 +36,11 @@ serve(async (req) => {
     // Step A: Find their company_id from their profile
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('company_id')
+      .select('company_id,role,is_active')
       .eq('id', user.id)
       .single();
 
-    if (!profile?.company_id) {
+    if (!profile?.company_id || profile.is_active === false || !['admin','owner'].includes(profile.role)) {
       throw new Error('User profile or company_id not found.');
     }
 
@@ -57,7 +58,7 @@ serve(async (req) => {
     // 3. Generate the Portal Link
     const session = await stripe.billingPortal.sessions.create({
       customer: companyData.stripe_customer_id,
-      return_url: return_url || Deno.env.get('APP_URL') || 'http://localhost:5173/dashboard',
+      return_url: checkoutReturnUrl(return_url, `${Deno.env.get('APP_URL') || 'https://app.fuzedflow.com'}/AdminSettings`, Deno.env.get('APP_URL') || 'https://app.fuzedflow.com'),
     });
 
     return new Response(

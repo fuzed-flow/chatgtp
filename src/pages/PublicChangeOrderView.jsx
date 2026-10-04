@@ -1,3 +1,4 @@
+import { getPublicProject } from "@/lib/publicProject";
 import React, { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; 
@@ -52,7 +53,7 @@ export default function PublicChangeOrderView() {
       
       // 1. If direct client_id is missing, fetch it from the linked project
       if (!clientId && changeOrder?.project_id) {
-        const { data: proj } = await supabase.from("projects").select("client_id").eq("id", changeOrder.project_id).single();
+        const { project: proj } = await getPublicProject("change_order", changeOrderId);
         clientId = proj?.client_id;
       }
 

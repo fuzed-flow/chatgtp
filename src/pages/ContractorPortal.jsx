@@ -1,6 +1,6 @@
+import { getPublicProject } from "@/lib/publicProject";
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/api/supabaseClient";
 import { FileText, Building2, MapPin, Download, ExternalLink, Info, Mail, ClipboardList, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -8,46 +8,20 @@ export default function ContractorPortal() {
   const params = new URLSearchParams(window.location.search);
   const projectId = params.get("projectId");
 
+  const token = params.get("token");
+
   // --- SUPABASE QUERIES ---
-  const { data: project, isLoading: loadingProject } = useQuery({
-    queryKey: ["pm_project_public", projectId],
+  const { data: payload, isLoading: loadingProject } = useQuery({
+    queryKey: ["pm_project_public", projectId, token],
     enabled: !!projectId,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id,company_id,name,site_address,description").eq("id", projectId).single();
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: portalFiles = [], isLoading: loadingFiles } = useQuery({
-    queryKey: ["contractor_portal_files_public", projectId],
-    enabled: !!projectId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contractor_portal_files")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const { data: quoteContact, isLoading: loadingContact } = useQuery({
-    queryKey: ["contractor_quote_contact", project?.company_id],
-    enabled: !!project?.company_id,
     retry: false,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("companies")
-        .select("email:settings->>email")
-        .eq("id", project.company_id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => getPublicProject("contractor", projectId, token),
   });
-
+  const project = payload?.project;
+  const portalFiles = payload?.files || [];
+  const loadingFiles = false;
+  const loadingContact = loadingProject;
+  const quoteContact = { email: payload?.contact_email || "" };
   const contactEmail = typeof quoteContact?.email === "string" ? quoteContact.email.trim() : "";
   const emailLocalPart = contactEmail.split("@")[0];
   const hasQuoteContact = contactEmail.length <= 254

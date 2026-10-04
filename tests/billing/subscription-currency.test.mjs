@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import vm from 'node:vm';
+import {currencyFactor} from '../../supabase/functions/_shared/checkout.js';
 import {
   SUBSCRIPTION_CURRENCY, SUBSCRIPTION_PRICES,
-  getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId,
+  getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId, getUserLimitFromQuantity,
 } from '../../supabase/functions/_shared/subscriptionPlans.js';
 
 test('new and legacy links select the same plan and billing period in USD', () => {
@@ -49,6 +50,7 @@ async function loadHandler(path) {
   const client = {
     auth: { getUser: async () => ({ data: { user: { id: 'user-test' } } }) },
     from: (table) => ({
+      select: () => ({eq: () => ({single: async () => ({data: table==='profiles'?{company_id:'company-test',role:'admin',is_active:true}:{stripe_customer_id:'cus_test',name:'Fixture Company'},error:null})})}),
       update: (values) => ({
         eq: async (column, value) => {
           companyUpdates.push({ table, values, column, value });
@@ -59,7 +61,7 @@ async function loadHandler(path) {
   };
   const context = vm.createContext({
     Stripe, createClient: () => client,
-    getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId,
+    getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId, getUserLimitFromQuantity, currencyFactor, crypto,
     Deno: { env: { get: (key) => env[key] || '' }, serve: (fn) => { handler = fn; } },
     serve: (fn) => { handler = fn; },
     Request, Response, console,

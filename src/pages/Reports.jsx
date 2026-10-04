@@ -4,14 +4,15 @@ import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { checkAccess } from '@/lib/planConfig'; 
 import UpgradeWall from '@/components/shared/UpgradeWall';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
-import { format, parseISO, subMonths, startOfYear, startOfQuarter, startOfMonth, endOfMonth, isAfter, isBefore, startOfWeek, endOfWeek } from "date-fns";
-import { Download, TrendingUp, DollarSign, FileText, PieChart, ArrowUpRight, ArrowDownRight, Building2, Calculator } from "lucide-react";
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
+import { format, parseISO, subMonths, startOfYear, startOfQuarter, startOfMonth, endOfMonth, isAfter, isBefore } from "date-fns";
+import { Download, TrendingUp, DollarSign, FileText, PieChart, ArrowDownRight, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { parseRecordDate, paymentDate, withinDateRange, invoiceBalance, csvText } from "@/lib/reporting";
 import { formatCurrencyUSD } from "../components/utils/formatCurrency";
 
 const TABS = [
@@ -30,7 +31,7 @@ export default function AdvancedReporting() {
 
   // --- DATE RANGES ---
   const dateRanges = useMemo(() => {
-    const today = new Date();
+    const today = new Date(); today.setHours(23,59,59,999);
     return {
       ytd: { start: startOfYear(today), end: today },
       qtd: { start: startOfQuarter(today), end: today },
@@ -41,11 +42,7 @@ export default function AdvancedReporting() {
 
   const currentRange = dateRanges[dateFilter];
 
-  const isWithinRange = (dateStr) => {
-    if (!dateStr) return false;
-    const d = parseISO(dateStr);
-    return isAfter(d, currentRange.start) && isBefore(d, currentRange.end);
-  };
+  const isWithinRange = dateStr => withinDateRange(dateStr, currentRange.start, currentRange.end);
 
   // --- QUERIES ---
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
@@ -78,36 +75,31 @@ export default function AdvancedReporting() {
     }
   });
 
+  const { data: clients = [] } = useQuery({queryKey:["reports_clients",companyId],enabled:!!companyId,queryFn:async()=>{
+    const {data,error}=await supabase.from("clients").select("id,name").eq("company_id",companyId);if(error)throw error;return data||[];
+  }});
+  const clientNames = Object.fromEntries(clients.map(client=>[client.id,client.name]));
   const isLoading = invoicesLoading || expensesLoading || paymentsLoading;
 
-  // 👇 THE GATEKEEPER (Safely placed after hooks) 👇
-  const canAccessReporting = checkAccess(company?.plan_id, 'hasAdvancedReporting');
-
-  if (!canAccessReporting) {
-    // Override the default to require the Business plan!
-    return <UpgradeWall featureName="Custom & Advanced Reporting" requiredPlan="Business" />;
-  }
-  // 👆 ------------------ 👆
-
   // --- CALCULATIONS: SALES ---
-  const filteredInvoices = useMemo(() => invoices.filter(inv => isWithinRange(inv.created_at)), [invoices, currentRange]);
-  const filteredPayments = useMemo(() => payments.filter(pay => isWithinRange(pay.date)), [payments, currentRange]);
+  const filteredInvoices = useMemo(() => invoices.filter(inv => !["Draft","Cancelled","Canceled"].includes(inv.status) && isWithinRange(inv.issue_date || inv.created_at)), [invoices, currentRange]);
+  const filteredPayments = useMemo(() => payments.filter(pay => isWithinRange(paymentDate(pay))), [payments, currentRange]);
   
   const totalRevenue = filteredPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
   const totalBilled = filteredInvoices.reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0);
-  const outstandingAR = invoices.filter(inv => inv.status !== "Paid" && inv.status !== "Draft").reduce((sum, inv) => sum + (parseFloat(inv.balance_due) || parseFloat(inv.total) || 0), 0);
+  const outstandingAR = invoices.filter(inv => !["Paid","Draft","Cancelled","Canceled"].includes(inv.status)).reduce((sum, inv) => sum + (invoiceBalance(inv)), 0);
 
   // Top Clients
   const topClients = useMemo(() => {
     const clientTotals = {};
     filteredInvoices.forEach(inv => {
-      const name = inv.client_name || "Unknown Client";
+      const name = clientNames[inv.client_id] || inv.client_name || "Unassigned client";
       if (!clientTotals[name]) clientTotals[name] = { total: 0, projects: 0, client_name: name };
       clientTotals[name].total += (parseFloat(inv.total) || 0);
       clientTotals[name].projects += 1;
     });
     return Object.values(clientTotals).sort((a, b) => b.total - a.total).slice(0, 5);
-  }, [filteredInvoices]);
+  }, [filteredInvoices, clients]);
 
   // Chart Data: Monthly Revenue
   const monthlyRevenueData = useMemo(() => {
@@ -118,14 +110,17 @@ export default function AdvancedReporting() {
     }
     
     payments.forEach(p => {
-      if (!p.date) return;
-      const m = format(parseISO(p.date), "MMM yyyy");
+      const date = parseRecordDate(paymentDate(p));
+      if (!date) return;
+      const m = format(date, "MMM yyyy");
       if (months[m]) months[m].Revenue += (parseFloat(p.amount) || 0);
     });
 
     invoices.forEach(inv => {
-      if (!inv.created_at) return;
-      const m = format(parseISO(inv.created_at), "MMM yyyy");
+      if (["Draft","Cancelled","Canceled"].includes(inv.status)) return;
+      const date = parseRecordDate(inv.issue_date || inv.created_at);
+      if (!date) return;
+      const m = format(date, "MMM yyyy");
       if (months[m]) months[m].Billed += (parseFloat(inv.total) || 0);
     });
 
@@ -154,12 +149,11 @@ export default function AdvancedReporting() {
     let paid = 0;
 
     filteredInvoices.forEach(inv => {
-      collected += (parseFloat(inv.tax_amount) || 0);
+      collected += (parseFloat(inv.tax) || 0);
     });
 
     filteredExpenses.forEach(exp => {
-      // Assuming a generic tax field or standard 5% calc for demo. 
-      // Replace with actual `tax_amount` if your DB tracks it per expense.
+      // Expense tax is not separately recorded in the current expense schema.
       paid += (parseFloat(exp.tax_amount) || 0); 
     });
 
@@ -172,12 +166,12 @@ export default function AdvancedReporting() {
     const todayDate = new Date();
     const buckets = { current: 0, days30: 0, days60: 0, days90: 0 };
     
-    const unpaid = invoices.filter(inv => inv.status !== "Paid" && inv.status !== "Draft");
+    const unpaid = invoices.filter(inv => !["Paid","Draft","Cancelled","Canceled"].includes(inv.status));
     
     unpaid.forEach(inv => {
       if (!inv.due_date) return;
       const dueDate = parseISO(inv.due_date);
-      const balance = parseFloat(inv.balance_due) || parseFloat(inv.total) || 0;
+      const balance = invoiceBalance(inv);
       
       if (isAfter(dueDate, todayDate)) {
         buckets.current += balance;
@@ -194,10 +188,32 @@ export default function AdvancedReporting() {
 
   // --- EXPORT ---
   const handleExport = () => {
-    toast.info("Exporting report...");
-    // Real export logic goes here
-    setTimeout(() => toast.success("Export complete!"), 1000);
+    let headers, records;
+    if (activeTab === "sales") {
+      headers = ["Payment date", "Invoice ID", "Payment method", "Amount received"];
+      records = filteredPayments.map(p => [paymentDate(p), p.invoice_id, p.payment_method, p.amount]);
+    } else if (activeTab === "expenses") {
+      headers = ["Date", "Category", "Project ID", "Description", "Status", "Amount"];
+      records = filteredExpenses.map(e => [e.date, e.category, e.project_id, e.description, e.status, e.amount]);
+    } else if (activeTab === "taxes") {
+      headers = ["Invoice", "Issue date", "Status", "Tax billed"];
+      records = filteredInvoices.map(i => [i.invoice_number, i.issue_date || i.created_at, i.status, i.tax]);
+    } else {
+      headers = ["Invoice", "Due date", "Status", "Balance due"];
+      records = invoices.filter(i => i.status !== "Paid" && i.status !== "Draft").map(i => [i.invoice_number, i.due_date, i.status, invoiceBalance(i)]);
+    }
+    const url = URL.createObjectURL(new Blob([csvText(headers, records)], { type: "text/csv;charset=utf-8;" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `fuzedflow-${activeTab}-${dateFilter}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Report downloaded");
   };
+
+  if (!checkAccess(company?.plan_id, 'hasAdvancedReporting')) {
+    return <UpgradeWall featureName="Reports" requiredPlan="Professional" />;
+  }
 
   if (isLoading) {
     return (
@@ -432,19 +448,19 @@ export default function AdvancedReporting() {
                 
                 {/* Tax KPI Sidebar */}
                 <div className="w-full md:w-64 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 shrink-0 flex flex-col justify-center">
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-6">Tax Liability</h3>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-6">Invoiced Tax Overview</h3>
                   
                   <div className="space-y-6">
                     <div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Taxes Collected (Invoices)</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tax on issued invoices</p>
                       <p className="text-2xl font-black text-emerald-600">{formatCurrencyUSD(taxSummary.collected)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Taxes Paid (Expenses)</p>
-                      <p className="text-2xl font-black text-red-600">{formatCurrencyUSD(taxSummary.paid)}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Expense tax not recorded</p>
+                      <p className="text-2xl font-black text-red-600">Not available</p>
                     </div>
                     <div className="pt-4 border-t border-slate-200">
-                      <p className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">Net Tax Due</p>
+                      <p className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">Invoiced tax total</p>
                       <p className={`text-3xl font-black ${taxSummary.liability > 0 ? "text-amber-600" : "text-emerald-600"}`}>
                         {formatCurrencyUSD(taxSummary.liability)}
                       </p>
@@ -454,25 +470,25 @@ export default function AdvancedReporting() {
 
                 {/* Tax Source Table */}
                 <div className="flex-1 p-4 md:p-6 overflow-hidden">
-                  <h3 className="text-lg font-black text-slate-900 mb-4">Collected Sources</h3>
+                  <h3 className="text-lg font-black text-slate-900 mb-4">Invoice Tax Sources</h3><p className="text-sm text-slate-600 mb-4">Invoice tax amounts only. Expense tax credits and filing adjustments are not tracked here. This overview is not a tax return.</p>
                   <div className="overflow-x-auto bg-white border border-slate-200 rounded-lg">
                     <table className="w-full text-sm text-left whitespace-nowrap">
                       <thead className="bg-slate-50 border-b border-slate-100 text-[10px] uppercase font-black text-slate-500">
                         <tr>
                           <th className="px-4 py-2">Invoice #</th>
                           <th className="px-4 py-2">Client</th>
-                          <th className="px-4 py-2 text-right">Tax Collected</th>
+                          <th className="px-4 py-2 text-right">Tax Billed</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {filteredInvoices.filter(inv => parseFloat(inv.tax_amount) > 0).map(inv => (
+                        {filteredInvoices.filter(inv => parseFloat(inv.tax) > 0).map(inv => (
                           <tr key={inv.id} className="hover:bg-slate-50">
                             <td className="px-4 py-2 font-bold text-slate-700">{inv.invoice_number || inv.id.substring(0,6)}</td>
-                            <td className="px-4 py-2 font-medium">{inv.client_name}</td>
-                            <td className="px-4 py-2 text-right font-black text-emerald-600">{formatCurrencyUSD(inv.tax_amount)}</td>
+                            <td className="px-4 py-2 font-medium">{clients.find(client => client.id === inv.client_id)?.name || inv.client_name || "Unassigned client"}</td>
+                            <td className="px-4 py-2 text-right font-black text-emerald-600">{formatCurrencyUSD(inv.tax)}</td>
                           </tr>
                         ))}
-                        {filteredInvoices.filter(inv => parseFloat(inv.tax_amount) > 0).length === 0 && (
+                        {filteredInvoices.filter(inv => parseFloat(inv.tax) > 0).length === 0 && (
                           <tr><td colSpan="3" className="px-4 py-6 text-center text-slate-400 italic">No taxable invoices found.</td></tr>
                         )}
                       </tbody>
@@ -540,7 +556,7 @@ export default function AdvancedReporting() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {invoices.filter(inv => inv.status !== "Paid" && inv.status !== "Draft").sort((a,b) => new Date(a.due_date) - new Date(b.due_date)).map(inv => {
+                      {invoices.filter(inv => !["Paid","Draft","Cancelled","Canceled"].includes(inv.status)).sort((a,b) => new Date(a.due_date) - new Date(b.due_date)).map(inv => {
                         const isPastDue = isBefore(parseISO(inv.due_date), new Date());
                         return (
                           <tr key={inv.id} className={`hover:bg-slate-50 ${isPastDue ? "bg-red-50/20" : ""}`}>
@@ -556,7 +572,7 @@ export default function AdvancedReporting() {
                           </tr>
                         );
                       })}
-                      {invoices.filter(inv => inv.status !== "Paid" && inv.status !== "Draft").length === 0 && (
+                      {invoices.filter(inv => !["Paid","Draft","Cancelled","Canceled"].includes(inv.status)).length === 0 && (
                         <tr><td colSpan="5" className="px-4 py-8 text-center text-slate-500 font-medium">No open invoices. Great job!</td></tr>
                       )}
                     </tbody>

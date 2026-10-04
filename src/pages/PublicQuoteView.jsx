@@ -704,14 +704,14 @@ export default function PublicQuoteView() {
           {quote.status !== "Approved" && (
             <>
               <Button onClick={handleAcceptQuote} className="shadow-lg font-black h-11 px-8" style={{ backgroundColor: brandColor, color: '#fff' }}>
-                <CheckCircle className="h-4 w-4 mr-2" /> Accept & Sign Quote
+                <CheckCircle className="h-4 w-4 mr-2" /> Approve Quote
               </Button>
               <Button onClick={() => setChangesDialogOpen(true)} variant="outline" className="shadow-sm bg-white font-bold h-11">
                 <MessageSquare className="h-4 w-4 mr-2 text-slate-500" /> Request Changes
               </Button>
             </>
           )}
-          {quote.status === "Approved" && quote.deposit_amount > 0 && (
+          {quote.status === "Approved" && Number(quote.deposit_amount) > Number(quote.deposit_paid_amount || 0) && (
             <Button 
               onClick={handlePayDeposit} 
               disabled={isProcessingPayment}
@@ -720,7 +720,7 @@ export default function PublicQuoteView() {
               {isProcessingPayment ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
               ) : (
-                <><CreditCard className="h-4 w-4 mr-2" /> Pay Deposit Now ({formatCurrencyUSD(quote.deposit_amount)})</>
+                <><CreditCard className="h-4 w-4 mr-2" /> Pay Deposit Now ({formatCurrencyUSD(Number(quote.deposit_amount) - Number(quote.deposit_paid_amount || 0))})</>
               )}
             </Button>
           )}
