@@ -40,9 +40,9 @@ serve(async (req) => {
     );
     
     const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error('Sign in to manage billing.');
+    if (!user) return Response.json({error:'Sign in to manage billing.'},{status:401,headers:corsHeaders});
     const {data:profile,error:profileError}=await supabaseClient.from('profiles').select('company_id,role,is_active').eq('id',user.id).single();
-    if(profileError||profile?.company_id!==company_id||profile.is_active===false||!['admin','owner'].includes(profile.role)) throw new Error('Only your company administrator can manage billing.');
+    if(profileError||profile?.company_id!==company_id||profile.is_active===false||!['admin','owner'].includes(profile.role)) return Response.json({error:'Only your company administrator can manage billing.'},{status:403,headers:corsHeaders});
     const service=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const {data:company,error:companyError}=await service.from('companies').select('stripe_customer_id,name').eq('id',company_id).single();
     if(companyError||!company)throw new Error('Company unavailable.');

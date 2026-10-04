@@ -30,7 +30,7 @@ serve(async (req) => {
     
     // 1. Authenticate the user
     const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    if (!user) return Response.json({error:'Sign in to manage billing.'},{status:401,headers:corsHeaders});
 
     // 👇 2. NEW: Two-Step Lookup to match your schema!
     // Step A: Find their company_id from their profile
@@ -41,7 +41,7 @@ serve(async (req) => {
       .single();
 
     if (!profile?.company_id || profile.is_active === false || !['admin','owner'].includes(profile.role)) {
-      throw new Error('User profile or company_id not found.');
+      return Response.json({error:'Only your company administrator can manage billing.'},{status:403,headers:corsHeaders});
     }
 
     // Step B: Get the Stripe Customer ID from their company
