@@ -237,7 +237,7 @@ export default function PMDailyLogsTab({ project }) {
             <Button 
   size="sm" 
   onClick={() => { setCreateForm(defaultCreateForm); setCreateOpen(true); }} 
-  className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs h-7 px-2"
+  className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs h-7 px-2"
 >
   <Plus className="h-3.5 w-3.5 mr-1" /> Add Note
 </Button>
@@ -261,18 +261,18 @@ export default function PMDailyLogsTab({ project }) {
                   onClick={() => setSelectedLog(log)}
                   className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
                     selectedLog?.id === log.id
-                      ? "bg-blue-50 border-blue-200 shadow-sm"
+                      ? "bg-amber-50 border-amber-200 shadow-sm"
                       : "bg-white border-transparent hover:border-slate-200 hover:bg-slate-50"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <Calendar className={`h-4 w-4 shrink-0 ${selectedLog?.id === log.id ? 'text-blue-500' : 'text-slate-400'}`} />
-                      <span className={`text-sm font-bold ${selectedLog?.id === log.id ? 'text-blue-900' : 'text-slate-700'}`}>
+                      <Calendar className={`h-4 w-4 shrink-0 ${selectedLog?.id === log.id ? 'text-amber-600' : 'text-slate-400'}`} />
+                      <span className={`text-sm font-bold ${selectedLog?.id === log.id ? 'text-amber-900' : 'text-slate-700'}`}>
                         {dateObj ? format(dateObj, "MMM d, yyyy") : "No Date"}
                       </span>
                     </div>
-                    <ChevronRight className={`h-4 w-4 ${selectedLog?.id === log.id ? 'text-blue-400' : 'text-slate-300'}`} />
+                    <ChevronRight className={`h-4 w-4 ${selectedLog?.id === log.id ? 'text-amber-500' : 'text-slate-300'}`} />
                   </div>
                   
                   {log.summary && (
@@ -317,7 +317,7 @@ export default function PMDailyLogsTab({ project }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => openEdit(selectedLog)} className="font-bold text-slate-600 hover:text-blue-600 hover:bg-blue-50 border-slate-200">
+                <Button size="sm" variant="outline" onClick={() => openEdit(selectedLog)} className="font-bold text-slate-600 hover:text-amber-700 hover:bg-amber-50 focus-visible:text-amber-700 focus-visible:bg-amber-50 focus-visible:ring-amber-600 border-slate-200">
                   <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
                 </Button>
                 {/* HIGH VISIBILITY DELETE BUTTON */}
@@ -396,7 +396,7 @@ export default function PMDailyLogsTab({ project }) {
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {selectedLog.photos.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block aspect-square overflow-hidden rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all group bg-slate-50">
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block aspect-square overflow-hidden rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-300 transition-all group bg-slate-50">
                         <img src={url} alt={`Site Photo ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                       </a>
                     ))}
@@ -461,7 +461,7 @@ export default function PMDailyLogsTab({ project }) {
             
             <div className="flex gap-2 pt-4 border-t border-slate-200 mt-4">
               <Button variant="outline" className="flex-1 font-bold" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black shadow-md" onClick={handleCreate} disabled={createMutation.isPending}>
+              <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md focus-visible:ring-amber-600" onClick={handleCreate} disabled={createMutation.isPending}>
                 {createMutation.isPending ? "Saving..." : "Add Log"}
               </Button>
             </div>
@@ -476,7 +476,7 @@ export default function PMDailyLogsTab({ project }) {
                 multiple 
                 disabled={isUploading}
                 onChange={(e) => handlePhotoUpload(e, createForm, setCreateForm)}
-                className="bg-white font-medium cursor-pointer file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className="bg-white font-medium cursor-pointer file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-900 hover:file:bg-amber-600 focus-visible:ring-amber-600"
               />
               
               {isUploading && (
@@ -554,7 +554,7 @@ export default function PMDailyLogsTab({ project }) {
               
               <div className="flex gap-2 pt-4 border-t border-slate-200 mt-4">
                 <Button variant="outline" className="flex-1 font-bold" onClick={() => setEditOpen(false)}>Cancel</Button>
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black shadow-md" onClick={handleSave} disabled={updateMutation.isPending}>
+                <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md focus-visible:ring-amber-600" onClick={handleSave} disabled={updateMutation.isPending}>
                   {updateMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
@@ -569,7 +569,7 @@ export default function PMDailyLogsTab({ project }) {
                 multiple 
                 disabled={isUploading}
                 onChange={(e) => handlePhotoUpload(e, createForm, setCreateForm)}
-                className="bg-white font-medium cursor-pointer file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className="bg-white font-medium cursor-pointer file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-900 hover:file:bg-amber-600 focus-visible:ring-amber-600"
               />
               
               {isUploading && (

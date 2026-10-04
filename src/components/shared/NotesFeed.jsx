@@ -279,7 +279,7 @@ export default function NotesFeed({ relatedType = "Project", relatedId = null, c
                         <DropdownMenuItem onClick={() => handleTogglePin(note.id)} className="cursor-pointer font-bold text-slate-700">
                           <Pin className="h-4 w-4 mr-2" /> {isNotePinned ? "Unpin Note" : "Pin to Top"}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setEditingId(note.id); setEditForm({ summary: note.summary, category: note.category || "General" }); }} className="cursor-pointer font-bold text-blue-600">
+                        <DropdownMenuItem onClick={() => { setEditingId(note.id); setEditForm({ summary: note.summary, category: note.category || "General" }); }} className="cursor-pointer font-bold text-amber-700 focus:text-amber-700 focus:bg-amber-50">
                           <Edit2 className="h-4 w-4 mr-2" /> Edit Note
                         </DropdownMenuItem>
                         <div className="h-px bg-slate-100 my-1" />
@@ -342,7 +342,7 @@ export default function NotesFeed({ relatedType = "Project", relatedId = null, c
                 {mentionMembers.filter(m => !mentions.includes(m.id)).map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
               </select>
             </label>
-            {mentions.map(id => <button key={id} type="button" onClick={() => setMentions(previous => previous.filter(value => value !== id))} className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700" aria-label={"Remove mention of " + mentionMembers.find(m => m.id === id)?.full_name}>
+            {mentions.map(id => <button key={id} type="button" onClick={() => setMentions(previous => previous.filter(value => value !== id))} className="rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-700 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600" aria-label={"Remove mention of " + mentionMembers.find(m => m.id === id)?.full_name}>
               @{mentionMembers.find(m => m.id === id)?.full_name} ×
             </button>)}
           </div>

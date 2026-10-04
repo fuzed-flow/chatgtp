@@ -454,7 +454,7 @@ export default function PMProjectOverview({ project }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => { setTaskForm({ title: "", priority: "Medium", phase_id: "none", assigned_to: [] }); setTaskDialog(true); }} className="cursor-pointer font-bold">
-                <CheckCircle2 className="h-4 w-4 mr-2 text-blue-500" /> New Task
+                <CheckCircle2 className="h-4 w-4 mr-2 text-amber-600" /> New Task
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setPhaseDialog(true)} className="cursor-pointer font-bold">
                 <GitBranch className="h-4 w-4 mr-2 text-purple-500" /> New Phase
@@ -576,7 +576,7 @@ export default function PMProjectOverview({ project }) {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-slate-900">{m.title}</span>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                      <button onClick={() => { setMilestoneForm({ id: m.id, title: m.title, due_date_target: m.due_date_target || "", status: m.status }); setMilestoneDialog(true); }} className="p-1 text-slate-400 hover:text-blue-600"><Edit2 className="h-3 w-3"/></button>
+                      <button onClick={() => { setMilestoneForm({ id: m.id, title: m.title, due_date_target: m.due_date_target || "", status: m.status }); setMilestoneDialog(true); }} className="p-1 text-slate-400 hover:text-amber-700 focus-visible:text-amber-700 focus-visible:ring-2 focus-visible:ring-amber-600"><Edit2 className="h-3 w-3"/></button>
                       <button onClick={() => { if(window.confirm("Delete milestone?")) deleteMilestone.mutate(m.id); }} className="p-1 text-slate-400 hover:text-red-600"><Trash2 className="h-3 w-3"/></button>
                     </div>
                   </div>
@@ -696,18 +696,18 @@ export default function PMProjectOverview({ project }) {
         {/* PURCHASE ORDERS STRIP */}
         <div className="space-y-3">
           <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 px-1 border-b border-slate-200 pb-2">
-            <ShoppingCart className="h-4 w-4 text-blue-500" /> Purchase Orders ({linkedPOs.length})
+            <ShoppingCart className="h-4 w-4 text-amber-500" /> Purchase Orders ({linkedPOs.length})
           </h3>
           {linkedPOs.length > 0 ? (
             <div className="grid grid-cols-1 gap-2">
               {linkedPOs.map(po => (
                 <Link key={po.id} to={`/PurchaseOrderView?id=${po.id}`}>
-                  <Card className="p-3.5 flex items-center justify-between hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group bg-white border-blue-100">
+                  <Card className="p-3.5 flex items-center justify-between hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group bg-white border-amber-100">
                     <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors"><ShoppingCart className="h-5 w-5 text-blue-600" /></div>
+                      <div className="h-10 w-10 bg-amber-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-amber-100 transition-colors"><ShoppingCart className="h-5 w-5 text-amber-600" /></div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors">{po.po_number || "Draft PO"}</p>
+                          <p className="font-bold text-slate-900 group-hover:text-amber-700 transition-colors">{po.po_number || "Draft PO"}</p>
                           <StatusBadge status={po.status} />
                         </div>
                         <p className="text-sm text-slate-500">Materials Order</p>
@@ -718,7 +718,7 @@ export default function PMProjectOverview({ project }) {
                         <p className="font-black text-slate-900">{formatCurrency(po.total)}</p>
                         <p className="text-xs font-medium text-slate-400">Exp: {po.expected_delivery_date ? format(new Date(po.expected_delivery_date), "MMM d, yyyy") : "TBD"}</p>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-blue-500" />
+                      <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-amber-500" />
                     </div>
                   </Card>
                 </Link>
@@ -739,7 +739,7 @@ export default function PMProjectOverview({ project }) {
             <p className="text-sm font-medium text-slate-600">Select what to pull over from the attached Quote.</p>
             
             <label className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:border-amber-400 transition-all">
-              <input type="checkbox" className="mt-1 w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-500" checked={importOptions.phases} onChange={e => setImportOptions({...importOptions, phases: e.target.checked})} />
+              <input type="checkbox" className="mt-1 w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-600" checked={importOptions.phases} onChange={e => setImportOptions({...importOptions, phases: e.target.checked})} />
               <div className="flex flex-col">
                 <span className="font-black text-slate-800">Import Project Phases</span>
                 <span className="text-[11px] font-semibold text-slate-400 mt-0.5">Creates phases exactly as they were structured on the quote.</span>
@@ -747,7 +747,7 @@ export default function PMProjectOverview({ project }) {
             </label>
             
             <label className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:border-amber-400 transition-all">
-              <input type="checkbox" className="mt-1 w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-500" checked={importOptions.materials} onChange={e => setImportOptions({...importOptions, materials: e.target.checked})} />
+              <input type="checkbox" className="mt-1 w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-600" checked={importOptions.materials} onChange={e => setImportOptions({...importOptions, materials: e.target.checked})} />
               <div className="flex flex-col">
                 <span className="font-black text-slate-800">Import Tracked Materials</span>
                 <span className="text-[11px] font-semibold text-slate-400 mt-0.5">Pulls line items tagged "Track as physical material".</span>
@@ -876,7 +876,7 @@ export default function PMProjectOverview({ project }) {
                         }}
                         className={`px-3 py-1.5 rounded-md text-xs font-bold cursor-pointer border shadow-sm transition-colors ${
                           isSelected 
-                            ? 'bg-blue-600 text-white border-blue-600' 
+                            ? 'bg-amber-500 text-slate-900 border-amber-500' 
                             : 'bg-white text-slate-600 border-slate-200 hover:border-amber-400 hover:text-slate-900'
                         }`}
                       >

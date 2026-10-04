@@ -312,7 +312,7 @@ export default function PMContractorPortalTab({ project }) {
                     href={f.file_url} 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    className="text-sm font-bold text-slate-900 truncate block hover:text-blue-600 hover:underline"
+                    className="text-sm font-bold text-slate-900 truncate block hover:text-amber-700 hover:underline"
                     title="Open document"
                   >
                     {f.file_name}

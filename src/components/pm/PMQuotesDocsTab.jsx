@@ -209,7 +209,7 @@ export default function PMQuotesDocsTab({ project }) {
                         href={doc.file_url} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        className="font-bold text-sm text-slate-900 truncate hover:text-blue-600 hover:underline"
+                        className="font-bold text-sm text-slate-900 truncate hover:text-amber-700 hover:underline"
                         title="Open document in new tab"
                       >
                         {doc.file_name || "Document"}
@@ -235,7 +235,7 @@ export default function PMQuotesDocsTab({ project }) {
                       <>
                         {/* 1. OPEN IN NEW TAB */}
                         <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:bg-blue-50" title="Open in new tab">
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Open in new tab">
                             <ExternalLink className="h-4 w-4" />
                           </Button>
                         </a>
@@ -309,7 +309,7 @@ export default function PMQuotesDocsTab({ project }) {
                     <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-700 hover:bg-emerald-100 shrink-0" onClick={() => setForm(f => ({...f, file_url: "", file_name: ""}))}>Remove</Button>
                   </div>
                 ) : (
-                  <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all ${uploading ? "border-amber-300 bg-amber-50" : "border-slate-300 hover:border-blue-400 hover:bg-blue-50/50 bg-slate-50"}`}>
+                  <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all ${uploading ? "border-amber-300 bg-amber-50" : "border-slate-300 hover:border-amber-400 hover:bg-amber-50/50 bg-slate-50"}`}>
                     <Upload className={`h-8 w-8 mb-3 ${uploading ? "text-amber-500 animate-pulse" : "text-slate-400"}`} />
                     <span className="text-sm font-semibold text-slate-700">{uploading ? "Uploading..." : "Click to select a file"}</span>
                     <span className="text-xs text-slate-400 mt-1">Supports PDF, JPG, PNG, DOCX</span>

@@ -354,7 +354,7 @@ const [localNotes, setLocalNotes] = useState({});
                       <div className="pt-2 border-t border-slate-100 mt-3">
                         <Label className="text-xs text-slate-600 flex justify-between">
                           <span>Subcontractor</span>
-                          <button onClick={() => { setActivePhaseIdForSub(ph.id); setSubDialogOpen(true); }} className="text-[10px] text-blue-600 font-bold hover:underline">
+                          <button onClick={() => { setActivePhaseIdForSub(ph.id); setSubDialogOpen(true); }} className="text-[10px] text-amber-600 hover:text-amber-700 font-bold hover:underline">
                             + Quick Add
                           </button>
                         </Label>
@@ -372,7 +372,7 @@ const [localNotes, setLocalNotes] = useState({});
                             {subcontractors.map(sub => (
                               <SelectItem key={sub.id} value={sub.id}>{sub.name || sub.contact_name}</SelectItem>
                             ))}
-                            <SelectItem value="create_new" className="text-blue-600 font-bold">+ Create New Subcontractor</SelectItem>
+                            <SelectItem value="create_new" className="text-amber-600 focus:text-amber-700 focus:bg-amber-50 font-bold">+ Create New Subcontractor</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -540,7 +540,7 @@ const [localNotes, setLocalNotes] = useState({});
                 <button type="button" onClick={() => {
                   setActivePhaseIdForSub("new_phase_form");
                   setSubDialogOpen(true);
-                }} className="text-blue-600 hover:underline text-xs font-bold">
+                }} className="text-amber-600 hover:text-amber-700 hover:underline text-xs font-bold">
                   + Quick Add
                 </button>
               </Label>
@@ -560,7 +560,7 @@ const [localNotes, setLocalNotes] = useState({});
                   {subcontractors.map(sub => (
                     <SelectItem key={sub.id} value={sub.id}>{sub.name || sub.contact_name}</SelectItem>
                   ))}
-                  <SelectItem value="create_new" className="text-blue-600 font-bold">+ Create New Subcontractor</SelectItem>
+                  <SelectItem value="create_new" className="text-amber-600 focus:text-amber-700 focus:bg-amber-50 font-bold">+ Create New Subcontractor</SelectItem>
                 </SelectContent>
               </Select>
             </div>

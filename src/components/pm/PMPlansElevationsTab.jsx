@@ -248,7 +248,7 @@ export default function PMPlansElevationsTab({ project }) {
                     <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
                       {/* BUTTON 1: OPEN IN NEW TAB */}
                       <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                        <button className="h-7 w-7 bg-white/95 rounded-md flex items-center justify-center shadow-sm border border-slate-200 hover:bg-white text-blue-600" title="Open sheet in new browser tab">
+                        <button className="h-7 w-7 bg-white/95 rounded-md flex items-center justify-center shadow-sm border border-amber-200 hover:border-amber-300 hover:bg-amber-50 text-amber-600 hover:text-amber-700" title="Open sheet in new browser tab">
                           <ExternalLink className="h-3.5 w-3.5" />
                         </button>
                       </a>
@@ -332,7 +332,7 @@ export default function PMPlansElevationsTab({ project }) {
                     <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-700 hover:bg-emerald-100 shrink-0" onClick={() => setForm(f => ({...f, file_url: "", file_name: ""}))}>Remove</Button>
                   </div>
                 ) : (
-                  <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all ${uploading ? "border-amber-300 bg-amber-50" : "border-slate-300 hover:border-blue-400 hover:bg-blue-50/50 bg-slate-50"}`}>
+                  <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all ${uploading ? "border-amber-300 bg-amber-50" : "border-slate-300 hover:border-amber-400 hover:bg-amber-50/50 bg-slate-50"}`}>
                     <Upload className={`h-8 w-8 mb-3 ${uploading ? "text-amber-500 animate-pulse" : "text-slate-400"}`} />
                     <span className="text-sm font-semibold text-slate-700">{uploading ? "Uploading..." : "Click to select a plan or elevation file"}</span>
                     <span className="text-xs text-slate-400 mt-1">Supports PDF, JPG, PNG, etc.</span>

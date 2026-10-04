@@ -266,11 +266,11 @@ export default function PermitsTab({ projectId }) {
                   {permit.file_url && (
                     <a href={permit.file_url} target="_blank" rel="noopener noreferrer">
                       <Button size="sm" variant="outline" className="gap-1 text-xs font-bold border-slate-300">
-                        <FileText className="h-3.5 w-3.5 text-blue-600" /> View
+                        <FileText className="h-3.5 w-3.5 text-amber-600" /> View
                       </Button>
                     </a>
                   )}
-                  <Button size="icon" variant="ghost" onClick={() => openEdit(permit)} className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50">
+                  <Button size="icon" variant="ghost" onClick={() => openEdit(permit)} className="h-8 w-8 text-slate-400 hover:text-amber-700 hover:bg-amber-50 focus-visible:text-amber-700 focus-visible:bg-amber-50 focus-visible:ring-amber-600">
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button size="icon" variant="ghost" onClick={() => { if (window.confirm("Delete this permit?")) deleteMutation.mutate(permit.id); }} className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50">

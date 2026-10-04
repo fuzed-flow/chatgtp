@@ -161,7 +161,7 @@ export default function PMClientTimelineTab({ project }) {
             </p>
           </div>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white shrink-0 shadow-sm" onClick={() => setAddOpen(true)}>
+        <Button className="bg-amber-500 hover:bg-amber-600 text-slate-900 shrink-0 shadow-sm focus-visible:ring-amber-600" onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4 mr-1.5" /> Post Update
         </Button>
       </div>
@@ -275,7 +275,7 @@ export default function PMClientTimelineTab({ project }) {
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => createEvent.mutate(form)} disabled={!form.title || createEvent.isPending}>
+              <Button className="bg-amber-500 hover:bg-amber-600 text-slate-900 focus-visible:ring-amber-600" onClick={() => createEvent.mutate(form)} disabled={!form.title || createEvent.isPending}>
                 {createEvent.isPending ? "Posting..." : "Post Update"}
               </Button>
             </div>

@@ -148,7 +148,7 @@ export default function CreateTaskDialog({
             <div className="space-y-2 border border-blue-200 bg-blue-50 p-3 rounded-xl col-span-2">
               <Label htmlFor="project" className={`text-[10px] font-black uppercase tracking-wider ${hasLead ? 'text-blue-300' : 'text-blue-800'}`}>Production Project</Label>
               <Select disabled={hasLead} value={String(formData.project_id || "none")} onValueChange={(v) => setFormData({ ...formData, project_id: v })}>
-                <SelectTrigger id="project" className={`font-bold border-blue-200 text-sm ${hasLead ? 'bg-slate-50 opacity-60' : 'bg-white shadow-sm'}`}><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectTrigger id="project" className={`font-bold border-amber-300 focus:ring-amber-600 text-sm ${hasLead ? 'bg-slate-50 opacity-60' : 'bg-white shadow-sm'}`}><SelectValue placeholder="Select..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No Project</SelectItem>
                   {projects.map((p) => {
