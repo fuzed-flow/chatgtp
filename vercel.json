@@ -1,4 +1,6 @@
 {
+  "buildCommand": "vite build --config tests/pm-tasks/browser/vite.config.mjs",
+  "outputDirectory": "tests/pm-tasks/browser/dist",
   "rewrites": [
     {
       "source": "/(.*)",
