@@ -316,11 +316,11 @@ export default function PMStaffTab({ project }) {
       </div>
 
       {/* VIEW TOGGLES */}
-      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg w-max border border-slate-200">
-        <button onClick={() => setView("tasks")} className={`px-5 py-2 rounded-md text-sm font-bold flex items-center transition-all ${view === "tasks" ? "bg-white text-amber-700 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"}`}>
+      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg w-full sm:w-max border border-slate-200">
+        <button onClick={() => setView("tasks")} className={`min-w-0 flex-1 sm:flex-none justify-center px-2 sm:px-5 py-2 rounded-md text-xs sm:text-sm font-bold flex items-center transition-all ${view === "tasks" ? "bg-white text-amber-700 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"}`}>
           <CheckCircle2 className="h-4 w-4 mr-2" /> Task Board
         </button>
-        <button onClick={() => setView("staff")} className={`px-5 py-2 rounded-md text-sm font-bold flex items-center transition-all ${view === "staff" ? "bg-white text-amber-700 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"}`}>
+        <button onClick={() => setView("staff")} className={`min-w-0 flex-1 sm:flex-none justify-center px-2 sm:px-5 py-2 rounded-md text-xs sm:text-sm font-bold flex items-center transition-all ${view === "staff" ? "bg-white text-amber-700 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"}`}>
           <Users className="h-4 w-4 mr-2" /> Assigned Team
         </button>
       </div>
@@ -328,8 +328,8 @@ export default function PMStaffTab({ project }) {
       {/* --- TASKS VIEW --- */}
       {view === "tasks" && (
         <Card className="p-0 sm:p-5 border-none sm:border-solid sm:border-slate-200 shadow-none sm:shadow-sm bg-transparent sm:bg-white">
-          <div className="flex justify-between items-center mb-4 sm:pb-2 sm:border-b sm:border-slate-100 px-1 sm:px-0">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Project Tasks ({assigneeFilter === "all" ? tasks.length : `${filteredTasks.length} of ${tasks.length}`})</h3>
+          <div className="flex flex-wrap justify-between items-center gap-3 mb-4 sm:pb-2 sm:border-b sm:border-slate-100 px-1 sm:px-0">
+            <h3 className="shrink-0 text-sm font-bold text-slate-800 uppercase tracking-wider">Project Tasks ({assigneeFilter === "all" ? tasks.length : `${filteredTasks.length} of ${tasks.length}`})</h3>
             <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold shadow-sm">
               <Plus className="h-4 w-4 mr-1.5" /> Add Task
             </Button>
