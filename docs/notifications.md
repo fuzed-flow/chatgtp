@@ -12,6 +12,7 @@ Database triggers create internal alerts; public document activity uses the vali
 
 | Area | Supported events |
 | --- | --- |
+| Leads | New lead creation alerts owners, administrators, and managers/office staff with Leads access, including the creator. Alerts require action, link to the lead, and deduplicate per lead. Updates do not repeat the creation alert. |
 | Projects and tasks | Project creation, staff assignment, status/date/budget changes, milestone completion, task creation/assignment/reassignment/completion, due-today and overdue reminders |
 | Quotes | Creation, review status, sent/approved/declined/expired status, revisions, conversion to a project, client views/change requests, saved optional-item selections |
 | Change orders | Creation, review/approval/decline status, revisions, client views/change requests, successful project-budget sync |

@@ -64,6 +64,13 @@ create table public.clients(
   tags text[],
   portal_features jsonb
 );
+create table public.leads(
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid,
+  contact_name text,
+  pipeline_stage text,
+  created_at timestamptz default now()
+);
 create table public.companies(
   id uuid primary key default gen_random_uuid(),
   name text,

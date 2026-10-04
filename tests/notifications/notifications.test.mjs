@@ -6,6 +6,7 @@ import { notificationLink } from '../../src/lib/notificationLinks.js';
 
 test('notification links stay inside the app and respect field access', () => {
   assert.equal(notificationLink({ action_url: '/QuoteBuilder?id=123' }, 'owner'), '/QuoteBuilder?id=123');
+  assert.equal(notificationLink({ action_url: '/LeadDetail?id=123' }, 'admin'), '/LeadDetail?id=123');
   for (const action_url of ['https://evil.example', '//evil.example', '/login', '/\\evil.example']) {
     assert.equal(notificationLink({ action_url }, 'admin'), null);
   }
@@ -19,6 +20,7 @@ test('database delivery, reminders and authorization across two tenants and six 
     await db.exec(await readFile(new URL('./schema.sql', import.meta.url), 'utf8'));
     await db.exec("alter table profiles add constraint profiles_legacy_role_check check (role in ('admin','manager','employee')); insert into notifications(title,is_read,status) values('Legacy read state',null,null)");
     await db.exec(await readFile(new URL('../../supabase/migrations/20261003220500_role_based_notifications.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../../supabase/migrations/20261004031303_lead_created_notifications.sql', import.meta.url), 'utf8'));
     assert.equal((await db.query("select is_read from notifications where title='Legacy read state'")).rows[0].is_read, false);
     const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
     const C = id(1), OTHER = id(2), PROJECT = id(3), TASK = id(4), INVOICE = id(5);
@@ -33,6 +35,28 @@ test('database delivery, reminders and authorization across two tenants and six 
     for (const role of ['manager','employee','subcontractor']) await db.query('insert into project_staff(company_id,project_id,user_id,is_active) values($1,$2,$3,true)',[C,PROJECT,people[role]]);
     await db.exec('delete from notifications');
     await actor(people.admin);
+    const LEAD=id(40);
+    await db.query("insert into leads(id,company_id,contact_name,pipeline_stage) values($1,$2,'Synthetic enquiry','New')",[LEAD,C]);
+    let leadAlerts=await rows("select user_id,severity,category,action_url from notifications where event_key='lead_created' and related_id=$1",[LEAD]);
+    assert.deepEqual(new Set(leadAlerts.map(r=>r.user_id)),new Set(['owner','admin','manager','office'].map(r=>people[r])), 'creation includes the actor and excludes field roles, inactive users and other tenants');
+    assert.ok(leadAlerts.every(r=>r.severity==='Action Required' && r.category==='Leads' && r.action_url===`/LeadDetail?id=${LEAD}`));
+    assert.equal((await rows('select notification_private.lead_created($1) n',[LEAD]))[0].n,0,'recovery cannot duplicate delivery');
+    await db.query("update leads set pipeline_stage='Contacted' where id=$1",[LEAD]);
+    assert.equal((await rows("select count(*)::int n from notifications where event_key='lead_created' and related_id=$1",[LEAD]))[0].n,4,'edits do not create another new-lead alert');
+    await db.query("update profiles set permissions='[\"projects\"]'::jsonb where id in ($1,$2)",[people.manager,people.office]);
+    await db.query("insert into leads(id,company_id,contact_name) values($1,$2,'Restricted enquiry')",[id(41),C]);
+    assert.deepEqual(new Set((await rows("select user_id from notifications where event_key='lead_created' and related_id=$1",[id(41)])).map(r=>r.user_id)),new Set([people.owner,people.admin]),'module permissions exclude staff without Leads access');
+    await db.query("update profiles set permissions='[]'::jsonb where id in ($1,$2)",[people.manager,people.office]);
+    await actor(id(20));
+    await db.query("insert into leads(id,company_id,contact_name) values($1,$2,'Wrong tenant actor')",[id(42),C]);
+    assert.equal((await rows("select count(*)::int n from notifications where related_id=$1",[id(42)]))[0].n,0,'a foreign-tenant actor cannot create alerts');
+    await actor(people.admin);
+    await db.exec('set role authenticated');
+    leadAlerts=await rows("select * from notifications where event_key='lead_created'");
+    assert.ok(leadAlerts.length>0 && leadAlerts.every(r=>r.user_id===people.admin && r.company_id===C),'creation is readable through the recipient RLS policy');
+    await assert.rejects(db.query('select notification_private.lead_created($1)',[LEAD]),/permission denied/);
+    await db.exec('reset role');
+    await db.exec("delete from notifications where event_key='lead_created'");
     await db.query("insert into project_tasks(id,company_id,project_id,title,status,assigned_to,due_date_target,estimated_hours) values($1,$2,$3,'Install doors','To Do',$4,'2026-10-05',10)",[TASK,C,PROJECT,[people.employee]]);
     let delivered = await rows("select user_id,severity,category,action_url from notifications where event_key='task_assigned'");
     assert.deepEqual(delivered.map(r=>r.user_id),[people.employee]);
