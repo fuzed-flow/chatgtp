@@ -12,5 +12,20 @@ function mockQuery(table){
 }
 export const supabase={
  from:mockQuery,
- functions:{invoke:async(name,options)=>{window.__helpLastRequest=options.body;return {data:{reply:'1. Open **PM Projects** and select your project.\n2. Choose **Staff & Tasks → Task List**.\n3. Use **Assigned to** to pick a user.\n\nSelect **Unassigned** for tasks without an assignee or **All users** to reset.',sources:[{slug:'pm-task-assignee-filter',question:'How do I filter project tasks by the person assigned?'}]},error:null};}},
+ functions:{invoke:async(name,options)=>{
+  window.__helpLastRequest=options.body;
+  const validation=/link validation/i.test(options.body.query);
+  const reply=validation
+   ? 'Read the [task filter guide](/HelpArticles?article=pm-task-assignee-filter), or [contact support](/Contact).\n\nThese unverified samples should remain plain text: [Missing page](/MissingHelpPage), [Missing article](/HelpArticles?article=guide-does-not-exist), and [External sample](https://unverified.example/help).'
+   : '1. Open **PM Projects** and select your project.\n2. Choose **Staff & Tasks → Task Board**.\n3. Use **Assigned to** to pick a user.\n\nSelect **Unassigned** for tasks without an assignee or **All users** to reset. Read the [task filter guide](/HelpArticles?article=pm-task-assignee-filter) for the full steps.';
+  const sources=[{slug:'pm-task-assignee-filter',question:'How do I filter project tasks by the person assigned?'}];
+  if(validation)sources.push({slug:'guide-does-not-exist',question:'Unverified source sample'});
+  return {data:{reply,sources,allowedLinks:[
+   {href:'/HelpArticles',label:'Help Articles'},
+   {href:'/FAQ',label:'Quick answers & FAQ'},
+   {href:'/Contact',label:'Contact support'},
+   {href:'/Tutorials',label:'Video tutorials'},
+   {href:'/HelpArticles?article=pm-task-assignee-filter',label:'How do I filter project tasks by the person assigned?'},
+  ]},error:null};
+ }},
 };

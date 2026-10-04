@@ -7,8 +7,16 @@ import { Input } from "@/components/ui/input";
 import * as Dialog from "@radix-ui/react-dialog";
 import AIHelpAnswer from "./AIHelpAnswer";
 import { isPublicHelpRoute } from "@/lib/helpPortal";
+import { useAuth } from "@/lib/AuthContext";
+import { isAllowedHelpLink } from "../../../supabase/functions/_shared/helpLinks.js";
+
+const GREETING = { role: "ai", text: "Hi! I'm the FuzedFlow Helper. What can I help you find today?" };
 
 export default function AIHelpWidget() {
+  const { profile } = useAuth();
+  const conversationScope = `${profile?.id || ''}:${profile?.role || ''}`;
+  const scopeRef = useRef(conversationScope);
+  const requestGenerationRef = useRef(0);
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -20,9 +28,16 @@ export default function AIHelpWidget() {
   const location = useLocation(); 
 
   // 1. Updated AI Persona
-  const [messages, setMessages] = useState([
-    { role: "ai", text: "Hi! I'm the FuzedFlow Helper. What can I help you find today?" }
-  ]);
+  const [messages, setMessages] = useState([GREETING]);
+
+  useEffect(() => {
+    scopeRef.current = conversationScope;
+    requestGenerationRef.current += 1;
+    setMessages([GREETING]);
+    setInput("");
+    setIsLoading(false);
+    setIsOpen(false);
+  }, [conversationScope]);
 
   useEffect(() => {
     if (messageListRef.current) messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
@@ -57,6 +72,9 @@ export default function AIHelpWidget() {
     if (!input.trim() || isLoading) return;
 
     const userText = input.trim();
+    const requestScope = conversationScope;
+    const requestGeneration = ++requestGenerationRef.current;
+    const currentRequest = () => scopeRef.current === requestScope && requestGenerationRef.current === requestGeneration;
     setInput("");
     
     setMessages(prev => [...prev, { role: "user", text: userText }]);
@@ -73,13 +91,16 @@ export default function AIHelpWidget() {
       });
 
       if (error) throw error;
-
-      setMessages(prev => [...prev, { role: "ai", text: data.reply || "I couldn't process that request.", sources: Array.isArray(data.sources) ? data.sources.filter(source => /^[a-zA-Z0-9_-]+$/.test(source.slug) && typeof source.question === "string").slice(0, 3) : [] }]);
+      if (!currentRequest()) return;
+      const allowedLinks = Array.isArray(data?.allowedLinks) ? data.allowedLinks.filter(link => link && typeof link.href === 'string' && isAllowedHelpLink(link.href, data.allowedLinks)).map(link => ({ href: link.href, label: typeof link.label === 'string' ? link.label : '' })) : [];
+      const sources = Array.isArray(data?.sources) ? data.sources.filter(source => source && /^[a-zA-Z0-9_-]{1,160}$/.test(source.slug) && typeof source.question === "string" && isAllowedHelpLink(`/HelpArticles?article=${source.slug}`, allowedLinks)).slice(0, 3) : [];
+      setMessages(prev => [...prev, { role: "ai", text: typeof data?.reply === 'string' ? data.reply : "I couldn't process that request.", allowedLinks, sources }]);
     } catch (error) {
+      if (!currentRequest()) return;
       console.error("AI Help Error:", error);
       setMessages(prev => [...prev, { role: "ai", text: error.context?.status === 401 ? "Your session has expired. Please sign in again to use AI Help." : "AI Help couldn't connect. You can still use the Help Articles or contact support below." }]);
     } finally {
-      setIsLoading(false);
+      if (currentRequest()) setIsLoading(false);
     }
   };
   
@@ -117,7 +138,7 @@ export default function AIHelpWidget() {
                     {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                   </div>
                   <div className={`min-w-0 break-words [overflow-wrap:anywhere] p-3 rounded-2xl text-sm ${msg.role === "user" ? "bg-amber-100 text-slate-900 rounded-tr-sm whitespace-pre-wrap" : "bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm"}`}>
-                    {msg.role === "ai" ? <><AIHelpAnswer text={msg.text} />{msg.sources?.length > 0 && <div className="mt-3 border-t border-slate-100 pt-2"><p className="text-xs font-semibold text-slate-500">Related help</p>{msg.sources.map(source => <Link key={source.slug} to={`/HelpArticles?article=${encodeURIComponent(source.slug)}`} onClick={() => setIsOpen(false)} className="mt-1 flex min-h-11 items-center rounded-lg px-2 py-2 text-xs font-medium text-amber-800 underline-offset-2 hover:bg-amber-50 hover:underline focus-visible:ring-2 focus-visible:ring-amber-500">{source.question}</Link>)}</div>}</> : msg.text}
+                    {msg.role === "ai" ? <><AIHelpAnswer text={msg.text} allowedLinks={msg.allowedLinks} onLinkClick={() => setIsOpen(false)} />{msg.sources?.length > 0 && <div className="mt-3 border-t border-slate-100 pt-2"><p className="text-xs font-semibold text-slate-500">Related help</p>{msg.sources.map(source => <Link key={source.slug} to={isAllowedHelpLink(`/HelpArticles?article=${source.slug}`, msg.allowedLinks)} onClick={() => setIsOpen(false)} className="mt-1 flex min-h-11 items-center rounded-lg px-2 py-2 text-xs font-medium text-amber-800 underline-offset-2 hover:bg-amber-50 hover:underline focus-visible:ring-2 focus-visible:ring-amber-500">{source.question}</Link>)}</div>}</> : msg.text}
                   </div>
                 </div>
               ))}
