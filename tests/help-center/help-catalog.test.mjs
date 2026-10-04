@@ -19,6 +19,7 @@ const migrations = await Promise.all([
   '20261004070726_help_articles_portal_schema.sql',
   '20261004071225_help_articles_portal_content.sql',
   '20261004155307_fuzed_flow_contractor_portal_branding.sql',
+  '20261004164956_document_email_company_copy_help.sql',
 ].map(name => fs.readFile(local('../../supabase/migrations/' + name), 'utf8')));
 const schema = await fs.readFile(local('./schema.sql'), 'utf8');
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -115,6 +116,9 @@ test('AI retrieves useful current sections for real notification, expense, prici
       {query: 'general document signing signature tracking availability', slug: 'guide-feature-availability', content: /## Approval and general document signing[\s\S]*does not currently provide a complete general document/},
       {query: 'Employee Portal phone More menu Expenses', slug: 'guide-employee-portal', content: /## Navigate on a phone[\s\S]*\*\*More\*\*[\s\S]*Expenses/},
       {query: 'contractor portal quote email contact invitation', slug: 'guide-project-contractor-portal', content: /Fuzed Flow[\s\S]*configured business contact email[\s\S]*contact who sent their invitation/},
+      {query: 'quote send me a copy company email retry copy', slug: 'guide-quotes-review-send', content: /Send me a copy[\s\S]*Branding & PDFs[\s\S]*Retry copy[\s\S]*without sending another client email/},
+      {query: 'invoice send me a copy company email', slug: 'guide-invoices-share-customer-pay', content: /\[COPY\] Invoice from LBProjects - Invoice #INV-1001 for Jane Smith/},
+      {query: 'change order send me a copy company email', slug: 'guide-change-order-draft', content: /\[COPY\] Change Order from LBProjects - Change Order #CO-1001 for Jane Smith/},
     ];
     for (const example of cases) {
       const results = (await db.query('select * from search_help_articles($1,null,null,4)', [example.query])).rows;

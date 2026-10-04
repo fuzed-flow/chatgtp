@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import { Send, FileText, Link as LinkIcon, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { createPageUrl } from "../../utils";
 import { generateQuotePDF } from "../pdf/PDFGenerator";
+import { useDocumentEmailSend } from "@/lib/emailCopy";
 
 export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeOrderId, coName, clientName, clientEmail, onSuccess }) {
   const { profile, settings } = useAuth();
@@ -21,39 +22,71 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
   const [message, setMessage] = useState("");
   const [signature, setSignature] = useState("");
   const [attachPdf, setAttachPdf] = useState(true);
-  const [saving, setSaving] = useState(false);
   
   const [coData, setCoData] = useState(null);
   const [companyData, setCompanyData] = useState(null);
+  const [readyDocumentId, setReadyDocumentId] = useState(null);
+  const setupLoading = readyDocumentId !== changeOrderId;
+  const {
+    saving, sendCopy, setSendCopy, copyEmail, copyAvailable, inputsLocked,
+    hasRetry, copyPending, retryExpired, errorMessage, handleOpenChange, send,
+  } = useDocumentEmailSend({
+    open,
+    documentId: changeOrderId,
+    documentType: "change_order",
+    companyEmail: companyData?.settings?.email,
+    onOpenChange,
+    onSuccess,
+    successMessage: "Change Order successfully emailed!",
+    loadingMessage: "Generating PDF and sending email...",
+  });
+  const setupContext = useRef({ profile, settings, inputsLocked });
+  setupContext.current = { profile, settings, inputsLocked };
+  const setupDocumentRef = useRef(null);
 
   useEffect(() => {
+    const { profile, settings, inputsLocked } = setupContext.current;
     if (!open || !changeOrderId) return;
+    if (inputsLocked && setupDocumentRef.current === changeOrderId) return;
+    setupDocumentRef.current = changeOrderId;
 
     let isMounted = true;
+    setReadyDocumentId(null);
+    setEmail("");
+    setSubject("");
+    setMessage("");
+    setSignature("");
+    setAttachPdf(true);
+    setCompanyData(null);
+    setCoData(null);
 
     const fetchSetupData = async () => {
       // 1. Deep fetch: Grab the Change Order AND reach through to the Project to get the Client ID
-      const { data: changeOrder } = await supabase
+      const { data: changeOrder, error: loadError } = await supabase
         .from("change_orders")
         .select(`*, projects(client_id)`)
         .eq("id", changeOrderId)
         .single();
 
       if (!isMounted) return;
+      if (loadError || !changeOrder) throw new Error("Change order unavailable");
       setCoData(changeOrder);
 
       // 2. Fetch the actual Company Data
       let cpyName = "Our Company";
-      let compObj = null;
       if (profile?.company_id) {
-        const { data: cData } = await supabase
-          .from("companies")
-          .select("name, logo_url, company_logo_url, settings")
-          .eq("id", profile.company_id)
-          .single();
-          
+        let cData = null;
+        try {
+          const { data, error } = await supabase
+            .from("companies")
+            .select("name, logo_url, company_logo_url, settings")
+            .eq("id", profile.company_id)
+            .single();
+          if (!error) cData = data;
+        } catch { /* Company branding is optional; copies stay disabled when unavailable. */ }
+
+        if (!isMounted) return;
         if (cData) {
-          compObj = cData;
           setCompanyData(cData);
           cpyName = cData.name || cpyName;
         }
@@ -111,21 +144,22 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
         .replace(/{{company_name}}/g, cpyName);
 
       setSignature(personalizedSig.trim());
+      setReadyDocumentId(changeOrderId);
     };
 
-    fetchSetupData();
+    fetchSetupData().catch(() => {
+      if (isMounted) toast.error("Could not load the change order. Close this dialog and reopen it.");
+    });
 
     return () => { isMounted = false; };
-  }, [open, changeOrderId, clientName, clientEmail, settings, profile]);
+  }, [open, changeOrderId, clientName, clientEmail, profile?.company_id]);
 
   const handleSend = async (e) => {
     e.preventDefault();
+    if (setupLoading || saving || retryExpired) return;
     if (!email.trim()) { toast.error("Please enter a valid email"); return; }
 
-    setSaving(true);
-    const loadingToast = toast.loading("Generating PDF and sending email...");
-
-    try {
+    await send(async () => {
       // ⚡ 1. EXTRACT CLIENT ID FIRST
       let clientId = null;
       if (coData?.projects) {
@@ -224,21 +258,8 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
          }
       }
 
-      const { data, error: fnError } = await supabase.functions.invoke("send-email", { body: payload });
-
-      if (fnError) throw new Error(fnError.message || "Failed to trigger email function");
-
-      await supabase.from("change_orders").update({ status: "Sent" }).eq("id", changeOrderId);
-
-      toast.success(`Change Order successfully emailed!`, { id: loadingToast });
-      onSuccess?.();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Email send error:", error);
-      toast.error(`Failed to send email: ${error.message || "Unknown error"}`, { id: loadingToast });
-    } finally {
-      setSaving(false);
-    }
+      return payload;
+    });
   };
 
   const copyToClipboard = () => {
@@ -248,8 +269,8 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-xl bg-slate-50 p-0 overflow-hidden flex flex-col max-h-[90vh]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="w-[95vw] sm:max-w-xl bg-slate-50 p-0 overflow-hidden flex flex-col max-h-[90dvh]">
         <DialogHeader className="px-6 py-4 bg-white border-b border-slate-200 shrink-0">
           <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
             <Mail className="h-5 w-5 text-amber-500" /> Email Change Order
@@ -263,7 +284,7 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
                 <LinkIcon className="h-4 w-4" />
                 <span className="text-sm font-semibold">Client Portal Link</span>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={copyToClipboard} className="bg-white border-amber-200 hover:bg-amber-100 text-amber-800">
+              <Button type="button" variant="outline" size="sm" onClick={copyToClipboard} disabled={setupLoading || saving} className="bg-white border-amber-200 hover:bg-amber-100 text-amber-800">
                 Copy Link
               </Button>
             </div>
@@ -271,22 +292,22 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
             <Card className="p-5 border-slate-200 shadow-sm space-y-4 bg-white">
               <div>
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Client Email *</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="font-medium text-slate-900" autoFocus />
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={inputsLocked || setupLoading} className="font-medium text-slate-900" autoFocus />
               </div>
 
               <div>
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Subject Line</Label>
-                <Input value={subject} onChange={(e) => setSubject(e.target.value)} className="font-semibold text-slate-900" />
+                <Input value={subject} onChange={(e) => setSubject(e.target.value)} disabled={inputsLocked || setupLoading} className="font-semibold text-slate-900" />
               </div>
 
               <div className="space-y-4 border border-slate-200 rounded-lg p-1 bg-slate-50">
                 <div className="bg-white rounded-md p-1 border border-transparent focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-2 mt-2 block">Message Body</Label>
-                  <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={6} className="resize-y min-h-[100px] font-medium border-0 focus-visible:ring-0 shadow-none pb-2 text-slate-800" />
+                  <Textarea value={message} onChange={(e) => setMessage(e.target.value)} disabled={inputsLocked || setupLoading} rows={6} className="resize-y min-h-[100px] font-medium border-0 focus-visible:ring-0 shadow-none pb-2 text-slate-800" />
                 </div>
                 <div className="px-3 pb-3">
                   <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Signature</Label>
-                  <Textarea value={signature} onChange={(e) => setSignature(e.target.value)} rows={3} className="resize-none font-medium text-slate-600 bg-slate-100/50 border-slate-200 focus-visible:ring-amber-500" />
+                  <Textarea value={signature} onChange={(e) => setSignature(e.target.value)} disabled={inputsLocked || setupLoading} rows={3} className="resize-none font-medium text-slate-600 bg-slate-100/50 border-slate-200 focus-visible:ring-amber-500" />
                 </div>
               </div>
 
@@ -296,17 +317,27 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
                     <FileText className="h-4 w-4 text-slate-400" />
                     <Label className="text-sm font-medium text-slate-700 cursor-pointer" htmlFor="attach-pdf">Attach PDF copy to email</Label>
                   </div>
-                  <Switch id="attach-pdf" checked={attachPdf} onCheckedChange={setAttachPdf} />
+                  <Switch id="attach-pdf" checked={attachPdf} onCheckedChange={setAttachPdf} disabled={inputsLocked || setupLoading} />
                 </div>
               </div>
             </Card>
           </div>
 
-          <div className="flex justify-end gap-3 p-4 bg-white border-t border-slate-200 shrink-0">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
-            <Button type="submit" disabled={saving} className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6 shadow-sm">
-              {saving ? "Sending..." : <><Send className="h-4 w-4 mr-2" /> Send Email</>}
-            </Button>
+          {errorMessage && <p role="alert" className="px-4 pb-3 text-sm text-red-700">{errorMessage}</p>}
+          <div className="flex flex-col gap-3 p-4 bg-white border-t border-slate-200 shrink-0 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <label htmlFor="change-order-send-copy" className="flex min-h-11 items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                <input id="change-order-send-copy" type="checkbox" checked={sendCopy} onChange={(e) => setSendCopy(e.target.checked)} disabled={!copyAvailable || inputsLocked || setupLoading} className="h-4 w-4 accent-amber-500 focus-visible:outline-amber-600" aria-describedby="change-order-copy-hint" />
+                Send me a copy
+              </label>
+              <p id="change-order-copy-hint" className="text-xs text-slate-500 break-words">{setupLoading ? "Loading company email..." : copyAvailable ? `Copy to: ${copyEmail}` : "Add a valid company email in Settings to receive a copy."}</p>
+            </div>
+            <div className="flex justify-end gap-3 shrink-0">
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={saving}>{copyPending ? "Close" : "Cancel"}</Button>
+              <Button type="submit" disabled={saving || retryExpired || setupLoading} className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6 shadow-sm">
+                {saving ? (copyPending ? "Sending copy..." : "Sending...") : <><Send className="h-4 w-4 mr-2" /> {copyPending ? "Retry copy" : hasRetry ? "Retry send" : "Send Email"}</>}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

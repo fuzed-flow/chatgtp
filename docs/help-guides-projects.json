@@ -682,15 +682,19 @@
     "slug": "guide-change-order-draft",
     "feature_area": "Change Orders",
     "question": "Create and send a clear change order",
-    "answer_short": "Document a project scope change with phases, line items, cost/revenue impact, and a client-facing preview before sending.",
-    "answer_long": "## Before you begin\nOpen **Change Orders**. Access depends on your company's plan; an upgrade wall means the feature is unavailable on the current plan. Have an existing project and the proposed change ready. A change order should explain the difference from the original scope, its cost, and any decisions the client needs to make.\n\n## Prepare a draft\n1. Select **New Change Order**; the create action may show as a plus icon on a phone.\n2. Enter the required **Change Order Title** and select **Linked Project**. Review the resolved client and **Issue Date**.\n3. Fill **Reason for Change / Scope** with the reason and overall change description.\n4. Add a phase and its line items. Review names, descriptions, quantities, units, internal costs, client prices, tax choices, and any optional items before relying on the total.\n5. Use **Cost vs Revenue Impact** to distinguish your costs from the amount being proposed to the client.\n6. Review **Client Message** and **Terms & Conditions**, then save the draft. The app assigns its CO number; it is not entered manually.\n\n## Preview and share\nOpen **Actions → Client Preview** to inspect the client document. Check optional selections, photos, scope, and totals. Use **Actions → Send via Email** to review the client email, subject, message, signature, and optional PDF attachment. **Send via Text Message** uses the client phone and a message containing the public review link. Submit only after checking the recipient and wait for the result.\n\nThe list-level **Send to Client** action currently announces a coming-soon module. Use the saved builder's email/text actions instead. **Mark as Sent** changes document status without sending a message.\n\n## Troubleshooting and mobile use\nIf no project is available, confirm that you are in the correct company and have access to the project. If saving fails, retain the entered scope and inspect the error before creating another draft. A Sent status is not proof that a recipient received an email or text; check the actual send result.\n\nOn a phone, the bottom Actions button includes its text label while the top button may show only a menu icon. Scroll through phases and the totals before sending. Do not treat sending or approval as a general document-signature workflow.",
+    "answer_short": "Document a project scope change with phases, line items, cost/revenue impact, and a client-facing preview before sending; optionally send your company the same formatted email with **Send me a copy**.",
+    "answer_long": "## Before you begin\nOpen **Change Orders**. Access depends on your company's plan; an upgrade wall means the feature is unavailable on the current plan. Have an existing project and the proposed change ready. A change order should explain the difference from the original scope, its cost, and any decisions the client needs to make.\n\n## Prepare a draft\n1. Select **New Change Order**; the create action may show as a plus icon on a phone.\n2. Enter the required **Change Order Title** and select **Linked Project**. Review the resolved client and **Issue Date**.\n3. Fill **Reason for Change / Scope** with the reason and overall change description.\n4. Add a phase and its line items. Review names, descriptions, quantities, units, internal costs, client prices, tax choices, and any optional items before relying on the total.\n5. Use **Cost vs Revenue Impact** to distinguish your costs from the amount being proposed to the client.\n6. Review **Client Message** and **Terms & Conditions**, then save the draft. The app assigns its CO number; it is not entered manually.\n\n## Preview and share\nOpen **Actions → Client Preview** to inspect the client document. Check optional selections, photos, scope, and totals. Use **Actions → Send via Email** to review the client email, subject, message, signature, and optional PDF attachment. **Send via Text Message** uses the client phone and a message containing the public review link. Submit only after checking the recipient and wait for the result.\n\nThe list-level **Send to Client** action currently announces a coming-soon module. Use the saved builder's email/text actions instead. **Mark as Sent** changes document status without sending a message.\n\n## Send your company a copy\n\nThe **Send me a copy** checkbox is at the bottom left of the email dialog and starts unchecked. Leave it unchecked to send only the customer email. Tick it to send a separate copy to your company's business email address in **Settings → Branding & PDFs → Email Address**. An owner or administrator can correct a missing or invalid address before sending with this option.\n\nThe copy has the same formatted body, document link, and any included PDF attachments as the customer email. Its subject identifies the saved document and customer, for example: `[COPY] Change Order from LBProjects - Change Order #CO-1001 for Jane Smith`. This option applies to email, not text messages.\n\nIf the client email succeeds but the company copy fails, use **Retry copy** in the open dialog. It retries the captured message without sending another client email. Avoid starting a new send to retry a copy. On mobile, scroll to the dialog footer to reach the checkbox.\n\n## Troubleshooting and mobile use\nIf no project is available, confirm that you are in the correct company and have access to the project. If saving fails, retain the entered scope and inspect the error before creating another draft. A Sent status is not proof that a recipient received an email or text; check the actual send result.\n\nOn a phone, the bottom Actions button includes its text label while the top button may show only a menu icon. Scroll through phases and the totals before sending. Do not treat sending or approval as a general document-signature workflow.",
     "route": "/ChangeOrders",
     "search_terms": [
       "create change order",
       "scope change",
       "CO email",
       "change order draft",
-      "cost revenue impact"
+      "cost revenue impact",
+      "send me a copy",
+      "company email copy",
+      "copy failed",
+      "retry copy"
     ],
     "priority": 84,
     "related_slugs": [
@@ -701,12 +705,13 @@
       "src/pages/ChangeOrders.jsx",
       "src/pages/ChangeOrderBuilder.jsx",
       "src/components/change-orders/SendChangeOrderEmailDialog.jsx",
-      "src/components/change-orders/SendChangeOrderTextDialog.jsx"
+      "src/components/change-orders/SendChangeOrderTextDialog.jsx",
+      "supabase/functions/send-email/index.ts"
     ],
     "audience": "office",
     "requires_admin": false,
     "article_type": "guide",
-    "read_minutes": 2,
+    "read_minutes": 3,
     "last_verified_at": "2026-10-04",
     "is_active": true
   },

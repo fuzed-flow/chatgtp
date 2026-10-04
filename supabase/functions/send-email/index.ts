@@ -1,237 +1,225 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-const APP_URL = Deno.env.get("APP_URL") || "https://fuzedflow.com";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const documents = {
+  quote: { table: "quotes", number: "quote_number", label: "Quote", fields: "quote_number,client_id,lead_id" },
+  change_order: { table: "change_orders", number: "change_order_number", label: "Change Order", fields: "change_order_number,client_id,project_id" },
+  invoice: { table: "invoices", number: "invoice_number", label: "Invoice", fields: "invoice_number,client_id" },
+};
+
+// Keep company-contact validation aligned with src/lib/emailCopy.js.
+function validCompanyEmail(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const email = value.trim();
+  const localPart = email.split("@")[0];
+  return email.length <= 254 && localPart.length <= 64
+    && /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i.test(email)
+    && !localPart.startsWith(".") && !localPart.endsWith(".") && !localPart.includes("..");
+}
+
+function subjectText(value: unknown) {
+  return typeof value === "string" ? value.replace(/[\r\n]+/g, " ").trim() : "";
+}
+
+async function copyContext(supabase: any, companyId: string, body: any) {
+  if (!Object.prototype.hasOwnProperty.call(documents, body.document_type)
+    || !uuidPattern.test(body.document_id || "") || !uuidPattern.test(body.request_id || "")) {
+    throw new Error("A saved document and valid send request are required for a company copy.");
+  }
+  const definition = documents[body.document_type as keyof typeof documents];
+  const { data: company, error: companyError } = await supabase.from("companies")
+    .select("name,settings").eq("id", companyId).single();
+  if (companyError || !company || !validCompanyEmail(company.settings?.email)) {
+    throw new Error("Add a valid company email in Settings to receive a copy.");
+  }
+  const { data: document, error: documentError } = await supabase.from(definition.table)
+    .select(definition.fields).eq("id", body.document_id).eq("company_id", companyId).single();
+  if (documentError || !document) throw new Error("The document was not found in your company.");
+
+  let clientId = document.client_id || null;
+  if (body.document_type === "change_order" && document.project_id) {
+    const { data: project, error } = await supabase.from("projects")
+      .select("client_id").eq("id", document.project_id).eq("company_id", companyId).single();
+    if (error || !project) throw new Error("The document's project was not found in your company.");
+    clientId = project.client_id || clientId;
+  }
+  let clientName = "";
+  if (clientId) {
+    const { data: client, error } = await supabase.from("clients")
+      .select("name").eq("id", clientId).eq("company_id", companyId).single();
+    if (error || !client) throw new Error("The document's client was not found in your company.");
+    clientName = subjectText(client.name);
+  } else if (body.document_type === "quote" && document.lead_id) {
+    const { data: lead, error } = await supabase.from("leads")
+      .select("contact_name").eq("id", document.lead_id).eq("company_id", companyId).single();
+    if (error || !lead) throw new Error("The document's lead was not found in your company.");
+    clientName = subjectText(lead.contact_name);
+  }
+  const companyName = subjectText(company.name);
+  const number = subjectText(document[definition.number]).replace(/^#+\s*/, "");
+  if (!companyName || !number || !clientName) {
+    throw new Error("Save the company name, document number and client name before requesting a copy.");
+  }
+  return {
+    recipient: company.settings.email.trim(), clientId,
+    subject: `[COPY] ${definition.label} from ${companyName} - ${definition.label} #${number} for ${clientName}`,
+  };
+}
+
+async function sendViaResend(payload: any, apiKey: string, idempotencyKey?: string) {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json",
+  };
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST", headers, body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error("The email provider could not accept the email. Please retry.");
+  if (!uuidPattern.test(data?.id || "")) throw new Error("Email delivery could not be confirmed. Please retry.");
+  return data;
+}
 
 serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  let originalAttempted = false;
   try {
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const body = await req.json();
+    const { to_email, subject, html_body, client_id, attachment_url, reply_to, attachments, company_id: payloadCompanyId } = body;
 
-    console.log("Wake up! Fetching pending invoices...");
-
-    // 1. Fetch pending invoices (Ignoring Paid, Draft, and Void)
-    const { data: invoices, error: fetchError } = await supabaseAdmin
-      .from("invoices")
-      .select(`
-        id, 
-        invoice_number,
-        title,
-        status,
-        due_date,
-        automation_stage, 
-        client_id, 
-        company_id,
-        companies ( id, name, settings ),
-        clients ( name, email, phone )
-      `)
-      .in("status", ["Sent", "Viewed", "Overdue", "Partial"]);
-
-    if (fetchError) throw fetchError;
-    
-    if (!invoices || invoices.length === 0) {
-      console.log("Result: Zero pending invoices found.");
-      return new Response(JSON.stringify({ message: "No pending invoices found." }), { status: 200 });
+    if (!to_email || !subject || !html_body) {
+      throw new Error("Missing required email fields.");
     }
 
-    console.log(`Found ${invoices.length} pending invoice(s). Evaluating...`);
-    let emailsTriggered = 0;
-    let smsTriggered = 0;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) throw new Error("Sign in before sending an email.");
 
-    for (const invoice of invoices) {
-      console.log(`\n--- Checking Invoice #${invoice.invoice_number} ---`);
-      
-      const company = invoice.companies;
-      const client = invoice.clients;
-      const automations = company?.settings?.automations;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-      // SAFETY CHECKS
-      if (!automations || automations.invoice_enabled === false) continue;
-      if (!client?.email && !client?.phone) continue;
-      if (!invoice.due_date) {
-        console.log(`⏭️ SKIPPED: Invoice has no due date.`);
-        continue;
-      }
-
-      const stage = invoice.automation_stage || 0;
-      
-      // Calculate days relative to Due Date (Negative = Upcoming, Positive = Overdue)
-      const dueDate = new Date(invoice.due_date);
-      const today = new Date();
-      
-      // Normalize to midnight to prevent timezone/time-of-day math errors
-      dueDate.setHours(0, 0, 0, 0);
-      today.setHours(0, 0, 0, 0);
-
-      const diffTime = today.getTime() - dueDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
-
-      const preDueDays = automations.invoice_predue || 3;
-      const overdue1Days = automations.invoice_overdue_1 || 3;
-      const overdue2Days = automations.invoice_overdue_2 || 14;
-
-      let triggerNotification = false;
-      let newStage = stage;
-      let subject = "";
-      let htmlBody = "";
-      let smsBody = "";
-
-      // Format Due Date for the email copy
-      const formattedDueDate = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-      const portalLink = `${APP_URL}/PublicInvoiceView?id=${invoice.id}`;
-      // Clean, professional SaaS-style button (Green for payments)
-      const buttonHtml = `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="left"><a href="${portalLink}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: sans-serif; display: inline-block; font-size: 16px;">View & Pay Invoice</a></td></tr></table>`;
-      
-      const invoiceTitle = invoice.title ? ` for ${invoice.title}` : "";
-      const companyName = company.name || "us";
-      const clientFirstName = client.name ? client.name.split(' ')[0] : 'there';
-
-      // ==========================================
-      // STAGE 0 -> 1: PRE-DUE REMINDER
-      // Trigger: If today is within the pre-due window, but NOT past the due date yet.
-      // ==========================================
-      if (stage === 0 && diffDays >= -preDueDays && diffDays <= 0) {
-        triggerNotification = true;
-        newStage = 1;
-        
-        subject = `Upcoming Reminder: Invoice #${invoice.invoice_number} from ${companyName}`;
-        htmlBody = `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; font-size: 16px; max-width: 600px;">
-            <p>Hi ${clientFirstName},</p>
-            <p>This is a polite reminder that Invoice #${invoice.invoice_number}${invoiceTitle} is due on <strong>${formattedDueDate}</strong>.</p>
-            <p>You can view your invoice details and securely complete your payment online using the link below.</p>
-            <br>
-            ${buttonHtml}
-            <br><br>
-            <p>If you have already submitted your payment, please disregard this message. Thank you for your business!</p>
-            <p style="color: #64748b; font-size: 14px; margin-top: 24px;">Best regards,<br>The team at ${companyName}</p>
-          </div>
-        `;
-        
-        smsBody = `Hi ${clientFirstName}. This is a polite reminder from ${companyName} that Invoice #${invoice.invoice_number} is due on ${formattedDueDate}. You can view and pay it securely here: ${portalLink}`;
-      } 
-      // ==========================================
-      // STAGE 0/1 -> 2: LATE NOTICE #1
-      // Trigger: If invoice is overdue by X days.
-      // ==========================================
-      else if (stage <= 1 && diffDays >= overdue1Days && diffDays < overdue2Days) {
-        triggerNotification = true;
-        newStage = 2;
-        
-        subject = `Overdue Notice: Invoice #${invoice.invoice_number} from ${companyName}`;
-        htmlBody = `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; font-size: 16px; max-width: 600px;">
-            <p>Hi ${clientFirstName},</p>
-            <p>This is a friendly follow-up to let you know that Invoice #${invoice.invoice_number}${invoiceTitle} is currently past due.</p>
-            <p>We understand that things can occasionally slip through the cracks. Please take a moment to review the invoice and complete your payment online using the link below.</p>
-            <br>
-            ${buttonHtml}
-            <br><br>
-            <p>If you recently mailed a check or submitted payment, please let us know so we can update your account. Thank you!</p>
-            <p style="color: #64748b; font-size: 14px; margin-top: 24px;">Best regards,<br>The team at ${companyName}</p>
-          </div>
-        `;
-        
-        smsBody = `Hi ${clientFirstName}. A friendly reminder from ${companyName} that Invoice #${invoice.invoice_number} is currently past due. You can easily view and pay your balance here: ${portalLink}`;
-      }
-      // ==========================================
-      // STAGE 0/1/2 -> 3: LATE NOTICE #2
-      // Trigger: If invoice is heavily overdue by Y days.
-      // ==========================================
-      else if (stage <= 2 && diffDays >= overdue2Days) {
-        triggerNotification = true;
-        newStage = 3;
-        
-        subject = `Urgent: Invoice #${invoice.invoice_number} is significantly past due`;
-        htmlBody = `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; font-size: 16px; max-width: 600px;">
-            <p>Hi ${clientFirstName},</p>
-            <p>This is an urgent notice regarding Invoice #${invoice.invoice_number}${invoiceTitle}, which was due on <strong>${formattedDueDate}</strong> and is now significantly past due.</p>
-            <p>Please remit payment immediately to bring your account current. You can pay securely online using the link below.</p>
-            <br>
-            ${buttonHtml}
-            <br><br>
-            <p>If there is an issue preventing payment, please reply to this email immediately so we can assist you.</p>
-            <p style="color: #64748b; font-size: 14px; margin-top: 24px;">Best regards,<br>The team at ${companyName}</p>
-          </div>
-        `;
-        
-        smsBody = `Hi ${clientFirstName}. This is an urgent notice from ${companyName}. Invoice #${invoice.invoice_number} is significantly past due. Please remit payment immediately via this link: ${portalLink}`;
-      }
-
-      // FIRE THE AUTOMATIONS
-      if (triggerNotification) {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-        
-        const fetchHeaders = {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${serviceKey}`,
-          "apikey": serviceKey
-        };
-
-        const notifications = [];
-
-        // Queue Email
-        if (client.email) {
-          notifications.push(
-            fetch(`${supabaseUrl}/functions/v1/send-email`, {
-              method: "POST",
-              headers: fetchHeaders,
-              body: JSON.stringify({
-                to_email: client.email, 
-                subject: subject, 
-                html_body: htmlBody, 
-                client_id: invoice.client_id,
-                company_id: company.id
-              })
-            }).then(res => {
-              if (res.ok) emailsTriggered++;
-              else res.text().then(t => console.error("Email failed:", t));
-            })
-          );
-        }
-
-        // Queue SMS
-        if (client.phone) {
-          notifications.push(
-            fetch(`${supabaseUrl}/functions/v1/send-sms`, {
-              method: "POST",
-              headers: fetchHeaders,
-              body: JSON.stringify({
-                phone_number: client.phone,
-                message_body: smsBody,
-                client_id: invoice.client_id,
-                company_id: company.id
-              })
-            }).then(res => {
-              if (res.ok) smsTriggered++;
-              else res.text().then(t => console.error("SMS failed:", t));
-            })
-          );
-        }
-
-        await Promise.all(notifications);
-        
-        // Update the invoice to the new stage and ensure status flips to Overdue if it wasn't already
-        const updatePayload: any = { automation_stage: newStage };
-        if (diffDays > 0 && invoice.status !== "Partial") {
-          updatePayload.status = "Overdue";
-        }
-        
-        await supabaseAdmin.from("invoices").update(updatePayload).eq("id", invoice.id);
-      }
+    if (!supabaseUrl || !supabaseAnonKey || !serviceKey) {
+      throw new Error("Email service configuration is unavailable.");
     }
 
-    return new Response(JSON.stringify({ success: true, emails: emailsTriggered, sms: smsTriggered }), {
-      headers: { "Content-Type": "application/json" },
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
     });
 
-  } catch (error) {
-    console.error("Cron Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    const token = authHeader.replace("Bearer ", "").trim();
+
+    let companyId;
+    let userId = null;
+
+    // Existing reminders authenticate with the actual service key and company ID.
+    if (token === serviceKey) {
+      if (!payloadCompanyId) {
+        throw new Error("Automated requests must include company_id.");
+      }
+      companyId = payloadCompanyId;
+    } else {
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+      if (authError || !user) {
+        throw new Error("Your session expired. Sign in before sending an email.");
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("company_id,is_active")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError || !profile?.company_id || profile.is_active === false) {
+        throw new Error("An active company account is required to send an email.");
+      }
+
+      companyId = profile.company_id;
+      userId = user.id;
+    }
+
+    if (body.request_id !== undefined && !uuidPattern.test(body.request_id || "")) {
+      throw new Error("The send request identifier is invalid.");
+    }
+    // Resolve and validate all copy details before delivering the client's email.
+    const copy = body.send_copy_to_company === true ? await copyContext(supabase, companyId, body) : null;
+    const operationKey = body.request_id ? `fuzedflow/${companyId}/${body.request_id}` : null;
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) throw new Error("Email service configuration is unavailable.");
+
+    const emailPayload: any = {
+      from: "FuzedFlow <alerts@mail.fuzedflow.com>",
+      to: to_email,
+      subject: subject,
+      html: html_body,
+      reply_to: reply_to
+    };
+
+    const finalAttachments = [];
+
+    // Legacy support for Quote URLs
+    if (attachment_url) {
+      finalAttachments.push({ filename: 'Document.pdf', path: attachment_url });
+    }
+
+    // New support for raw Base64 PDFs
+    if (attachments && Array.isArray(attachments)) {
+      finalAttachments.push(...attachments);
+    }
+
+    if (finalAttachments.length > 0) {
+      emailPayload.attachments = finalAttachments;
+    }
+
+    originalAttempted = true;
+    const resendData = await sendViaResend(emailPayload, resendApiKey, operationKey ? `${operationKey}/original` : undefined);
+
+    // Provider IDs are trusted UUIDs. Replaying a send must not duplicate outreach.
+    // Logging failure never changes an already accepted email into a send failure.
+    try {
+      const { error } = await supabase.from("client_communications").upsert({
+        id: resendData.id, company_id: companyId, client_id: copy ? copy.clientId : (client_id || null),
+        type: "Email", direction: "outbound", subject, message: html_body,
+        status: "sent", sent_by: userId,
+      }, { onConflict: "id", ignoreDuplicates: true });
+      if (error) console.warn("Email accepted; communication history could not be recorded.");
+    } catch {
+      console.warn("Email accepted; communication history could not be recorded.");
+    }
+
+    let copyStatus = "not_requested";
+    let copyResendId;
+    let copyError;
+    if (copy) {
+      try {
+        const copyData = await sendViaResend({ ...emailPayload, to: copy.recipient, subject: copy.subject },
+          resendApiKey, `${operationKey}/copy`);
+        copyStatus = "sent";
+        copyResendId = copyData.id;
+      } catch {
+        copyStatus = "failed";
+        copyError = "The client email was sent, but the company copy could not be confirmed. Retry the copy.";
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, resend_id: resendData.id, copy_status: copyStatus, copy_resend_id: copyResendId, copy_error: copyError }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+    );
+
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({ error: err.message }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: originalAttempted ? 502 : 400 }
+    );
   }
 });

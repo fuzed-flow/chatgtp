@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 import { createPageUrl } from "../../utils";
+import { useDocumentEmailSend } from "@/lib/emailCopy";
 
 export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quoteName, clientName, clientEmail, onSuccess }) {
   const { profile, settings: authSettings } = useAuth();
@@ -17,14 +18,35 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [signature, setSignature] = useState("");
-  const [saving, setSaving] = useState(false);
   
   const [companyData, setCompanyData] = useState(null);
   const [quoteData, setQuoteData] = useState(null);
+  const [readyDocumentId, setReadyDocumentId] = useState(null);
+  const delivery = useDocumentEmailSend({
+    open, documentId: quoteId, documentType: "quote",
+    companyEmail: companyData?.settings?.email,
+    onOpenChange, onSuccess,
+  });
+  const { saving, inputsLocked } = delivery;
+  const setupLoading = readyDocumentId !== quoteId;
+  const setupContext = useRef(null);
+  const setupDocumentId = useRef(null);
+  setupContext.current = { profile, authSettings, inputsLocked };
 
   // --- INITIALIZATION & DYNAMIC TEMPLATING ---
   useEffect(() => {
     if (!open || !quoteId) return;
+    const { profile, authSettings, inputsLocked } = setupContext.current;
+    if (inputsLocked && setupDocumentId.current === quoteId) return;
+    setupDocumentId.current = quoteId;
+
+    setReadyDocumentId(null);
+    setEmail("");
+    setSubject("");
+    setMessage("");
+    setSignature("");
+    setCompanyData(null);
+    setQuoteData(null);
 
     let isMounted = true;
 
@@ -37,6 +59,7 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
         .single();
 
       if (!isMounted) return;
+      if (!qData) throw new Error("Could not load the quote.");
       setQuoteData(qData);
 
       // 2. BULLETPROOF BRAND FETCHING
@@ -87,6 +110,8 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
         }
       }
 
+      if (!isMounted) return;
+
       // 4. Populate Form State
       setEmail(resolvedEmail || "");
 
@@ -119,26 +144,28 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
         .replace(/{{company_name}}/g, finalCompanyName);
 
       setSignature(personalizedSig.trim());
+      setReadyDocumentId(quoteId);
     };
 
-    fetchSetupData();
+    fetchSetupData().catch(() => {
+      if (isMounted) toast.error("Could not load the quote email. Close this dialog and try again.");
+    });
 
     return () => {
       isMounted = false;
     };
-  }, [open, quoteId, clientEmail, clientName, quoteName, authSettings, profile]);
+  }, [open, quoteId, clientEmail, clientName, quoteName, profile?.company_id]);
 
   // --- SENDING LOGIC & HTML EMAIL GENERATION ---
   const handleSend = async (e) => {
     if (e) e.preventDefault();
+    if (setupLoading) return;
     if (!email) {
       toast.error("Please provide an email address.");
       return;
     }
 
-    try {
-      setSaving(true);
-      
+    await delivery.send(async () => {
       const customMessageHtml = (message || "").replace(/\n/g, '<br>');
       const sigHtml = (signature || "").replace(/\n/g, '<br>');
       const baseUrl = window.location.origin;
@@ -205,38 +232,19 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
       const companyEmail = companyData?.settings?.email || authSettings?.email || profile?.email;
       const replyToEmail = companyEmail || "info@fuzedflow.com";
 
-      const { data, error } = await supabase.functions.invoke('send-email', {
-        body: {
-          to_email: email,
-          subject: subject,
-          html_body: emailHtml,
-          client_id: quoteData?.client_id || null,
-          reply_to: replyToEmail // 🚨 Now perfectly passes info@lbprojects.ca!
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || "Failed to send email via Edge Function");
-      }
-
-      // 5. Update Status
-      await supabase.from("quotes").update({ status: "Sent" }).eq("id", quoteId);
-      
-      toast.success("Email sent successfully!");
-      onOpenChange(false);
-      if (onSuccess) onSuccess();
-
-    } catch (error) {
-      console.error("Error sending email:", error);
-      toast.error("Failed to send email. Please check your backend CORS settings.");
-    } finally {
-      setSaving(false);
-    }
+      return {
+        to_email: email,
+        subject: subject,
+        html_body: emailHtml,
+        client_id: quoteData?.client_id || null,
+        reply_to: replyToEmail // 🚨 Now perfectly passes info@lbprojects.ca!
+      };
+    });
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] bg-white border-slate-200">
+    <Dialog open={open} onOpenChange={delivery.handleOpenChange}>
+      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90dvh] overflow-y-auto bg-white border-slate-200">
         
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
@@ -255,6 +263,7 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
               id="email"
               type="email"
               value={email}
+              disabled={inputsLocked || setupLoading}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="client@example.com"
               required
@@ -267,6 +276,7 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
             <Input
               id="subject"
               value={subject}
+              disabled={inputsLocked || setupLoading}
               onChange={(e) => setSubject(e.target.value)}
               required
               className="border-slate-300 focus-visible:ring-amber-500"
@@ -278,6 +288,7 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
             <Textarea
               id="message"
               value={message}
+              disabled={inputsLocked || setupLoading}
               onChange={(e) => setMessage(e.target.value)}
               rows={6}
               required
@@ -290,25 +301,36 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
             <Textarea
               id="signature"
               value={signature}
+              disabled={inputsLocked || setupLoading}
               onChange={(e) => setSignature(e.target.value)}
               rows={3}
               className="border-slate-300 focus-visible:ring-amber-500"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-slate-100">
+          {delivery.errorMessage && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{delivery.errorMessage}</p>}
+
+          <div className="flex flex-col gap-3 pt-4 mt-6 border-t border-slate-100 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0 sm:max-w-[260px]">
+              <label htmlFor="quote-send-copy" className="flex min-h-11 items-center gap-2 text-sm font-medium text-slate-700">
+                <input id="quote-send-copy" type="checkbox" className="h-4 w-4 accent-amber-500 focus-visible:outline-amber-600" checked={delivery.sendCopy} disabled={!delivery.copyAvailable || inputsLocked || setupLoading} onChange={e => delivery.setSendCopy(e.target.checked)} aria-describedby="quote-copy-hint" />
+                Send me a copy
+              </label>
+              <p id="quote-copy-hint" className="text-xs text-slate-500 break-words">{setupLoading ? "Loading company email..." : delivery.copyAvailable ? `Copy to: ${delivery.copyEmail}` : "Add a valid company email in Settings to receive a copy."}</p>
+            </div>
+            <div className="flex justify-end gap-3 shrink-0">
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => onOpenChange(false)}
+              onClick={() => delivery.handleOpenChange(false)}
               disabled={saving}
               className="font-bold"
             >
-              Cancel
+              {delivery.copyPending ? "Close" : "Cancel"}
             </Button>
             <Button 
               type="submit" 
-              disabled={saving}
+              disabled={saving || delivery.retryExpired || setupLoading}
               className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 shadow-md"
             >
               {saving ? (
@@ -318,10 +340,11 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  <Send className="w-4 h-4" /> Send Email
+                  <Send className="w-4 h-4" /> {delivery.copyPending ? "Retry copy" : delivery.hasRetry ? "Retry send" : "Send Email"}
                 </span>
               )}
             </Button>
+            </div>
           </div>
         </form>
       </DialogContent>
