@@ -107,7 +107,7 @@ const edgeFixture = ({articles = [], embeddingFails = false, profile = {role: 'o
 test('AI retrieves vague follow-ups from user context, bounds current excerpts, and links the portal', async () => {
   const articles = Array.from({length: 6}, (_, n) => ({slug: 'guide-' + n, question: 'Synthetic guide ' + n, feature_area: 'Notifications', answer: 'Verified current content. '.repeat(500)}));
   const {request, observed} = edgeFixture({articles});
-  const response = await request({query: 'What if it is missing?', currentPath: '/LeadTracker', history: [
+  const response = await request({query: 'What if it is missing?', currentPath: '/LeadTracker?client_id=private-client-record', history: [
     {role: 'user', content: 'I created a lead and did not get a notification.'},
     {role: 'assistant', content: 'Hallucinated galaxy transport feature.'},
   ]});
@@ -121,6 +121,10 @@ test('AI retrieves vague follow-ups from user context, bounds current excerpts, 
   assert.deepEqual(observed.tokens, ['user-jwt']);
   const completion = observed.completions[0];
   assert.equal(completion.max_tokens, 1100);
+  assert.doesNotMatch(completion.messages[0].content, /private-client-record|\/LeadTracker|\"owner\"/);
+  assert.ok(!completion.messages[0].content.includes(id(1)));
+  assert.ok(!completion.messages[0].content.includes(id(99)));
+  assert.equal(observed.rpc[0].params.current_path, '/LeadTracker?client_id=private-client-record');
   const context = completion.messages[0].content.split('Verified help articles:\n')[1];
   assert.ok(context.length <= 20000);
   assert.match(context, /\/HelpArticles\?article=guide-0/);
