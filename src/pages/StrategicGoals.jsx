@@ -9,13 +9,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Edit2, TrendingUp } from "lucide-react";
-import { format } from "date-fns";
+import { useAuth } from "@/lib/AuthContext";
+import { toast } from "sonner";
 import GoalCard from "../components/goals/GoalCard";
 
 const statusOptions = ["Not Started", "In Progress", "On Track", "At Risk", "Completed"];
 const priorityOptions = ["Low", "Medium", "High", "Critical"];
 
 export default function StrategicGoals() {
+  const { profile } = useAuth();
+  const companyId = profile?.company_id;
+  const tableQuery = async (table, operation, data, id) => {
+    if (!companyId) throw new Error("Sign in to manage goals.");
+    let query = supabase.from(table);
+    if (operation === "list") query = query.select("*").eq("company_id", companyId).order("created_at");
+    else if (operation === "create") query = query.insert({ ...data, company_id: companyId, ...(table === "strategic_goals" ? { target_date: data.target_date || null } : {}) });
+    else if (operation === "update") query = query.update(data.target_date === "" ? {...data,target_date:null} : data).eq("id", id).eq("company_id", companyId);
+    else query = query.delete().eq("id", id).eq("company_id", companyId);
+    const {data: rows,error} = await query; if(error) throw error; return rows || [];
+  };
   const [showGoalDialog, setShowGoalDialog] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
   const [showKpiDialog, setShowKpiDialog] = useState(false);
@@ -25,68 +37,76 @@ export default function StrategicGoals() {
   const queryClient = useQueryClient();
 
   const { data: goals = [] } = useQuery({
-    queryKey: ["strategicGoals"],
-    queryFn: () => base44.entities.StrategicGoal.list()
+    queryKey: ["strategicGoals", companyId],
+    enabled: !!companyId,
+    queryFn: () => tableQuery("strategic_goals", "list")
   });
 
   const { data: kpis = [] } = useQuery({
-    queryKey: ["kpis"],
-    queryFn: () => base44.entities.KPI.list()
+    queryKey: ["kpis", companyId],
+    enabled: !!companyId,
+    queryFn: () => tableQuery("goal_kpis", "list")
   });
 
   const businessGoals = goals.filter(g => g.goal_type === "Business");
 
   const createGoalMutation = useMutation({
-    mutationFn: (data) => base44.entities.StrategicGoal.create(data),
+    onError: error => toast.error(error.message),
+    mutationFn: (data) => tableQuery("strategic_goals", "create", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["strategicGoals"] });
+      queryClient.invalidateQueries({ queryKey: ["strategicGoals", companyId] });
       setShowGoalDialog(false);
     }
   });
 
   const updateGoalMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.StrategicGoal.update(id, data),
+    onError: error => toast.error(error.message),
+    mutationFn: ({ id, data }) => tableQuery("strategic_goals", "update", data, id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["strategicGoals"] });
+      queryClient.invalidateQueries({ queryKey: ["strategicGoals", companyId] });
       setShowGoalDialog(false);
       setEditingGoal(null);
     }
   });
 
   const deleteGoalMutation = useMutation({
-    mutationFn: (id) => base44.entities.StrategicGoal.delete(id),
+    onError: error => toast.error(error.message),
+    mutationFn: (id) => tableQuery("strategic_goals", "delete", null, id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["strategicGoals"] });
+      queryClient.invalidateQueries({ queryKey: ["strategicGoals", companyId] });
     }
   });
 
   const createKpiMutation = useMutation({
-    mutationFn: (data) => base44.entities.KPI.create(data),
+    onError: error => toast.error(error.message),
+    mutationFn: (data) => tableQuery("goal_kpis", "create", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["kpis"] });
+      queryClient.invalidateQueries({ queryKey: ["kpis", companyId] });
       setShowKpiDialog(false);
       setSelectedGoal(null);
     }
   });
 
   const updateKpiMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.KPI.update(id, data),
+    onError: error => toast.error(error.message),
+    mutationFn: ({ id, data }) => tableQuery("goal_kpis", "update", data, id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["kpis"] });
+      queryClient.invalidateQueries({ queryKey: ["kpis", companyId] });
       setShowKpiDialog(false);
       setEditingKpi(null);
     }
   });
 
   const deleteKpiMutation = useMutation({
-    mutationFn: (id) => base44.entities.KPI.delete(id),
+    onError: error => toast.error(error.message),
+    mutationFn: (id) => tableQuery("goal_kpis", "delete", null, id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["kpis"] });
+      queryClient.invalidateQueries({ queryKey: ["kpis", companyId] });
     }
   });
 
   const handleGoalSubmit = (e, data) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (editingGoal) {
       updateGoalMutation.mutate({ id: editingGoal.id, data });
     } else {
@@ -95,7 +115,7 @@ export default function StrategicGoals() {
   };
 
   const handleKpiSubmit = (e, data) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (editingKpi) {
       updateKpiMutation.mutate({ id: editingKpi.id, data });
     } else {
@@ -259,7 +279,7 @@ function GoalForm({ goal, onSubmit, isLoading }) {
   });
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     onSubmit(formData);
   };
 
@@ -344,7 +364,7 @@ function KpiForm({ kpi, goalId, onSubmit, isLoading }) {
   });
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     onSubmit(formData);
   };
 

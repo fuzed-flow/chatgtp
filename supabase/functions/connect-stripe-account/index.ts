@@ -19,7 +19,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
-    const appUrl = Deno.env.get("APP_URL") || "http://localhost:5173"; // Use localhost for testing, change to live URL later
+    const appUrl = Deno.env.get("APP_URL") || "https://app.fuzedflow.com"; // Use localhost for testing, change to live URL later
 
     if (!stripeSecretKey) throw new Error("Stripe Secret Key is missing from Supabase environment variables.");
 
@@ -33,11 +33,11 @@ serve(async (req) => {
     // 2. Fetch the company profile
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("company_id")
+      .select("company_id,role,is_active")
       .eq("id", user.id)
       .single();
 
-    if (profileError || !profile) throw new Error("User profile or company mapping not found.");
+    if (profileError || !profile?.company_id || profile.is_active === false || !["admin","owner"].includes(profile.role)) throw new Error("User profile or company mapping not found.");
 
     const { data: company, error: companyError } = await supabase
       .from("companies")
@@ -58,6 +58,7 @@ serve(async (req) => {
         country: "CA", // Or "CA" if you are operating out of Canada
         email: user.email || "",
         "business_profile[name]": company.name,
+        "metadata[company_id]": company.id,
         "capabilities[card_payments][requested]": "true",
         "capabilities[transfers][requested]": "true",
       });
@@ -67,6 +68,7 @@ serve(async (req) => {
         headers: {
           "Authorization": `Bearer ${stripeSecretKey}`,
           "Content-Type": "application/x-www-form-urlencoded",
+          "Idempotency-Key": `company-connect:${company.id}`,
         },
         body: accountParams.toString(),
       });
@@ -77,10 +79,8 @@ serve(async (req) => {
       stripeAccountId = accountData.id;
 
       // Save the newly minted account ID to the database immediately
-      await supabase
-        .from("companies")
-        .update({ stripe_account_id: stripeAccountId })
-        .eq("id", company.id);
+      const {error:saveError}=await supabase.from("companies").update({stripe_account_id:stripeAccountId}).eq("id",company.id);
+      if(saveError)throw saveError;
     }
 
     // 4. Generate the co-branded Stripe Express Onboarding Link
@@ -88,8 +88,8 @@ serve(async (req) => {
     
     const linkParams = new URLSearchParams({
   account: stripeAccountId,
-  refresh_url: `https://www.fuzedflow.com/AdminSettings?stripe=failed`,
-  return_url: `https://www.fuzedflow.com/AdminSettings?stripe=success`,
+  refresh_url: `${appUrl}/AdminSettings?stripe=failed`,
+  return_url: `${appUrl}/AdminSettings?stripe=success`,
   type: "account_onboarding",
 });
 

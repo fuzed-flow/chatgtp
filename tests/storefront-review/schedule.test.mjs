@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {buildScheduleDraft,validateSchedule} from '../../supabase/functions/_shared/schedule.js';
+const draft=()=>({timeline:{project_start:'2026-10-05',project_end:'2026-10-10'},phases:[{phase_name:'Preparation',start_date:'2026-10-05',end_date:'2026-10-07',tasks:[{title:'Confirm the scope',due_date:'2026-10-06',estimated_hours:2,assigned_to_id:null}]}],resource_analysis:[]});
+test('draft validation bounds dates, hours and assignments',()=>{assert.equal(validateSchedule(draft()).phases.length,1);let d=draft();d.phases[0].tasks[0].assigned_to_id='other-company-user';assert.throws(()=>validateSchedule(d));d=draft();d.phases[0].tasks[0].due_date='2026-11-01';assert.throws(()=>validateSchedule(d));d=draft();d.phases[0].tasks[0].estimated_hours=-5;assert.throws(()=>validateSchedule(d));d=draft();d.resource_analysis=[{utilization_percentage:90}];assert.throws(()=>validateSchedule(d));});
+test('schedule drafts preserve project bounds and omit completed phases',()=>{
+ const d=buildScheduleDraft({start_date:'2026-10-05',target_end_date:'2026-10-16'},[{name:'Done',status:'Completed'},{name:'Framing',start_date_target:'2026-10-06',end_date_target:'2026-10-09'},{name:'Finish',end_date_target:'2026-11-01'}]);
+ assert.equal(d.timeline.total_working_days,10);assert.deepEqual(d.phases.map(p=>p.phase_name),['Framing','Finish']);assert.equal(d.phases[0].start_date,'2026-10-06');assert.equal(d.phases[0].end_date,'2026-10-09');assert.equal(d.phases[1].end_date,'2026-10-16');assert.ok(d.phases.every(p=>p.tasks[0].estimated_hours===0&&p.tasks[0].assigned_to_id===null));assert.deepEqual(d.resource_analysis,[]);
+});
+test('missing or invalid dates receive ten weekdays of reviewable placeholders',()=>{
+ const d=buildScheduleDraft({start_date:'2026-02-30',target_end_date:'2020-01-01'},[],'2026-10-05');assert.equal(d.timeline.project_start,'2026-10-05');assert.equal(d.timeline.project_end,'2026-10-16');assert.equal(d.phases.length,3);assert.deepEqual(buildScheduleDraft({},[],'2026-10-05'),d);
+});

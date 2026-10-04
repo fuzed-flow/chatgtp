@@ -1,3 +1,4 @@
+import { parseRecordDate, paymentDate } from "@/lib/reporting";
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -7,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Send, ArrowRight, ArrowLeft, Receipt, CheckSquare } from "lucide-react";
+import { Send, ArrowRight, ArrowLeft, Receipt, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -84,7 +85,7 @@ export default function SendReceiptDialog({ open, onOpenChange, payments, invoic
       let paymentRowsHtml = "";
       selectedPaymentsData.forEach(p => {
         const inv = invoices.find(i => i.id === p.invoice_id);
-        const dateStr = p.payment_date ? format(new Date(p.payment_date + "T00:00:00"), "MMM d, yyyy") : format(new Date(p.created_at), "MMM d, yyyy");
+        const dateStr = parseRecordDate(paymentDate(p)) ? format(parseRecordDate(paymentDate(p)), "MMM d, yyyy") : "Unknown Date";
         paymentRowsHtml += `
           <tr>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #475569; font-size: 14px;">${dateStr}</td>
@@ -244,7 +245,7 @@ export default function SendReceiptDialog({ open, onOpenChange, payments, invoic
                           <div className="flex-1">
                             <p className="text-sm font-bold text-slate-900">{inv?.invoice_number || 'Unknown Invoice'}</p>
                             <p className="text-xs font-medium text-slate-500">
-                              {p.payment_date ? format(new Date(p.payment_date + "T00:00:00"), "MMM d, yyyy") : "Unknown Date"} • {p.payment_method}
+                              {parseRecordDate(paymentDate(p)) ? format(parseRecordDate(paymentDate(p)), "MMM d, yyyy") : "Unknown Date"} • {p.payment_method}
                             </p>
                           </div>
                           <div className="font-bold text-emerald-600">

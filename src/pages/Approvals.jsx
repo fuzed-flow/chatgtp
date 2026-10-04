@@ -77,7 +77,7 @@ export default function Approvals() {
     queryKey: ["clients_lookup", companyId], 
     enabled: !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("clients").select("id, name").eq("company_id", companyId);
+      const { data, error } = await supabase.from("clients").select("id, name, email").eq("company_id", companyId);
       if (error) throw error; return data || [];
     } 
   });
@@ -120,7 +120,14 @@ export default function Approvals() {
   // --- SUPABASE MUTATIONS ---
   const resendQuoteMutation = useMutation({
     mutationFn: async (approvalId) => {
-      const { error } = await supabase.from("quote_approvals").update({ sent_at: new Date().toISOString(), approval_status: "Sent" }).eq("id", approvalId);
+      const approval = quoteApprovals.find(a => a.id === approvalId);
+      const quote = quoteMap[approval?.quote_id];
+      const client = clients.find(c => c.id === quote?.client_id);
+      if (!quote || !client?.email) throw new Error("Add the client's email before sending this quote.");
+      const url = new URL(`/PublicQuoteView?id=${quote.id}`, window.location.origin).toString();
+      const {data:result,error:sendError} = await supabase.functions.invoke("send-email", {body:{company_id:companyId,client_id:client.id,to_email:client.email,subject:"Your quote is ready to review",html_body:`<p>Your quote is ready to review.</p><p><a href="${url}">View and approve your quote</a></p>`}});
+      if (sendError || result?.error) throw new Error(result?.error || "Email delivery failed.");
+      const { error } = await supabase.from("quote_approvals").update({ sent_at: new Date().toISOString(), approval_status: "Sent" }).eq("id", approvalId).eq("company_id", companyId);
       if (error) throw error;
     },
     onSuccess: () => { 

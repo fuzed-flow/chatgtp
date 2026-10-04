@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
+import { contractorPortalUrl } from "@/lib/publicProject";
+const escapeHtml = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TRADES = ["Framing","Electrical","Plumbing","HVAC","Drywall","Flooring","Painting","Cabinets","Concrete","Roofing","Windows/Doors","Landscaping","Other"];
 const ASSIGNMENT_STATUSES = ["Proposed","Approved","Scheduled","On Site","Completed","Removed"];
 
@@ -151,10 +153,15 @@ export default function PMSubcontractorsTab({ project }) {
     if (!file) return;
     setUploadingFile(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      if (file.size > 20 * 1024 * 1024) throw new Error("Choose a file smaller than 20 MB.");
+      const path = `${companyId}/${project.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { error } = await supabase.storage.from("contractor_portal").upload(path, file);
+      if (error) throw error;
+      const { data: link } = supabase.storage.from("contractor_portal").getPublicUrl(path);
+      const file_url = link.publicUrl;
       setInviteAttachments(prev => [...prev, { name: file.name, url: file_url }]);
     } catch (err) {
-      toast.error("Failed to upload file");
+      toast.error(err.message || "Failed to upload file");
     } finally {
       setUploadingFile(false);
       e.target.value = "";
@@ -165,15 +172,15 @@ export default function PMSubcontractorsTab({ project }) {
     if (!inviteSub?.email) return;
     setInviteSending(true);
     try {
-      const portalUrl = `${window.location.origin}/ContractorPortal?projectId=${project.id}`;
+      const portalUrl = contractorPortalUrl(project);
       let attachmentSection = "";
       if (inviteAttachments.length > 0) {
-        attachmentSection = `<br/><br/><strong>Attached Documents:</strong><br/>${inviteAttachments.map(a => `<a href="${a.url}">${a.name}</a>`).join("<br/>")}`;
+        attachmentSection = `<br/><br/><strong>Attached Documents:</strong><br/>${inviteAttachments.map(a => `<a href="${escapeHtml(a.url)}">${escapeHtml(a.name)}</a>`).join("<br/>")}`;
       }
       const htmlBody = `
-<p>Hi ${inviteSub.contact_name || inviteSub.company_name},</p>
+<p>Hi ${escapeHtml(inviteSub.contact_name || inviteSub.company_name)},</p>
 <p>I hope you're doing well.</p>
-<p>${inviteMsg.replace(/\n/g, '<br/>')}</p>
+<p>${escapeHtml(inviteMsg).replace(/\n/g, '<br/>')}</p>
 ${attachmentSection}
 <br/>
 <p><strong>Contractor Portal:</strong> <a href="${portalUrl}">${portalUrl}</a></p>
@@ -182,11 +189,10 @@ ${attachmentSection}
       `;
       
       // Preserved custom email integration
-      await base44.integrations.Core.SendEmail({
-        to: inviteSub.email,
-        subject: `Quote Request — ${project.name}`,
-        body: htmlBody,
-      });
+      const { data: emailResult, error: emailError } = await supabase.functions.invoke("send-email", { body: {
+        to_email: inviteSub.email, subject: `Quote Request — ${project.name}`, html_body: htmlBody, company_id: companyId,
+      }});
+      if (emailError || emailResult?.error) throw new Error(emailResult?.error || "Email could not be sent.");
       
       const alreadyAssigned = assignments.some(a => a.subcontractor_id === inviteSub.id);
       if (!alreadyAssigned) {

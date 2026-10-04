@@ -1,109 +1,45 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import Stripe from "npm:stripe@^14.0.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req) => {
-  // Handle CORS Preflight
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
+import Stripe from "npm:stripe@22.6.0";
+import { checkoutAmount, checkoutReturnUrl, currencyFactor } from "../_shared/checkout.js";
+type PaymentDocument = {id:string;company_id:string;status:string;total:number;amount_paid?:number;deposit_amount?:number;deposit_paid_amount?:number;quote_number?:string;invoice_number?:string};
+const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
   try {
-    // 1. Get the payload sent from your React frontend
-    const { amount, invoice_id, invoice_number, success_url, cancel_url } = await req.json();
-
-    if (!amount || !invoice_id) {
-      throw new Error("Missing required checkout fields (amount or invoice_id).");
-    }
-
-    // 2. Use the SERVICE ROLE KEY to bypass RLS so the server can read the Stripe Account ID safely
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-
-    // 3. Fetch the invoice to find out which company it belongs to
-    const { data: invoice, error: invoiceError } = await supabase
-      .from("invoices")
-      .select("company_id")
-      .eq("id", invoice_id)
-      .single();
-
-    if (invoiceError || !invoice) {
-      throw new Error("Invoice not found in the database.");
-    }
-
-    // ⚡ UPDATED: Now we also fetch the "settings" column to get their regional currency
-    const { data: company, error: companyError } = await supabase
-      .from("companies")
-      .select("stripe_account_id, settings")
-      .eq("id", invoice.company_id)
-      .single();
-
-    if (companyError || !company || !company.stripe_account_id) {
-      throw new Error("This company has not fully connected their Stripe account yet.");
-    }
-
-    // ⚡ NEW: Safely extract the regional currency from their settings. 
-    // Fallback to "cad" if they haven't saved their regional settings yet.
-    const regionalCurrency = (company.settings?.currency || "cad").toLowerCase();
-
-    // 4. Initialize Stripe securely using your environment variables
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeSecretKey) throw new Error("Missing Stripe Secret Key in environment variables.");
-    
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: "2023-10-16",
-      httpClient: Stripe.createFetchHttpClient(),
-    });
-
-    // 5. Create the Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create(
-      {
-        payment_method_types: ["card"],
-        mode: "payment",
-        line_items: [
-          {
-            price_data: {
-              currency: regionalCurrency, // ⚡ UPDATED: Now strictly uses their regional currency
-              product_data: {
-                name: `Invoice #${invoice_number || invoice_id}`, 
-              },
-              unit_amount: Math.round(amount * 100), 
-            },
-            quantity: 1,
-          },
-        ],
-        // ADDED METADATA: Stripe will echo this back to your webhook when payment succeeds
-        metadata: {
-          invoice_id: invoice_id,
-          invoice_number: invoice_number || "",
-          company_id: invoice.company_id
-        },
-        success_url: success_url || `${Deno.env.get("APP_URL")}/success`,
-        cancel_url: cancel_url || `${Deno.env.get("APP_URL")}/cancel`,
-      },
-      {
-        stripeAccount: company.stripe_account_id, 
-      }
-    );
-
-    // 6. Return the Checkout URL to the frontend so it can redirect the user
-    return new Response(
-      JSON.stringify({ url: session.url, sessionId: session.id }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-    );
-
-  } catch (err) {
-    console.error("Stripe Checkout Error:", err.message);
-    return new Response(
-      JSON.stringify({ error: err.message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-    );
+    const body = await req.json();
+    const kind = body.quote_id ? "quote" : "invoice";
+    const id = body.quote_id || body.invoice_id;
+    if (!/^[0-9a-f-]{36}$/i.test(id || "") || (!!body.quote_id && !!body.invoice_id)) throw new Error("Provide one valid quote or invoice ID.");
+    const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const fields = kind === "quote" ? "id,company_id,quote_number,status,total,deposit_amount,deposit_paid_amount" : "id,company_id,invoice_number,status,total,amount_paid";
+    const { data: document, error } = await db.from(kind === "quote" ? "quotes" : "invoices").select(fields as string).eq("id", id).single<PaymentDocument>();
+    if (error || !document) throw new Error("Document unavailable.");
+    const amount = checkoutAmount(document, kind, body.amount);
+    const { data: company, error: companyError } = await db.from("companies").select("stripe_account_id,settings").eq("id", document.company_id).single();
+    if (companyError || !company?.stripe_account_id) throw new Error("Online payments are not connected for this company.");
+    const currency = String(company.settings?.currency || "cad").toLowerCase();
+    if (!/^[a-z]{3}$/.test(currency)) throw new Error("Invalid document currency.");
+    const factor = currencyFactor(currency);
+    const unitAmount = Math.round(amount * factor);
+    if (unitAmount <= 0) throw new Error("The payment amount is too small.");
+    const appUrl = Deno.env.get("APP_URL") || "https://app.fuzedflow.com";
+    const docPath = kind === "quote" ? "PublicQuoteView" : "PublicInvoiceView";
+    const docUrl = new URL(`/${docPath}?id=${id}`, appUrl);
+    const success = new URL(docUrl); success.searchParams.set("payment", "success");
+    const cancel = new URL(docUrl); cancel.searchParams.set("payment", "cancelled");
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2026-08-26.dahlia", httpClient: Stripe.createFetchHttpClient() });
+    const suffix = [...crypto.getRandomValues(new Uint8Array(8))].map(n => String.fromCharCode(97 + n % 26)).join("");
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment", integration_identifier: `fuzedflow_document_${suffix}`,
+      line_items: [{ price_data: { currency, product_data: { name: `${kind === "quote" ? "Quote deposit" : "Invoice"} #${document[`${kind}_number`] || id}` }, unit_amount: unitAmount }, quantity: 1 }],
+      metadata: { company_id: document.company_id, [`${kind}_id`]: id, currency_factor: String(factor) },
+      success_url: checkoutReturnUrl(body.success_url, success.toString(), appUrl),
+      cancel_url: checkoutReturnUrl(body.cancel_url, cancel.toString(), appUrl),
+    }, { stripeAccount: company.stripe_account_id, idempotencyKey: `${kind}:${id}:${currency}:${unitAmount}:${Math.floor(Date.now() / 600000)}` });
+    return Response.json({ url: session.url, checkout_url: session.url, sessionId: session.id }, { headers: cors });
+  } catch (error) {
+    console.error("Document checkout failed", error instanceof Error ? error.message : "Unknown error");
+    return Response.json({ error: error instanceof Error ? error.message : "Unable to create checkout." }, { status: 400, headers: cors });
   }
 });

@@ -1,3 +1,4 @@
+import { getPublicProject } from "@/lib/publicProject";
 import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "@/api/supabaseClient"; 
 import { 
@@ -31,7 +32,7 @@ export default function PublicInvoiceView() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("payment") === "success") {
-      toast.success("Payment successful! Thank you.", { duration: 8000 });
+      toast.success("Payment submitted. Your balance updates after payment confirmation.", { duration: 8000 });
       window.history.replaceState(null, '', window.location.pathname + `?id=${invoiceId}`);
     }
   }, [invoiceId]);
@@ -65,7 +66,7 @@ export default function PublicInvoiceView() {
         ] = await Promise.all([
           invData.client_id ? supabase.from("clients").select("*").eq("id", invData.client_id).single() : Promise.resolve({ data: null }),
           invData.company_id ? supabase.from("companies").select("*").eq("id", invData.company_id).single() : Promise.resolve({ data: null }),
-          invData.project_id ? supabase.from("projects").select("*").eq("id", invData.project_id).single() : Promise.resolve({ data: null }),
+          invData.project_id ? getPublicProject("invoice", invoiceId).then(data => ({ data: data.project })) : Promise.resolve({ data: null }),
           supabase.from("invoice_payment_schedules").select("*").eq("invoice_id", invoiceId).order("sort_order", { ascending: true }),
           supabase.from("payments").select("*").eq("invoice_id", invoiceId).order("created_at", { ascending: false }),
           supabase.from("invoice_phases").select("*").eq("invoice_id", invoiceId).order("sort_order"),

@@ -11,22 +11,25 @@ export default function AISchedulingAssistant({ projectId, onScheduleGenerated }
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [schedule, setSchedule] = useState(null);
+  const [draftId, setDraftId] = useState(null);
   const [applyingSchedule, setApplyingSchedule] = useState(false);
 
   const generateSchedule = async () => {
     setLoading(true);
     try {
-      const response = await base44.functions.invoke('generateProjectSchedule', { project_id: projectId });
+      const response = await supabase.functions.invoke('generate-project-schedule', {body: {project_id:projectId}});
+      if(response.error || response.data?.error) throw new Error(response.data?.error || 'Draft generation failed');
       
       if (response.data.success) {
         setSchedule(response.data.schedule);
-        toast.success("AI schedule generated successfully!");
+        setDraftId(response.data.draft_id);
+        toast.success("Schedule draft ready. Review dates, tasks and assumptions.");
       } else {
         toast.error("Failed to generate schedule");
       }
     } catch (error) {
       console.error('Schedule generation error:', error);
-      toast.error("Failed to generate schedule");
+      toast.error(error.message || "Failed to generate schedule");
     } finally {
       setLoading(false);
     }
@@ -37,30 +40,8 @@ export default function AISchedulingAssistant({ projectId, onScheduleGenerated }
     
     setApplyingSchedule(true);
     try {
-      // Update project dates
-      await base44.entities.Project.update(projectId, {
-        start_date: schedule.timeline.project_start,
-        target_end_date: schedule.timeline.project_end
-      });
-
-      // Create/update tasks from schedule
-      let taskCount = 0;
-      for (const phase of schedule.phases) {
-        for (const task of phase.tasks) {
-          await base44.entities.Task.create({
-            project_id: projectId,
-            title: task.title,
-            description: task.description,
-            status: "To Do",
-            priority: task.priority || "Medium",
-            assigned_to: task.assigned_to_id || undefined,
-            due_date: task.due_date,
-            estimated_hours: task.estimated_hours
-          });
-          taskCount++;
-        }
-      }
-
+      const {data:taskCount,error}=await supabase.rpc('apply_project_schedule',{p_draft:draftId});
+      if(error)throw error;
       toast.success(`Applied schedule: ${taskCount} tasks created`);
       setOpen(false);
       if (onScheduleGenerated) onScheduleGenerated();
@@ -97,7 +78,7 @@ export default function AISchedulingAssistant({ projectId, onScheduleGenerated }
         className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
       >
         <Sparkles className="h-4 w-4 mr-2" />
-        AI Schedule Generator
+        Schedule Draft
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -105,14 +86,14 @@ export default function AISchedulingAssistant({ projectId, onScheduleGenerated }
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <Sparkles className="h-5 w-5 text-purple-600" />
-              AI-Powered Project Schedule
+              Review a Schedule Draft
             </DialogTitle>
           </DialogHeader>
 
           {loading && (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="h-12 w-12 text-purple-600 animate-spin mb-4" />
-              <p className="text-slate-600">Analyzing project data and generating optimized schedule...</p>
+              <p className="text-slate-600">Preparing a planning draft for review…</p>
               <p className="text-sm text-slate-400 mt-2">This may take a few moments</p>
             </div>
           )}
@@ -121,11 +102,12 @@ export default function AISchedulingAssistant({ projectId, onScheduleGenerated }
             <div className="text-center py-8">
               <Button onClick={generateSchedule} size="lg" className="bg-purple-600 hover:bg-purple-700">
                 <Zap className="h-5 w-5 mr-2" />
-                Generate Schedule with AI
+                Prepare a Schedule Draft
               </Button>
             </div>
           )}
 
+          <p className="text-sm text-slate-600">This draft uses your existing dates and phases. Review its unassigned planning tasks against site conditions and crew availability. Zero hours means effort is unestimated. Applying adds tasks and updates project dates. Weather and crew conflicts require your review.</p>
           {schedule && (
             <div className="space-y-6">
               {/* Timeline Overview */}
@@ -260,7 +242,7 @@ export default function AISchedulingAssistant({ projectId, onScheduleGenerated }
                 <Card className="p-4 border-green-200 bg-green-50/50">
                   <div className="flex items-center gap-2 mb-3">
                     <TrendingUp className="h-5 w-5 text-green-600" />
-                    <h3 className="font-semibold text-slate-900">AI Insights</h3>
+                    <h3 className="font-semibold text-slate-900">Draft assumptions & suggestions</h3>
                   </div>
                   <div className="space-y-3">
                     {schedule.insights.critical_path?.length > 0 && (

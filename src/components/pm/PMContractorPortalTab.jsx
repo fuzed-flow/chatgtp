@@ -1,3 +1,4 @@
+import { contractorPortalUrl } from "@/lib/publicProject";
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
@@ -32,7 +33,7 @@ export default function PMContractorPortalTab({ project }) {
     setScopeText(project?.description || "");
   }, [project?.description]);
 
-  const portalUrl = `${window.location.origin}/contractor-portal?projectId=${project.id}`;
+  const portalUrl = contractorPortalUrl(project);
 
   // --- SUPABASE QUERIES ---
   const { data: portalFiles = [] } = useQuery({

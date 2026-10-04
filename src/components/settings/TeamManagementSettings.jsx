@@ -14,6 +14,7 @@ import { Users, UserPlus, Shield, HardHat, Mail, DollarSign, Edit, Search, Brief
 
 export default function TeamManagementSettings() {
   const { company } = useAuth();
+  const customModules = ['dashboard','leads','clients','quotes','templates','projects','approvals','invoices','purchase_orders','change_orders','DailyLogs','tasks','vendors','products','inventory','client_forms','reports','human_resources','settings'];
   const queryClient = useQueryClient();
 
   // Modal & Loading States
@@ -97,7 +98,7 @@ export default function TeamManagementSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team_invites', company.id] });
-      toast.success('Invite sent! They can now sign up.');
+      toast.success('Invitation saved. They can sign up with the invited email.');
       setIsInviteOpen(false);
       setInviteForm({ email: '', full_name: '', role: 'employee', hourly_rate: 0 });
     },
@@ -178,7 +179,7 @@ export default function TeamManagementSettings() {
 
       if (companyError) throw companyError;
 
-      const currentSeatCount = combinedTeam.length;
+      const currentSeatCount = team.filter(user => user.is_active !== false).length + invites.length;
 
       if (currentSeatCount >= companyData.max_users) {
         setLimitWarning({ show: true, max: companyData.max_users, current: currentSeatCount });
@@ -218,7 +219,7 @@ export default function TeamManagementSettings() {
       full_name: user.full_name || '', 
       role: user.role || 'employee',
       hourly_rate: user.hourly_rate || 0,
-      is_active: user.is_active !== false
+      is_active: user.is_active !== false, permissions: user.permissions || []
     });
     setIsEditOpen(true);
   };
@@ -232,7 +233,8 @@ export default function TeamManagementSettings() {
         full_name: editForm.full_name,
         role: editForm.role, 
         hourly_rate: Number(editForm.hourly_rate), 
-        is_active: editForm.is_active 
+        is_active: editForm.is_active,
+        ...(!selectedUser.is_pending && company?.plan_id === "business" ? {permissions:editForm.permissions||[]} : {})
       }
     });
   };
@@ -266,7 +268,7 @@ export default function TeamManagementSettings() {
             className="border-slate-300 text-slate-700 font-bold shadow-sm shrink-0"
           >
             {isPortalLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin text-slate-400" /> : <CreditCard className="h-4 w-4 mr-2 text-slate-400" />}
-            Manage Seats
+            Manage billing & extra seats
           </Button>
           <Button onClick={() => setIsInviteOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold shadow-md shrink-0">
             <UserPlus className="h-4 w-4 mr-2" /> Invite Member
@@ -508,13 +510,14 @@ export default function TeamManagementSettings() {
                 </div>
               </div>
 
+              {company?.plan_id === 'business' && !selectedUser.is_pending && !['admin','owner'].includes(editForm.role) && <fieldset className="border p-4 space-y-3"><legend>Custom module access</legend><p className="text-sm text-slate-600">An empty selection uses the default role. Administrators retain full access.</p><div className="grid grid-cols-2 gap-2">{customModules.map(key=><label key={key} className="flex gap-2 text-sm"><input type="checkbox" checked={(editForm.permissions||[]).includes(key)} onChange={e=>setEditForm({...editForm,permissions:e.target.checked?[...(editForm.permissions||[]),key]:(editForm.permissions||[]).filter(k=>k!==key)})}/>{key.replaceAll('_',' ')}</label>)}</div></fieldset>}
               {/* Hide Active Account toggle for pending invites */}
               {!selectedUser.is_pending && (
                 <div className="pt-4 pb-2">
                   <div className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg">
                     <div>
                       <Label className="font-bold text-slate-900">Active Account</Label>
-                      <p className="text-xs text-slate-500 mt-0.5">Turn off to instantly revoke login access.</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Turn off to revoke workspace data access.</p>
                     </div>
                     <Switch checked={editForm.is_active} onCheckedChange={v => setEditForm({...editForm, is_active: v})} />
                   </div>
@@ -570,7 +573,7 @@ export default function TeamManagementSettings() {
               ) : (
                 <CreditCard className="h-5 w-5 mr-2" />
               )}
-              Manage Seats in Stripe
+              Manage billing & extra seats in Stripe
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -2,6 +2,9 @@
 // for existing subscriptions and older signup links.
 export const SUBSCRIPTION_CURRENCY = 'USD';
 export const BASE_USER_LIMITS = { starter: 1, professional: 3, business: 10 };
+// Graduated Stripe prices: quantity 1 buys the plan; each extra unit buys one user.
+export const getUserLimitFromQuantity = (planId, quantity = 1) =>
+  (BASE_USER_LIMITS[planId] || 1) + Math.max(0, Math.floor(Number(quantity) || 1) - 1);
 export const SUBSCRIPTION_PRICES = {
   "starter": {
     "monthly": "price_1UMs7VIfI96QPT6lT0RLG9JI",
