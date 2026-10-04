@@ -1,0 +1,200 @@
+[
+  {
+    "slug": "employee-portal-features",
+    "feature_area": "Employee Portal",
+    "audience": "all",
+    "question": "What can employees access in the Employee Portal?",
+    "answer_short": "The Employee Portal provides attendance, expenses, assigned projects, schedule, tasks, project notes, and inventory where the plan and company modules allow. Self-service Profile setup is incomplete.",
+    "answer_long": "Open **Employee Portal** for your personal field tools. Available sections depend on the company’s plan and enabled features.\n\n- **Clock In**, **My Time Sheets**, **My Pay**, **My Time Off**, and **My Expenses**.\n- **My Projects**, **My Schedule**, **Project Notes**, **My Tasks**, and **Inventory**.\n\nOn mobile, select **More** to find the full menu. If a section is missing, ask an owner or administrator to check **Settings → Employee Portal** and the company’s HR plan access.\n\nThe **Profile → Set Up Profile** self-service save is currently incomplete. Ask an owner or administrator to correct your name, role, hourly rate, or account activity through **Settings → Team Management**; use the employer’s HR process for other employee information. Do not rely on the incomplete form as the sole record for emergency contact details.",
+    "requires_admin": false,
+    "search_terms": [
+      "employee portal",
+      "clock in",
+      "timesheet",
+      "time off",
+      "expenses",
+      "profile setup",
+      "more menu"
+    ],
+    "route": "/EmployeePortal",
+    "priority": 75,
+    "is_active": true,
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/pages/EmployeePortal.jsx",
+      "src/components/employee/EPProfile.jsx",
+      "src/components/settings/EmployeePortalSettings.jsx",
+      "src/components/settings/TeamManagementSettings.jsx"
+    ]
+  },
+  {
+    "slug": "timesheet-approval",
+    "feature_area": "Timesheets",
+    "audience": "all",
+    "question": "Do timesheets require approval?",
+    "answer_short": "Completed shifts and manual missing-hour submissions are Pending until HR reviews them. Employees cannot edit or delete an existing shift from My Time Sheets.",
+    "answer_long": "Clocking out or selecting **Submit to HR** in **My Time Sheets → Submit Missing Hours** saves a completed entry as **Pending**.\n\nOwners, administrators, and office staff with HR plan access review entries in **Human Resources → Timesheets**, then approve, reject, or adjust them.\n\nIf an existing entry is rejected or incorrect, ask HR to review it using **Adjust Timesheet**. The employee My Time Sheets form creates a new missing shift; it does not edit or resubmit an existing shift. Do not add a duplicate to correct a record without HR’s instructions.\n\nCheck the shift date, hours, and status. A My Pay estimate can include Pending hours and does not prove payroll was approved or issued.",
+    "requires_admin": false,
+    "search_terms": [
+      "timesheet",
+      "approval",
+      "approve",
+      "reject",
+      "pending",
+      "adjust timesheet",
+      "missing shift"
+    ],
+    "route": "/EmployeePortal?tab=timesheets",
+    "priority": 75,
+    "is_active": true,
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/components/employee/EPTimeClock.jsx",
+      "src/components/employee/EPTimesheets.jsx",
+      "src/pages/HumanResources.jsx",
+      "src/App.jsx",
+      "src/components/employee/EPPayroll.jsx"
+    ]
+  },
+  {
+    "slug": "notification-overview",
+    "feature_area": "Notifications",
+    "question": "Where do I find my notifications?",
+    "answer_short": "Use the notification bell for alerts allowed by your company, event, role, permissions, and assigned work.",
+    "answer_long": "1. Tap the **notification bell** in the top navigation.\n2. Choose **Unread**, or **All** to include read history.\n3. Use **Mentions**, **Projects**, **Financial**, or **Action Required** to narrow the list.\n4. Select an alert to read it and open its related record when a destination is available.\n\nVisibility depends on the event’s permitted roles, module access, company, and project or personal assignment. Financial events do not all have one identical role rule; eligible managers can receive some quote or assigned-project financial updates, while other invoice/payment events are more restricted.\n\nIf **Notify me only when action is required** is on, Important and FYI updates remain hidden even in All. Turn it off to include them again. In-app alerts do not by themselves prove email, SMS, or native phone push delivery.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "notifications",
+      "bell",
+      "financial alerts",
+      "role",
+      "permissions",
+      "unread",
+      "action only"
+    ],
+    "route": "/FAQ?article=notification-overview",
+    "priority": 90,
+    "is_active": true,
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/components/shared/EnhancedNotificationCenter.jsx",
+      "supabase/migrations/20261003220500_role_based_notifications.sql",
+      "src/lib/notificationLinks.js"
+    ]
+  },
+  {
+    "slug": "invite-team-member",
+    "feature_area": "Team",
+    "audience": "admin",
+    "question": "How do I invite a team member?",
+    "answer_short": "Owners and administrators save team invitations in Settings → Team Management. Verify the pending record and ask the colleague to join with the invited email.",
+    "answer_long": "1. Sign in as an **Owner** or **Admin**.\n2. Open **Settings → Team Management** and **Invite Team Member**.\n3. Enter the colleague’s **Full Name** and **Email Address**.\n4. Choose a supported **Access Role** and the appropriate **Hourly Pay Rate**.\n5. Select **Send Invite** and verify the pending member appears in the list.\n\nA saved pending invitation and the screen’s success message do not prove that an invitation email was delivered. Ask the colleague to use the invited email on the company join/signup path; if an invitation email exists, they can follow that link. Do not have them create an unrelated company account.\n\nCurrent invitations require an owner/admin and canonical roles. Use the detailed Team Management form if a legacy Team Settings screen offers Standard User.",
+    "requires_admin": true,
+    "search_terms": [
+      "invite",
+      "team",
+      "employee",
+      "join company",
+      "pending invite",
+      "email delivery"
+    ],
+    "route": "/AdminSettings",
+    "priority": 75,
+    "is_active": true,
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/components/settings/TeamManagementSettings.jsx",
+      "src/pages/Signup.jsx",
+      "src/pages/TeamSettings.jsx",
+      "supabase/migrations/20261003220500_role_based_notifications.sql"
+    ]
+  },
+  {
+    "slug": "pending-invites",
+    "feature_area": "Team",
+    "audience": "admin",
+    "question": "Can I see pending team invitations?",
+    "answer_short": "Yes. Owners and administrators can inspect and edit or cancel pending invitations in Settings → Team Management.",
+    "answer_long": "Open **Settings → Team Management** as an Owner or Admin. Search by the colleague’s name or email and review the pending record’s address and role.\n\nUse the pending member’s edit action to correct the available invitation details, or cancel an obsolete invitation. The current detailed form does not provide a dedicated Resend Email action. A pending record confirms the invitation was saved; it does not confirm an email was delivered.\n\nAsk the colleague to register with the exact invited email on the company join/signup path, and check any received invitation email and spam folder. If the email already belongs to another company, resolve that membership rather than repeating signup.\n\nPending invitations count toward the detailed invitation form’s user-limit check.",
+    "requires_admin": true,
+    "search_terms": [
+      "pending",
+      "invitation",
+      "team",
+      "cancel invite",
+      "resend email",
+      "seat limit"
+    ],
+    "route": "/AdminSettings",
+    "priority": 75,
+    "is_active": true,
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/components/settings/TeamManagementSettings.jsx",
+      "src/pages/Signup.jsx"
+    ]
+  },
+  {
+    "slug": "hr-approvals",
+    "feature_area": "HR",
+    "audience": "office",
+    "question": "What can administrators approve in the HR area?",
+    "answer_short": "Owners, administrators, and office staff with HR plan access can review time entries, time-off requests, and expenses. Use All Statuses to find Submitted expenses.",
+    "answer_long": "Open **Human Resources** as an Owner, Admin, or Office user on a plan with HR access. Choose **Timesheets**, **Time Off**, or **Expenses**; on mobile use the view dropdown.\n\n1. Check the employee, status, and date filters.\n2. Review the hours or amount and supporting details.\n3. Select the intended records and choose **Approve** or **Reject**.\n4. Use **Adjust** on an existing timesheet to correct its date, hours, timestamps, type, status, and notes.\n\nEmployee expense claims begin as **Submitted**. HR’s default **Pending Only** filter matches Pending or blank status, so it can hide Submitted claims. Select **All Statuses** and an appropriate date range to find them.\n\nApproving a record changes its status; it does not pay wages or issue an expense reimbursement. My Pay shows estimates, and final processing follows the employer’s payroll process.",
+    "requires_admin": false,
+    "search_terms": [
+      "HR",
+      "timesheet",
+      "time off",
+      "expenses",
+      "approval",
+      "Submitted",
+      "All Statuses",
+      "adjust timesheet"
+    ],
+    "route": "/HumanResources",
+    "priority": 75,
+    "is_active": true,
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/pages/HumanResources.jsx",
+      "src/App.jsx",
+      "src/components/employee/EPExpenses.jsx",
+      "src/components/employee/EPPayroll.jsx"
+    ]
+  },
+  {
+    "slug": "daily-log-edit-delete",
+    "feature_area": "Daily Logs",
+    "audience": "all",
+    "question": "Can project Daily Logs be edited or deleted?",
+    "answer_short": "Authorized office/project staff can edit or delete daily logs. The Employee Portal personal log list offers Details and Delete, but no full edit form.",
+    "answer_long": "Authorized office/project staff can edit and delete entries in **PM Projects → your project → Project Notes**, or the office **Daily Logs** page. Review the log’s date, author, and linked work before changing it.\n\nIn **Employee Portal → Project Notes**, your personal log history provides **Details** and a delete action with confirmation. It does not provide the office’s full Edit Log form. Ask the manager how to correct an important submitted report instead of assuming you can edit it directly or deleting it prematurely.\n\nDeleting a log removes the record; it does not reverse inventory usage mentioned in its Materials Used text. Inventory transactions are managed separately.",
+    "route": "/DailyLogs",
+    "search_terms": [
+      "daily log",
+      "edit log",
+      "delete log",
+      "project note",
+      "field log"
+    ],
+    "requires_admin": false,
+    "priority": 50,
+    "is_active": true,
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/components/pm/PMDailyLogsTab.jsx",
+      "src/pages/DailyLogs.jsx",
+      "src/components/employee/EPDailyLogs.jsx",
+      "src/App.jsx"
+    ]
+  }
+]

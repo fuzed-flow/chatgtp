@@ -1,0 +1,395 @@
+[
+  {
+    "slug": "guide-getting-started",
+    "question": "Getting started with FuzedFlow",
+    "feature_area": "Account",
+    "answer_short": "Find your workspace, understand your role, and follow your first workflow from the correct starting point.",
+    "answer_long": "## Choose the correct workspace\nIf you are joining an existing company, use the invitation sent by its administrator. Creating a separate company account does not automatically put you on that company's team. Sign in using the same method you used when joining: email and password, or **Sign in with Google**.\n\nOffice and project staff normally begin in the main workspace. Employees and subcontractors use the **Employee Portal**. The menu reflects your role and your company's permissions; a missing menu item does not mean your work was deleted.\n\n## Start with your role\n1. Open the navigation menu. On a phone, use the menu button at the top left.\n2. For office work, start with **Leads**, **Clients**, or **Quotes**. Check the client and site before creating a document.\n3. For project coordination, use **PM Dashboard**, **PM Projects**, or **Project Timeline**.\n4. For field work, open **Employee Portal** and choose the relevant section, such as **Clock In**, **My Projects**, or **My Tasks**.\n5. Owners and administrators can review company branding, financial defaults, notifications, and team access in **Settings** before sending customer documents.\n\n## Follow a complete workflow\nA typical office workflow moves from lead information to a client, then to a quote, project work, and invoicing. These are separate records and actions. Changing a lead stage does not by itself prove that a quote was accepted, a project was created, or an invoice was paid.\n\nBefore sending or approving a document, check its record number, recipient, project, and preview. Return to its list after saving and confirm that the new record or status appears.\n\n## Find help without leaving your task\nUse **Help → Help Articles** in the top navigation. Search for the screen name or the action you need, open a guide, and use its related-page link where available. **Quick answers & FAQ** offers shorter answers. AI Help can explain the same published articles and link you back to a guide.\n\n## If access or records are missing\nConfirm that you signed into the intended company account, clear active list filters, and ask your administrator to check your role or assignments. Keep the page name and any error text when contacting support. Never send passwords or payment card details.",
+    "route": "/HelpArticles",
+    "source_files": [
+      "src/App.jsx",
+      "src/Layout.jsx",
+      "src/pages/Login.jsx",
+      "src/pages/Signup.jsx"
+    ],
+    "search_terms": [
+      "getting started",
+      "first steps",
+      "setup",
+      "onboarding",
+      "workspace",
+      "company",
+      "new subscriber"
+    ],
+    "related_slugs": [
+      "guide-mobile-navigation",
+      "guide-troubleshooting",
+      "guide-navigation-search"
+    ],
+    "audience": "all",
+    "requires_admin": false,
+    "priority": 100,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-mobile-navigation",
+    "question": "Using FuzedFlow on a phone or tablet",
+    "feature_area": "Help & Support",
+    "answer_short": "Navigate the mobile menu, read guides, and keep track of work when space is limited.",
+    "answer_long": "## Open the mobile navigation\nUse the menu button at the top left to open the sidebar. Office navigation groups related screens under **CRM**, **Quotes**, **Project Management**, **Financial**, and **Resources**. Tap a group to reveal its pages, then tap the page you want. Selecting a page closes the sidebar so your workspace is visible again.\n\nThe exact options depend on your role. Field users work through **Employee Portal** rather than the office navigation. Turning the device sideways may make a wide table easier to inspect, but does not change your permissions.\n\n## Find help from any supported workspace\n1. Tap **Help** in the top navigation.\n2. Choose **Help Articles** for detailed instructions or **Quick answers & FAQ** for a short answer.\n3. Enter a screen name or a few useful words in the search field.\n4. Narrow the topic or article type if there are many matches.\n5. Open an article and use **Jump to section** to reach the part you need.\n\nThe portal uses large search and filter controls and wraps article text within the screen. Long lists load in groups; use **Show more** rather than expecting every article to appear at once.\n\n## Work with forms and lists\nBefore saving, review fields above and below the keyboard. Close the keyboard when you need more room to inspect a form. Scroll within a table if a screen provides horizontal scrolling, and check that an action belongs to the intended row before tapping it.\n\nIf a list looks empty, clear its search, date, status, project, or assignee filters. A mobile section selector may replace the tabs or sidebar shown on desktop; look for the section name above the content.\n\n## Use AI Help comfortably\nTap the yellow **AI Help** button. Type one task or issue at a time and include the page name. Answers support numbered steps, readable lists, and related article links. Follow a related article to read the longer explanation. Close the helper to return to your work.\n\n## If the page is difficult to use\nSave or copy your unfinished text before refreshing. Try closing an open menu or keyboard, then reopen the section. If a control still cannot be reached, note the page, device/browser, and what you were trying to do when contacting support. A screenshot of the layout can help; leave private customer and payment details out.",
+    "route": "/HelpArticles",
+    "source_files": [
+      "src/Layout.jsx",
+      "src/pages/EmployeePortal.jsx",
+      "src/components/shared/HelpMenu.jsx",
+      "src/components/shared/AIHelpWidget.jsx"
+    ],
+    "search_terms": [
+      "mobile",
+      "phone",
+      "tablet",
+      "menu",
+      "navigation",
+      "keyboard",
+      "touch",
+      "small screen"
+    ],
+    "related_slugs": [
+      "guide-navigation-search",
+      "guide-troubleshooting"
+    ],
+    "audience": "all",
+    "requires_admin": false,
+    "priority": 98,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-troubleshooting",
+    "question": "Troubleshooting missing records, failed actions, and loading problems",
+    "feature_area": "Help & Support",
+    "answer_short": "Use a practical checklist to resolve common issues and give support the details it needs when a problem remains.",
+    "answer_long": "## First check the current state\nBefore repeating an action, confirm what actually happened. A toast or changed label alone may not prove that an email was delivered, a payment was collected, or another record was updated. Return to the record list, reopen the item, and check the saved values or status.\n\nKeep unfinished form text somewhere safe before refreshing or navigating away. Avoid repeated payment, send, create, or approval clicks while a request is still running; duplicates are harder to diagnose.\n\n## A record or task is missing\n1. Confirm the company account and page you are using.\n2. Clear search text and narrow filters, including dates, statuses, projects, and assignees.\n3. Check other pages of a paginated list.\n4. For field work, ask your manager to check the project/task assignment and enabled portal sections.\n5. If a page is unavailable, ask an administrator to check role and permissions. Do not create a second company account to recover access.\n\n## A page will not load\nCheck your connection. If the help page offers **Try again**, use that action first. If the problem persists, preserve your form details and refresh once. Sign in again if the app reports that your session has expired. Note whether one page fails or the whole workspace is affected.\n\n## A save, upload, or send fails\nCheck required fields and the selected client/project. For uploads, keep the original file and note its type and size. Inspect the record list before repeating a creation action. For a send action, check the recipient address and any saved delivery/status information; do not treat a status change as proof of external delivery.\n\nSome pages include actions marked **Coming soon** or incomplete workflows. Search the article for that feature to check its current availability before trying again. A different entry point may have different capabilities, so include the exact page and action in your report.\n\n## A document total or report looks wrong\nCompare the source document, quantities, tax settings, selected options, and recorded payments. Review the customer-facing preview before sending. Do not infer payment collection or accounting synchronization from a dashboard figure alone.\n\n## Give support a useful report\nOpen **Help → Contact support** and include the page, record number, expected result, actual result, error text, and steps already tried. Include the approximate time and device/browser. **Open email app** prepares a draft; review and send it from your mail app. Never include passwords, secret links, or full payment card information.",
+    "route": "/Contact",
+    "source_files": [
+      "src/App.jsx",
+      "src/Layout.jsx",
+      "src/pages/Contact.jsx",
+      "src/pages/FAQ.jsx",
+      "src/components/shared/EnhancedNotificationCenter.jsx"
+    ],
+    "search_terms": [
+      "troubleshooting",
+      "not working",
+      "failed",
+      "missing",
+      "load",
+      "empty",
+      "save",
+      "error",
+      "support",
+      "refresh"
+    ],
+    "related_slugs": [
+      "guide-getting-started",
+      "guide-mobile-navigation",
+      "guide-feature-availability"
+    ],
+    "audience": "all",
+    "requires_admin": false,
+    "priority": 99,
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-navigation-search",
+    "question": "Finding pages and records with navigation and search",
+    "feature_area": "Help & Support",
+    "answer_short": "Understand the navigation groups and use record search separately from help search.",
+    "answer_long": "## Understand the workspace menu\nThe office sidebar groups screens by job: **CRM** contains leads and clients; **Quotes** contains quotes and templates; **Project Management** contains project views and approvals; **Financial** includes the financial pages your role can access; and **Resources** includes tasks, products, inventory, project notes, forms, reports, and HR where permitted.\n\n**Employee Portal** provides field tools. **Settings** is the company configuration entry point for authorized roles. On desktop the sidebar can collapse; on mobile the menu button opens it and group headings expand their pages.\n\n## Search your business records\n1. Use the search control in the top navigation. On desktop, **Ctrl+K** or **Command+K** toggles the search.\n2. Enter part of a quote title/number, client name/email, lead name/email, project name/number, or invoice number.\n3. Use the search filters when you need a particular record type, status, date range, or amount range.\n4. Select a result to open its record view.\n5. Press **Escape** or close search to return to the workspace.\n\nSearch uses records in the signed-in company. It is a shortcut to supported record types, rather than a search of every attachment or every word inside every document. A screen's own list search may offer a more specific way to find an item.\n\n## Search instructions instead of records\nUse **Help → Help Articles** to find instructions. Help search looks through article titles, summaries, text, topics, and keywords. Search for an action such as creating a quote, filtering assigned tasks, or recording time. Topic and article-type filters can narrow the results.\n\n## If search returns no results\nTry a shorter identifying term and clear filters. Confirm that the record is in the company you are signed into. Check its own page and pagination. If a result opens a page your role cannot access, ask your administrator to review access rather than changing the URL or assuming the record is gone.\n\n## Keep page names with your question\nDifferent records can have similar names. Include the screen name and record number when asking AI Help or support. For example, say whether you are searching the general **Tasks** screen or a project's **Staff & Tasks** list.",
+    "route": "/HelpArticles",
+    "source_files": [
+      "src/Layout.jsx",
+      "src/components/shared/GlobalSearch.jsx",
+      "src/components/shared/HelpMenu.jsx"
+    ],
+    "search_terms": [
+      "navigation",
+      "search",
+      "find",
+      "record",
+      "Ctrl K",
+      "Command K",
+      "menu",
+      "filter"
+    ],
+    "related_slugs": [
+      "guide-getting-started",
+      "guide-mobile-navigation"
+    ],
+    "audience": "all",
+    "requires_admin": false,
+    "priority": 80,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-access-permissions",
+    "question": "Understanding missing menu items and role-based access",
+    "feature_area": "Account",
+    "answer_short": "Recognize the difference between your role, company permissions, and work assignments.",
+    "answer_long": "## Access depends on your role\nFuzedFlow uses **Owner**, **Admin**, **Project Manager**, **Office Staff**, **Employee**, and **Subcontractor** roles. Owners and administrators have broad company access. Managers and office staff use operational pages subject to their role and configured permissions. Employees and subcontractors are directed to the **Employee Portal** for field work.\n\nThe invoice and HR routes allow owners, administrators, and office staff; managers do not automatically have those routes. Company settings is available to owners, administrators, and managers, with a smaller set of settings shown to managers. A menu label by itself does not override a page's access rules.\n\n## Diagnose a missing section\n1. Confirm that you joined the intended company using its invitation.\n2. Check whether you are in the office workspace or Employee Portal.\n3. Ask an administrator to review your current role and permissions.\n4. For field work, also check project/task assignments and enabled portal features.\n5. Sign out and back in if your administrator changed access and the screen still shows old options.\n\nPermission checks and assignment checks answer different questions: permission controls whether a tool is available; assignment controls which work is relevant to you. Neither guarantees that every record appears under the active list filters.\n\n## Read help for your access level\nSigned-in company users can open Help Articles, FAQ, tutorials, and Contact support. The portal hides admin-only content from non-admin roles. Field users receive field-related topics and general help rather than the full office library. AI Help uses the same access rules when choosing articles.\n\n## Avoid creating a second account as a workaround\nA new company registration does not restore membership or assignments in the existing company. Ask the administrator who invited you to confirm the email, role, and invitation status. Keep your existing account details private.\n\n## When an access error continues\nSend support the page name and the message shown, along with the role you expect to have. Leave passwords and invitation links out of the message. Support can help investigate the screen, while your company administrator remains the contact for deciding the access you should receive.",
+    "route": "/HelpArticles",
+    "source_files": [
+      "src/App.jsx",
+      "src/Layout.jsx",
+      "src/components/RoleGuard.jsx",
+      "src/lib/helpContent.js"
+    ],
+    "search_terms": [
+      "permissions",
+      "access",
+      "role",
+      "missing menu",
+      "employee",
+      "manager",
+      "office",
+      "admin",
+      "invitation"
+    ],
+    "related_slugs": [
+      "guide-getting-started",
+      "guide-troubleshooting"
+    ],
+    "audience": "all",
+    "requires_admin": false,
+    "priority": 80,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-approvals-review",
+    "question": "Reviewing quotes, change orders, and purchase orders in Approvals",
+    "feature_area": "Projects",
+    "answer_short": "Choose the approval record type, review its status, and distinguish approvals from document signing and delivery.",
+    "answer_long": "## Choose the record type\nOpen **Approvals** from Project Management. Use the view selector to choose **Quote Approvals**, **Change Orders**, or **Purchase Orders**. Each view uses its own search and status filters, so an empty list may simply reflect the selected view or filter.\n\nThis is an office/project coordination screen. Field users should ask their manager about approval status rather than expect the Approvals page in the Employee Portal.\n\n## Review a quote approval\n1. Choose **Quote Approvals**.\n2. Search for a quote or signer and choose the desired status filter.\n3. Compare the quote number, signer information, status, and dates with the intended quote.\n4. Open the related quote through the **Quotes** page when you need to inspect its current contents.\n5. Confirm customer-facing details before sending another customer link.\n\nThe quote approval list includes statuses such as **Pending**, **Sent**, **Viewed**, **Signed**, **Declined**, and **Expired**. A status label is a record state; it is not a guarantee that every document in the company has a captured signature.\n\n## Review change orders and purchase orders\nSwitch the view selector and search for the intended record. Use **View Details** to inspect the document. Where status controls are available, check the record and your authorization before changing an approval state. Return to the document and project to verify any associated values; an approval does not by itself prove all project, accounting, or external systems have synchronized.\n\n## Treat resend and copied-link actions carefully\nThe Approvals screen's **Resend Link** updates the stored approval status and sent time. It should not be treated as evidence that a message was actually delivered. The copied quote-approval URL from this screen is not a confirmed working customer route in the current app. Use the quote's supported preview/share/send workflow and verify the intended public view instead.\n\n## If an approval is missing or inconsistent\nClear the view's filters, confirm the source document and company, and compare the current status on the document. If a link does not open or approval information disagrees, keep the quote/change-order/purchase-order number and page name for support. Avoid repeated approvals while the issue is unresolved.",
+    "route": "/Approvals",
+    "source_files": [
+      "src/pages/Approvals.jsx",
+      "src/App.jsx"
+    ],
+    "search_terms": [
+      "approvals",
+      "pending",
+      "signed",
+      "declined",
+      "resend",
+      "change order",
+      "purchase order",
+      "status"
+    ],
+    "related_slugs": [
+      "guide-feature-availability",
+      "guide-troubleshooting"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "priority": 80,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-client-forms-resources",
+    "question": "Uploading and finding client forms and shared resources",
+    "feature_area": "Resource Library",
+    "answer_short": "Store a company document, optionally link it to a project, and understand what a document upload does.",
+    "answer_long": "## What Client Forms stores\n**Client Forms** stores company resources such as flyers, forms, certificates, and reference documents. A resource can be a general document or linked to a project. Uploading a file does not create a document-signature request or submit a warranty claim.\n\nUse this page for reference material your company intends to make available. The current resource workflow produces a public file URL, so do not use it for passwords, private identity documents, or other files that require a private sharing process.\n\n## Upload a resource\n1. Open **Client Forms** from **Resources**.\n2. Choose **Upload File** to open **Upload New Resource**.\n3. Enter a clear **Document Name**.\n4. Under **Link to Project (Optional)**, choose a project or **General Document (Available for all)**.\n5. Select an **Attachment** using **Click to browse**. The picker describes PDF, DOCX, and images; keep the original file in your own records.\n6. Choose **Save Document** and wait for the upload to finish.\n7. Confirm that the resource appears in the list and use **View** to verify the file you selected.\n\n## Find an existing document\nUse the page's search to find the resource name and move through the list pages if necessary. Check the project association, file name, and upload date before opening or distributing a document. A newer file with a similar name may be a different resource rather than an automatic replacement of the old one.\n\n## If an upload fails\nCheck the required name and file, your connection, and your company access. Preserve the original file and any error text. Check the list before repeating the upload because a file transfer and its saved resource record are separate steps. If the file opens incorrectly, note the file type and resource name when contacting support.\n\n## Remove a resource carefully\nThe delete action asks for confirmation. Confirm the selected document before deleting and make sure you have the original file if the company still needs it. Removing a saved resource record should not be interpreted as a promise that every previously shared public file URL becomes unavailable.",
+    "route": "/ClientForms",
+    "source_files": [
+      "src/pages/ClientForms.jsx",
+      "src/Layout.jsx"
+    ],
+    "search_terms": [
+      "client forms",
+      "resource",
+      "upload file",
+      "document",
+      "certificate",
+      "PDF",
+      "attachment",
+      "public file"
+    ],
+    "related_slugs": [
+      "guide-feature-availability",
+      "guide-troubleshooting"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "priority": 80,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-feature-availability",
+    "question": "Feature availability: signing, warranties, videos, and integrations",
+    "feature_area": "Help & Support",
+    "answer_short": "Check the current limits of features that can otherwise be mistaken for completed workflows.",
+    "answer_long": "## Approval and general document signing\nQuote and change-order approvals are supported workflows in specific document views. FuzedFlow does not currently provide a complete general document e-signing and signature-tracking workflow for every uploaded document. A label, notification, or uploaded form is not by itself proof that a signed document has been captured.\n\nIf a signature is required, use the signing process your company and customer agreed to and retain the resulting signed file. Check the guide for the exact document type and entry point before relying on an approval action.\n\n## Warranty claims\nYou can retain project notes and supporting documents. There is not currently a complete dedicated warranty-claim intake, assignment, tracking, and resolution workflow. Keep the request in your company's agreed warranty process. Uploading a warranty document or adding a project note does not formally submit a claim.\n\n## QuickBooks and accounting synchronization\nThe QuickBooks connection action in Settings is marked **Coming soon**. Do not assume that invoices, payments, or customer records are synchronizing with QuickBooks. Continue the accounting process your company currently uses and reconcile source records when comparing figures.\n\n## Video tutorials and reports export\nThe video tutorials page is a coming-soon page. Help Articles and FAQ provide current written guidance. The Reports export action currently displays a preparation/completion message without producing a confirmed report file. Use the available on-screen figures and source records rather than treating that message as a downloaded accounting export.\n\n## Notifications and delivery\nIn-app notifications are the alerts shown by the app's notification centre. They do not automatically establish that a native phone push, text, or email was sent. Some status buttons update records without performing external delivery. Check the specific send workflow and recipient when delivery matters.\n\n## Legacy or bookmarked pages\nSome older pages and controls may not be available through the current navigation or may not complete their displayed action. Start from the supported navigation menu and consult the relevant guide. If a saved bookmark opens an error or unexpected view, preserve the page name and ask support to identify the current entry point.\n\n## Get an accurate answer\nInclude the page, document type, and action when asking AI Help. The helper uses the published help articles and should describe these limits rather than invent a missing workflow. Contact support when you need help locating an existing record or verifying the status of a specific action.\n\n## Older timesheet bookmarks\nThe separate older **Timesheet** page is not the current Employee Portal time workflow and may fail to load or submit. Open **Employee Portal** and choose **Clock In** or **My Time Sheets** instead. Do not enter the same hours in both places. If hours are missing, ask your manager to check the current HR timesheets and keep the date/time details for support.",
+    "route": "/HelpArticles",
+    "source_files": [
+      "src/pages/Tutorials.jsx",
+      "src/pages/Reports.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/pages/ClientForms.jsx",
+      "src/pages/StrategicGoals.jsx",
+      "src/App.jsx",
+      "src/pages/Timesheet.jsx"
+    ],
+    "search_terms": [
+      "coming soon",
+      "available",
+      "warranty",
+      "signature",
+      "signing",
+      "QuickBooks",
+      "integration",
+      "video",
+      "export",
+      "legacy"
+    ],
+    "related_slugs": [
+      "guide-troubleshooting",
+      "guide-approvals-review"
+    ],
+    "audience": "all",
+    "requires_admin": false,
+    "priority": 85,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-help-articles-ai",
+    "question": "Finding the right article and using AI Help",
+    "feature_area": "Help & Support",
+    "answer_short": "Search the published help library, read detailed guides or quick answers, and ask the helper a specific question.",
+    "answer_long": "## Open the Help Articles portal\nChoose **Help → Help Articles** in the top navigation. You can also reach the portal from the AI helper. The help library contains detailed guides and short FAQ answers. The articles available to you depend on your company role, so field users do not see the whole office or administration library.\n\n## Find a relevant answer\n1. Type a feature, task, or question in **Search help articles**. Use useful words such as quote discount, expense approval, assigned tasks, or missing notification.\n2. Choose a topic collection or use **Filter by topic** to narrow the library.\n3. Choose **Guides** for detailed instructions, **Quick answers** for short explanations, or **All** to search both.\n4. Read the summary on a result card, then open the article.\n5. Use **Show more articles** if more matches remain. Clear search or reset filters to broaden your results.\n\nHelp search finds words inside the article as well as its title and summary. It is separate from the top-navigation search for your company's business records.\n\n## Read and follow a guide\nThe reader shows an estimated reading time and a review date. On desktop, **On this page** links to its sections; on a phone, use **Jump to a section**. **Open related page** takes you to the relevant app page when your role can use that route. Check the exact client/project/record before performing the steps.\n\nUse **Keep exploring** for related articles. **Back to all help articles** returns to your previous browse filters. If an article is unavailable, return to the available library; the link may be old or cover a role you do not have.\n\n## Ask AI Help a useful question\nTap **AI Help** and include the page, task, and what happened. For example: “In Staff & Tasks, how do I show only unassigned tasks?” The helper retrieves instructions from the same published library, formats the answer, and provides relevant article links. Follow those links when you need the full workflow or troubleshooting details.\n\nAI Help explains published instructions; it does not confirm that a specific customer payment, upload, invitation, or save completed in your records. Verify that result in the app. If an answer does not cover the detail you need, use the full guide or contact support rather than treating a guess as a confirmed feature.",
+    "route": "/HelpArticles",
+    "source_files": [
+      "src/pages/HelpArticles.jsx",
+      "src/pages/FAQ.jsx",
+      "src/components/shared/HelpMenu.jsx",
+      "src/components/shared/AIHelpWidget.jsx",
+      "supabase/functions/ai-help/index.ts"
+    ],
+    "search_terms": [
+      "help articles",
+      "AI",
+      "assistant",
+      "guide",
+      "FAQ",
+      "search",
+      "topic",
+      "read",
+      "contents",
+      "troubleshooting"
+    ],
+    "related_slugs": [
+      "guide-troubleshooting",
+      "guide-navigation-search"
+    ],
+    "audience": "all",
+    "requires_admin": false,
+    "priority": 82,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-all-tasks",
+    "question": "Managing Action Items in the All Tasks screen",
+    "feature_area": "Tasks",
+    "answer_short": "Find and manage general and project tasks while understanding the differences between their record types.",
+    "answer_long": "## Choose the right task list\nOpen **Resources → All Tasks** in the office workspace. The page heading is your company's **Action Items**. It combines general/CRM tasks and project tasks. For work inside one project, use **PM Projects → your project → Staff & Tasks**. Field users use **Employee Portal → My Tasks** for assigned work.\n\n## Find an action item\n1. Enter words in **Search tasks**.\n2. Choose **Every Status**, **All Unfinished Tasks**, or a specific status.\n3. Check the record's relation, priority, target date, and assignee.\n4. Move through the list pages if necessary; the screen shows tasks in groups rather than every matching task at once.\n5. Open the row/card to view the task description and details.\n\nThis combined list groups source statuses into **Pending**, **Active**, **Under Review**, and **Completed**. A project's **Blocked** task can appear under **Under Review** here; **To Do** can appear as **Pending**. Compare the source task before assuming its status changed unexpectedly.\n\n## Create an action item\nChoose **New Task**. Enter **Task Title**, description, and **Task Type**. Select the correct **Production Project**, **CRM Lead**, or **CRM Client** relation where applicable. The form limits mutually incompatible relations rather than attaching every relation at once. Add a vendor/subcontractor if needed, choose **Assign To**, priority, status, due date, and estimated hours, then submit the form.\n\nProject-related tasks and general tasks are stored as different task types. Reopen the saved task and verify its relation and assignment before treating it as ready for the crew.\n\n## Edit carefully\nOpen the details, then choose **Edit Task Details**. Review the available relation fields and choose **Save Changes**. Some relations are disabled depending on the original task type. Changing a status or seeing a success message should be followed by checking the reopened record.\n\nThe combined list and details may show the first assignee for a task assigned to multiple people. Use the project's **Staff & Tasks** view to inspect the full assignment before making an assignment change. The project assignee filter belongs to that project view, not to the combined list's status filter.\n\n## Troubleshooting\nClear search and status filters if a task disappears after an update. Compare the project and general lists, check assignment and company access, and inspect later pages. Preserve the task title, related project, and visible error when reporting a failed save. Avoid deleting and recreating a task merely to make it reappear.",
+    "route": "/Tasks",
+    "source_files": [
+      "src/pages/Tasks.jsx",
+      "src/components/tasks/CreateTaskDialog.jsx"
+    ],
+    "search_terms": [
+      "all tasks",
+      "action items",
+      "new task",
+      "general",
+      "CRM",
+      "status",
+      "pending",
+      "active",
+      "under review",
+      "completed",
+      "assignment"
+    ],
+    "related_slugs": [
+      "guide-troubleshooting",
+      "guide-navigation-search"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "priority": 82,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-views",
+    "question": "Choosing the right project workspace and detail view",
+    "feature_area": "Projects",
+    "answer_short": "Find the project from the current menu and recognize why different project links can show different layouts.",
+    "answer_long": "## Start from the current project menu\nOpen **Project Management → PM Projects** and select the intended project. Check its name and number before changing work. **PM Dashboard** summarizes project work, while **Project Timeline** is a scheduling view. They are different entry points, so a count or date shown in one view is not a guarantee that every other screen uses the same calculation.\n\nFor field assignments, use **Employee Portal → My Projects**, **My Schedule**, and **My Tasks**. Employees and subcontractors should not expect the office project detail pages to be available through their role.\n\n## Understand the detail layout\nSome existing links or records open an older project-detail layout. That view includes **Dashboard**, **Notes**, **Tasks**, **Gantt Chart**, **Resources**, **Schedule**, **Time**, **Materials**, **Files**, and **Permits**, with **Quote** shown when the project has a linked quote. These are sections within the selected project rather than separate company-wide records.\n\nThe current PM workspace uses its own sections and controls. Follow the guide for the screen you actually see. Do not assume that instructions for **Staff & Tasks** in the PM workspace refer to an identically named control in an older detail page.\n\n## Find a project safely\n1. Return to **PM Projects** if an old bookmark opens an empty or unexpected detail view.\n2. Search for the project name/number and clear list filters.\n3. Open the record from the list instead of manually changing its URL.\n4. Confirm the linked client, quote, and site before choosing a section.\n5. If the project is assigned to a field user, ask the manager to verify that assignment in the office project workspace.\n\n## Compare related information\nA quote describes the agreed scope; project tasks describe work; time entries record time; materials record quantities/costs; and files are attachments. Editing one section does not prove the other records were automatically updated. Reopen the affected source record after saving or approving a change.\n\n## If a view is inconsistent\nPreserve the project number and the exact page or section name. Check the current PM workspace and original quote before repeating a creation or import action. Keep unfinished notes before refreshing. If the mismatch remains, send support the two views you compared and the expected result. This gives support a useful reproduction without exposing private client details.",
+    "route": "/PMProjects",
+    "source_files": [
+      "src/pages/ProjectDetail.jsx",
+      "src/pages/PMProjects.jsx",
+      "src/pages/PMProjectWorkspace.jsx",
+      "src/pages/PMTimeline.jsx"
+    ],
+    "search_terms": [
+      "project detail",
+      "workspace",
+      "project views",
+      "bookmark",
+      "Gantt",
+      "project dashboard",
+      "missing project"
+    ],
+    "related_slugs": [
+      "guide-troubleshooting",
+      "guide-navigation-search"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "priority": 82,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  }
+]

@@ -30,7 +30,7 @@ export default function FAQ() {
     queryFn: async () => {
       const { data, error } = await supabase.from('help_faqs')
         .select('id,slug,feature_area,audience,question,answer_short,answer_long,route,search_terms,priority,requires_admin,last_verified_at')
-        .eq('is_active', true).order('priority', { ascending: false });
+        .eq('is_active', true).eq('article_type', 'faq').order('priority', { ascending: false });
       if (error) throw error;
       return (data || []).filter(article => canReadHelp(article, role));
     },

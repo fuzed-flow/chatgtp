@@ -8,7 +8,7 @@ import {JSDOM,VirtualConsole} from 'jsdom';
 import {fileURLToPath} from 'node:url';
 import {canReadHelp,findHelpArticles,helpPageRoute} from '../../src/lib/helpContent.js';
 const local=name=>fileURLToPath(new URL(name,import.meta.url));
-const articles=JSON.parse(await fs.readFile(local('./browser/articles.json'),'utf8'));
+const articles=JSON.parse(await fs.readFile(local('./browser/articles.json'),'utf8')).filter(article=>(article.article_type||'faq')==='faq');
 const viewAccessMigration=await fs.readFile(local('../../supabase/migrations/20261004065128_help_embedding_view_access.sql'),'utf8');
 
 test('help policies and canonical search enforce current roles and include articles without embeddings',async()=>{

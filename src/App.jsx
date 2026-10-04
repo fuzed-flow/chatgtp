@@ -29,6 +29,7 @@ import TeamSettings from './pages/TeamSettings';
 import Tutorials from './pages/Tutorials';
 import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
+import HelpArticles from './pages/HelpArticles';
 
 // --- COMPONENTS ---
 import AIHelpWidget from "./components/shared/AIHelpWidget";
@@ -78,7 +79,7 @@ const AuthenticatedApp = () => {
         {/* 🟡 MANAGERS & ADMINS: Dynamically mapped pages from config */}
         {Object.entries(Pages)
           // 🛡️ FILTER OUT THE ADMIN-ONLY PAGES SO MANAGERS CANNOT ACCESS THEM
-          .filter(([path]) => !['Invoices', 'HumanResources', 'AdminSettings', 'FAQ', 'Tutorials', 'Contact'].includes(path))
+          .filter(([path]) => !['Invoices', 'HumanResources', 'AdminSettings', 'FAQ', 'Tutorials', 'Contact', 'HelpArticles'].includes(path))
           .map(([path, Page]) => (
             <Route
               key={path}
@@ -104,6 +105,9 @@ const AuthenticatedApp = () => {
         } />
         <Route path="/FAQ" element={
             <LayoutWrapper currentPageName="FAQ"><FAQ /></LayoutWrapper>
+        } />
+        <Route path="/HelpArticles" element={
+            <LayoutWrapper currentPageName="HelpArticles"><HelpArticles /></LayoutWrapper>
         } />
         <Route path="/Contact" element={
             <LayoutWrapper currentPageName="Contact"><Contact /></LayoutWrapper>

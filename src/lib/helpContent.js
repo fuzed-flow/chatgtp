@@ -9,13 +9,14 @@ export function canReadHelp(article, role = 'employee') {
 
 export function helpPageRoute(route, role) {
   if (!route || !/^\/[a-zA-Z]/.test(route) || route.startsWith('//') || /[\\\s]/.test(route)) return null;
+  const pathname = route.split(/[?#]/, 1)[0];
   if (['employee', 'subcontractor', 'user'].includes(role)) {
-    if (route.startsWith('/EmployeePortal') || ['/FAQ', '/Contact', '/Tutorials', '/login', '/signup'].includes(route)) return route;
+    if (['/EmployeePortal', '/HelpArticles', '/FAQ', '/Contact', '/Tutorials', '/login', '/signup'].includes(pathname)) return route;
     const fieldRoutes = { '/Timesheet': '/EmployeePortal?tab=timesheets', '/Inventory': '/EmployeePortal?tab=inventory', '/DailyLogs': '/EmployeePortal?tab=daily_logs', '/Tasks': '/EmployeePortal?tab=tasks' };
-    return fieldRoutes[route] || null;
+    return fieldRoutes[pathname] || null;
   }
-  if (role === 'office' && route.startsWith('/AdminSettings')) return null;
-  if (role === 'manager' && route === '/Invoices') return null;
+  if (role === 'office' && pathname === '/AdminSettings') return null;
+  if (role === 'manager' && ['/Invoices', '/HumanResources'].includes(pathname)) return null;
   return route;
 }
 

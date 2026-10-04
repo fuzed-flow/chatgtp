@@ -4,10 +4,10 @@ import { createPageUrl } from "./utils";
 import { useAuth } from "@/lib/AuthContext";
 import {
   LayoutDashboard, Users, Target, FileText,
-  CalendarDays, ListChecks, Receipt, Package, MessageSquare,
-  Megaphone, Settings, ChevronLeft, ChevronRight, Menu, X,
-  LogOut, HardHat, Bell, FileCheck, BarChart3, Zap, FileStack,
-  Building2, ShoppingCart, ClipboardList, Wrench, DollarSign, FileSignature, MoreVertical, FolderKanban, ChevronDown, File, Contact
+  CalendarDays, ListChecks, Receipt, Package,
+  Settings, ChevronLeft, ChevronRight, Menu, X,
+  LogOut, HardHat, FileCheck, BarChart3, FileStack,
+  Building2, ShoppingCart, DollarSign, FileSignature, MoreVertical, FolderKanban, ChevronDown, File, Contact
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -95,7 +95,7 @@ export default function Layout({ children, currentPageName }) {
   const isEmployeeRole = ["employee", "subcontractor"].includes(userRole);
 
   useEffect(() => {
-    if (isEmployeeRole && currentPageName && !["EmployeePortal", "FAQ", "Tutorials", "Contact"].includes(currentPageName)) {
+    if (isEmployeeRole && currentPageName && !["EmployeePortal", "FAQ", "Tutorials", "Contact", "HelpArticles"].includes(currentPageName)) {
       navigate("/EmployeePortal", { replace: true });
     }
   }, [isEmployeeRole, currentPageName, navigate]);
@@ -154,7 +154,7 @@ export default function Layout({ children, currentPageName }) {
       )}
 
       {/* Sidebar */}
-      <aside className={`
+      <aside id="workspace-navigation" className={`
         fixed lg:relative z-50 h-full flex flex-col
         bg-black text-slate-100 
         transition-all duration-300 ease-in-out shadow-2xl
@@ -354,6 +354,7 @@ export default function Layout({ children, currentPageName }) {
 
         <div className="hidden lg:flex border-t border-slate-800 p-3 bg-black">
           <Button
+            aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
             variant="ghost"
             size="sm"
             onClick={() => setCollapsed(!collapsed)}
@@ -372,6 +373,10 @@ export default function Layout({ children, currentPageName }) {
             
             {/* ⚡ UPDATED HAMBURGER MENU TOGGLE */}
             <button
+              type="button"
+              aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileOpen}
+              aria-controls="workspace-navigation"
               style={{ transform: 'none', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               className="lg:hidden flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl h-11 w-11 shrink-0 active:bg-slate-800 cursor-pointer -ml-2 transition-all"
               onClick={() => setMobileOpen(!mobileOpen)}
@@ -406,6 +411,8 @@ export default function Layout({ children, currentPageName }) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button 
+                    type="button"
+                    aria-label="Open account menu"
                     onClick={closeSidebar} 
                     className="flex items-center gap-1.5 lg:gap-3 px-1.5 lg:px-3 py-1 lg:py-1.5 rounded-lg lg:rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700/50 outline-none cursor-pointer"
                   >

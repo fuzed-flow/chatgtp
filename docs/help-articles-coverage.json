@@ -1,0 +1,943 @@
+{
+  "verified_at": "2026-10-04",
+  "source_commit": "9b0c3b75ebd3c2dee3d746069a352c7e7de18da6",
+  "guide_count": 86,
+  "guide_words": 32385,
+  "corrected_faq_count": 22,
+  "topics": [
+    "Account",
+    "Change Orders",
+    "Client Timeline",
+    "Clients",
+    "Contractor Portal",
+    "Daily Logs",
+    "Employee Portal",
+    "HR",
+    "Help & Support",
+    "Inventory",
+    "Invoices",
+    "Leads",
+    "Notifications",
+    "Payments",
+    "Plans & Elevations",
+    "Pricebook",
+    "Project Materials",
+    "Project Phases",
+    "Projects",
+    "Purchase Orders",
+    "Quotes",
+    "Reports",
+    "Resource Library",
+    "Settings",
+    "Tasks",
+    "Team",
+    "Templates",
+    "Timesheets",
+    "Vendors"
+  ],
+  "pages": [
+    {
+      "page": "AdminSettings",
+      "source": "src/pages/AdminSettings.jsx",
+      "guides": [
+        {
+          "slug": "guide-feature-availability",
+          "title": "Feature availability: signing, warranties, videos, and integrations"
+        },
+        {
+          "slug": "guide-team-invites",
+          "title": "Invite team members and choose their access role"
+        },
+        {
+          "slug": "guide-team-access-and-seats",
+          "title": "Manage roles, account activity, and team seat limits"
+        },
+        {
+          "slug": "guide-company-branding",
+          "title": "Set your company identity, logo, and PDF brand styling"
+        },
+        {
+          "slug": "guide-quote-default-text",
+          "title": "Set default quote introduction, client message, and terms"
+        },
+        {
+          "slug": "guide-message-templates",
+          "title": "Customize email and SMS templates with safe tokens"
+        },
+        {
+          "slug": "guide-regional-financial-settings",
+          "title": "Configure timezone, currency, margins, and tax labels"
+        },
+        {
+          "slug": "guide-portal-module-settings",
+          "title": "Control which Employee Portal modules staff can see"
+        },
+        {
+          "slug": "guide-client-portal-settings",
+          "title": "Configure the client portal welcome message and visible modules"
+        },
+        {
+          "slug": "guide-stripe-and-subscription",
+          "title": "Connect client payments and manage your FuzedFlow subscription"
+        },
+        {
+          "slug": "guide-alert-and-automation-settings",
+          "title": "Set document alert preferences and follow-up schedules"
+        },
+        {
+          "slug": "guide-payments-connect-and-refunds",
+          "title": "Set up payment processing and handle refund questions"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Approvals",
+      "source": "src/pages/Approvals.jsx",
+      "guides": [
+        {
+          "slug": "guide-approvals-review",
+          "title": "Reviewing quotes, change orders, and purchase orders in Approvals"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ChangeOrderBuilder",
+      "source": "src/pages/ChangeOrderBuilder.jsx",
+      "guides": [
+        {
+          "slug": "guide-change-order-draft",
+          "title": "Create and send a clear change order"
+        },
+        {
+          "slug": "guide-change-order-approval",
+          "title": "Review change order approval, change requests, and invoice conversion"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ChangeOrderView",
+      "source": "src/pages/ChangeOrderView.jsx",
+      "guides": [
+        {
+          "slug": "guide-change-order-approval",
+          "title": "Review change order approval, change requests, and invoice conversion"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ChangeOrders",
+      "source": "src/pages/ChangeOrders.jsx",
+      "guides": [
+        {
+          "slug": "guide-change-order-draft",
+          "title": "Create and send a clear change order"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ClientDetail",
+      "source": "src/pages/ClientDetail.jsx",
+      "guides": [
+        {
+          "slug": "guide-clients-detail-workflows",
+          "title": "Use Client Detail as the customer work hub"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ClientForms",
+      "source": "src/pages/ClientForms.jsx",
+      "guides": [
+        {
+          "slug": "guide-client-forms-resources",
+          "title": "Uploading and finding client forms and shared resources"
+        },
+        {
+          "slug": "guide-feature-availability",
+          "title": "Feature availability: signing, warranties, videos, and integrations"
+        },
+        {
+          "slug": "guide-resource-library-upload-attach",
+          "title": "Upload company resources and attach them to quotes"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ClientPortal",
+      "source": "src/pages/ClientPortal.jsx",
+      "guides": [
+        {
+          "slug": "guide-client-portal-settings",
+          "title": "Configure the client portal welcome message and visible modules"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ClientView",
+      "source": "src/pages/ClientView.jsx",
+      "guides": [],
+      "status": "legacy_or_policy_reference"
+    },
+    {
+      "page": "Clients",
+      "source": "src/pages/Clients.jsx",
+      "guides": [
+        {
+          "slug": "guide-clients-create-organize",
+          "title": "Create, edit, find, and organize clients"
+        },
+        {
+          "slug": "guide-reports-availability-export",
+          "title": "Understand advanced-report access and current export availability"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Contact",
+      "source": "src/pages/Contact.jsx",
+      "guides": [
+        {
+          "slug": "guide-troubleshooting",
+          "title": "Troubleshooting missing records, failed actions, and loading problems"
+        },
+        {
+          "slug": "guide-support-and-ai",
+          "title": "Use help articles, AI Help, and contact support effectively"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ContractorPortal",
+      "source": "src/pages/ContractorPortal.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-contractor-portal",
+          "title": "Prepare and share a contractor bid package"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "DailyLogs",
+      "source": "src/pages/DailyLogs.jsx",
+      "guides": [
+        {
+          "slug": "guide-field-project-notes",
+          "title": "Submit project notes with progress photos from the field"
+        },
+        {
+          "slug": "guide-office-daily-logs",
+          "title": "Manage office daily logs for projects, clients, and leads"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Dashboard",
+      "source": "src/pages/Dashboard.jsx",
+      "guides": [
+        {
+          "slug": "guide-dashboard-sales-navigation",
+          "title": "Use the Dashboard to resume sales work and follow active leads"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "EmployeePortal",
+      "source": "src/pages/EmployeePortal.jsx",
+      "guides": [
+        {
+          "slug": "guide-mobile-navigation",
+          "title": "Using FuzedFlow on a phone or tablet"
+        },
+        {
+          "slug": "guide-employee-portal",
+          "title": "Find your personal work and HR tools in Employee Portal"
+        },
+        {
+          "slug": "guide-clock-in-out",
+          "title": "Clock in, clock out, and review tracked hours"
+        },
+        {
+          "slug": "guide-time-off",
+          "title": "Request time off and track the HR decision"
+        },
+        {
+          "slug": "guide-field-assigned-work",
+          "title": "View assigned projects, milestones, and your schedule"
+        },
+        {
+          "slug": "guide-field-tasks",
+          "title": "Read and complete tasks assigned to you"
+        },
+        {
+          "slug": "guide-field-project-notes",
+          "title": "Submit project notes with progress photos from the field"
+        },
+        {
+          "slug": "guide-portal-module-settings",
+          "title": "Control which Employee Portal modules staff can see"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "FAQ",
+      "source": "src/pages/FAQ.jsx",
+      "guides": [
+        {
+          "slug": "guide-troubleshooting",
+          "title": "Troubleshooting missing records, failed actions, and loading problems"
+        },
+        {
+          "slug": "guide-help-articles-ai",
+          "title": "Finding the right article and using AI Help"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "HelpArticles",
+      "source": "src/pages/HelpArticles.jsx",
+      "guides": [
+        {
+          "slug": "guide-help-articles-ai",
+          "title": "Finding the right article and using AI Help"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "HumanResources",
+      "source": "src/pages/HumanResources.jsx",
+      "guides": [
+        {
+          "slug": "guide-clock-in-out",
+          "title": "Clock in, clock out, and review tracked hours"
+        },
+        {
+          "slug": "guide-missing-timesheets",
+          "title": "Submit missing hours and understand timesheet statuses"
+        },
+        {
+          "slug": "guide-my-pay",
+          "title": "Read My Pay estimates and explain missing hours or expenses"
+        },
+        {
+          "slug": "guide-time-off",
+          "title": "Request time off and track the HR decision"
+        },
+        {
+          "slug": "guide-expense-claims",
+          "title": "Submit expenses, attach receipts, and correct a claim"
+        },
+        {
+          "slug": "guide-hr-approvals",
+          "title": "Review and approve timesheets, time off, and expense claims"
+        },
+        {
+          "slug": "guide-hr-directory-and-exports",
+          "title": "Use the HR employee directory, hourly rates, and CSV exports"
+        },
+        {
+          "slug": "guide-regional-financial-settings",
+          "title": "Configure timezone, currency, margins, and tax labels"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Inventory",
+      "source": "src/pages/Inventory.jsx",
+      "guides": [
+        {
+          "slug": "guide-inventory-manage",
+          "title": "Manage warehouse stock and review material usage"
+        },
+        {
+          "slug": "guide-inventory-csv",
+          "title": "Import and export warehouse inventory with CSV"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "InvoiceBuilder",
+      "source": "src/pages/InvoiceBuilder.jsx",
+      "guides": [
+        {
+          "slug": "guide-quote-default-text",
+          "title": "Set default quote introduction, client message, and terms"
+        },
+        {
+          "slug": "guide-stripe-and-subscription",
+          "title": "Connect client payments and manage your FuzedFlow subscription"
+        },
+        {
+          "slug": "guide-invoices-create-edit",
+          "title": "Create or edit an invoice and review the saved billing scope"
+        },
+        {
+          "slug": "guide-invoices-milestones-ledger",
+          "title": "Set invoice payment milestones and record progress payments"
+        },
+        {
+          "slug": "guide-invoices-share-customer-pay",
+          "title": "Share an invoice and help the customer use payment checkout"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "InvoiceView",
+      "source": "src/pages/InvoiceView.jsx",
+      "guides": [
+        {
+          "slug": "guide-invoices-create-edit",
+          "title": "Create or edit an invoice and review the saved billing scope"
+        },
+        {
+          "slug": "guide-invoices-share-customer-pay",
+          "title": "Share an invoice and help the customer use payment checkout"
+        },
+        {
+          "slug": "guide-payments-connect-and-refunds",
+          "title": "Set up payment processing and handle refund questions"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Invoices",
+      "source": "src/pages/Invoices.jsx",
+      "guides": [
+        {
+          "slug": "guide-invoices-create-edit",
+          "title": "Create or edit an invoice and review the saved billing scope"
+        },
+        {
+          "slug": "guide-invoices-milestones-ledger",
+          "title": "Set invoice payment milestones and record progress payments"
+        },
+        {
+          "slug": "guide-payments-history-corrections-receipts",
+          "title": "Review payment history, correct records, and send receipts"
+        },
+        {
+          "slug": "guide-payments-connect-and-refunds",
+          "title": "Set up payment processing and handle refund questions"
+        },
+        {
+          "slug": "guide-reports-review-reconcile",
+          "title": "Read reports and reconcile sales, expenses, taxes, and receivables"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "LeadDetail",
+      "source": "src/pages/LeadDetail.jsx",
+      "guides": [
+        {
+          "slug": "guide-leads-create-follow-up",
+          "title": "Create a lead and organize the next follow-up"
+        },
+        {
+          "slug": "guide-leads-detail-convert",
+          "title": "Manage lead history and convert a lead to a client"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "LeadTracker",
+      "source": "src/pages/LeadTracker.jsx",
+      "guides": [
+        {
+          "slug": "guide-leads-create-follow-up",
+          "title": "Create a lead and organize the next follow-up"
+        },
+        {
+          "slug": "guide-leads-pipeline-find-import",
+          "title": "Use the lead pipeline, search, and CSV import"
+        },
+        {
+          "slug": "guide-leads-detail-convert",
+          "title": "Manage lead history and convert a lead to a client"
+        },
+        {
+          "slug": "guide-reports-availability-export",
+          "title": "Understand advanced-report access and current export availability"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Login",
+      "source": "src/pages/Login.jsx",
+      "guides": [
+        {
+          "slug": "guide-getting-started",
+          "title": "Getting started with FuzedFlow"
+        },
+        {
+          "slug": "guide-account-sign-in",
+          "title": "Create an account, join an invited team, and sign in"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PMDashboard",
+      "source": "src/pages/PMDashboard.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-overview",
+          "title": "Understand project health, progress, and linked documents"
+        },
+        {
+          "slug": "guide-project-milestones",
+          "title": "Track project milestones and target dates"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PMProjectWorkspace",
+      "source": "src/pages/PMProjectWorkspace.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-views",
+          "title": "Choosing the right project workspace and detail view"
+        },
+        {
+          "slug": "guide-project-workspace",
+          "title": "Find your project and navigate the project workspace"
+        },
+        {
+          "slug": "guide-project-overview",
+          "title": "Understand project health, progress, and linked documents"
+        },
+        {
+          "slug": "guide-project-client-updates",
+          "title": "Post client-visible project updates and review the client feed"
+        },
+        {
+          "slug": "guide-project-notes",
+          "title": "Use Client Notes and Project Notes for the right purpose"
+        },
+        {
+          "slug": "guide-project-permits",
+          "title": "Record project permits and attached approval documents"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PMProjects",
+      "source": "src/pages/PMProjects.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-views",
+          "title": "Choosing the right project workspace and detail view"
+        },
+        {
+          "slug": "guide-project-workspace",
+          "title": "Find your project and navigate the project workspace"
+        },
+        {
+          "slug": "guide-projects-timeline",
+          "title": "Compare projects in Timeline and Calendar views"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PMTimeline",
+      "source": "src/pages/PMTimeline.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-views",
+          "title": "Choosing the right project workspace and detail view"
+        },
+        {
+          "slug": "guide-projects-timeline",
+          "title": "Compare projects in Timeline and Calendar views"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PrivacyPolicy",
+      "source": "src/pages/PrivacyPolicy.jsx",
+      "guides": [],
+      "status": "legacy_or_policy_reference"
+    },
+    {
+      "page": "Products",
+      "source": "src/pages/Products.jsx",
+      "guides": [
+        {
+          "slug": "guide-regional-financial-settings",
+          "title": "Configure timezone, currency, margins, and tax labels"
+        },
+        {
+          "slug": "guide-quotes-pricing-tax-discount",
+          "title": "Review quote costs, margin, tax, discounts, and final totals"
+        },
+        {
+          "slug": "guide-pricebook-create-maintain",
+          "title": "Create and maintain Pricebook products and pricing"
+        },
+        {
+          "slug": "guide-pricebook-import-export",
+          "title": "Import, export, and safely update Pricebook CSV files"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ProjectDetail",
+      "source": "src/pages/ProjectDetail.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-views",
+          "title": "Choosing the right project workspace and detail view"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PublicChangeOrderView",
+      "source": "src/pages/PublicChangeOrderView.jsx",
+      "guides": [
+        {
+          "slug": "guide-change-order-approval",
+          "title": "Review change order approval, change requests, and invoice conversion"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PublicInvoiceView",
+      "source": "src/pages/PublicInvoiceView.jsx",
+      "guides": [
+        {
+          "slug": "guide-invoices-milestones-ledger",
+          "title": "Set invoice payment milestones and record progress payments"
+        },
+        {
+          "slug": "guide-invoices-share-customer-pay",
+          "title": "Share an invoice and help the customer use payment checkout"
+        },
+        {
+          "slug": "guide-payments-connect-and-refunds",
+          "title": "Set up payment processing and handle refund questions"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PublicPOView",
+      "source": "src/pages/PublicPOView.jsx",
+      "guides": [
+        {
+          "slug": "guide-purchase-order-send",
+          "title": "Preview, send, and track purchase orders"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PublicQuoteView",
+      "source": "src/pages/PublicQuoteView.jsx",
+      "guides": [
+        {
+          "slug": "guide-quotes-pricing-tax-discount",
+          "title": "Review quote costs, margin, tax, discounts, and final totals"
+        },
+        {
+          "slug": "guide-quotes-review-send",
+          "title": "Preview, email, text, and track a quote"
+        },
+        {
+          "slug": "guide-quotes-client-options-approval",
+          "title": "Help a customer select quote options, approve, or request changes"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PurchaseOrderDetail",
+      "source": "src/pages/PurchaseOrderDetail.jsx",
+      "guides": [
+        {
+          "slug": "guide-purchase-order-create",
+          "title": "Create and complete a purchase order"
+        },
+        {
+          "slug": "guide-purchase-order-send",
+          "title": "Preview, send, and track purchase orders"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PurchaseOrderView",
+      "source": "src/pages/PurchaseOrderView.jsx",
+      "guides": [
+        {
+          "slug": "guide-purchase-order-send",
+          "title": "Preview, send, and track purchase orders"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "PurchaseOrders",
+      "source": "src/pages/PurchaseOrders.jsx",
+      "guides": [
+        {
+          "slug": "guide-vendors-directory",
+          "title": "Maintain the subcontractor and supplier directory"
+        },
+        {
+          "slug": "guide-purchase-order-create",
+          "title": "Create and complete a purchase order"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "QuoteBuilder",
+      "source": "src/pages/QuoteBuilder.jsx",
+      "guides": [
+        {
+          "slug": "guide-quote-default-text",
+          "title": "Set default quote introduction, client message, and terms"
+        },
+        {
+          "slug": "guide-stripe-and-subscription",
+          "title": "Connect client payments and manage your FuzedFlow subscription"
+        },
+        {
+          "slug": "guide-quotes-create-save",
+          "title": "Create and save a quote for a lead or client"
+        },
+        {
+          "slug": "guide-quotes-phases-items",
+          "title": "Build quote phases, rooms, line items, and material scope"
+        },
+        {
+          "slug": "guide-quotes-pricing-tax-discount",
+          "title": "Review quote costs, margin, tax, discounts, and final totals"
+        },
+        {
+          "slug": "guide-quotes-review-send",
+          "title": "Preview, email, text, and track a quote"
+        },
+        {
+          "slug": "guide-quotes-convert-project-invoice",
+          "title": "Convert an agreed quote into a project, invoice, or both"
+        },
+        {
+          "slug": "guide-quotes-find-duplicate-archive",
+          "title": "Find, duplicate, archive, decline, or expire quotes"
+        },
+        {
+          "slug": "guide-templates-quote-library",
+          "title": "Create and reuse complete quote templates"
+        },
+        {
+          "slug": "guide-templates-phase-library",
+          "title": "Create and maintain phase or room templates"
+        },
+        {
+          "slug": "guide-pricebook-create-maintain",
+          "title": "Create and maintain Pricebook products and pricing"
+        },
+        {
+          "slug": "guide-resource-library-upload-attach",
+          "title": "Upload company resources and attach them to quotes"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "QuoteView",
+      "source": "src/pages/QuoteView.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-workspace",
+          "title": "Find your project and navigate the project workspace"
+        },
+        {
+          "slug": "guide-quotes-pricing-tax-discount",
+          "title": "Review quote costs, margin, tax, discounts, and final totals"
+        },
+        {
+          "slug": "guide-quotes-client-options-approval",
+          "title": "Help a customer select quote options, approve, or request changes"
+        },
+        {
+          "slug": "guide-quotes-convert-project-invoice",
+          "title": "Convert an agreed quote into a project, invoice, or both"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Quotes",
+      "source": "src/pages/Quotes.jsx",
+      "guides": [
+        {
+          "slug": "guide-quotes-create-save",
+          "title": "Create and save a quote for a lead or client"
+        },
+        {
+          "slug": "guide-quotes-review-send",
+          "title": "Preview, email, text, and track a quote"
+        },
+        {
+          "slug": "guide-quotes-find-duplicate-archive",
+          "title": "Find, duplicate, archive, decline, or expire quotes"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Reports",
+      "source": "src/pages/Reports.jsx",
+      "guides": [
+        {
+          "slug": "guide-feature-availability",
+          "title": "Feature availability: signing, warranties, videos, and integrations"
+        },
+        {
+          "slug": "guide-reports-review-reconcile",
+          "title": "Read reports and reconcile sales, expenses, taxes, and receivables"
+        },
+        {
+          "slug": "guide-reports-availability-export",
+          "title": "Understand advanced-report access and current export availability"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Signup",
+      "source": "src/pages/Signup.jsx",
+      "guides": [
+        {
+          "slug": "guide-getting-started",
+          "title": "Getting started with FuzedFlow"
+        },
+        {
+          "slug": "guide-account-sign-in",
+          "title": "Create an account, join an invited team, and sign in"
+        },
+        {
+          "slug": "guide-team-invites",
+          "title": "Invite team members and choose their access role"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "StrategicGoals",
+      "source": "src/pages/StrategicGoals.jsx",
+      "guides": [
+        {
+          "slug": "guide-feature-availability",
+          "title": "Feature availability: signing, warranties, videos, and integrations"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Tasks",
+      "source": "src/pages/Tasks.jsx",
+      "guides": [
+        {
+          "slug": "guide-all-tasks",
+          "title": "Managing Action Items in the All Tasks screen"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "TeamSettings",
+      "source": "src/pages/TeamSettings.jsx",
+      "guides": [
+        {
+          "slug": "guide-team-invites",
+          "title": "Invite team members and choose their access role"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Templates",
+      "source": "src/pages/Templates.jsx",
+      "guides": [
+        {
+          "slug": "guide-templates-quote-library",
+          "title": "Create and reuse complete quote templates"
+        },
+        {
+          "slug": "guide-templates-phase-library",
+          "title": "Create and maintain phase or room templates"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Timesheet",
+      "source": "src/pages/Timesheet.jsx",
+      "guides": [
+        {
+          "slug": "guide-feature-availability",
+          "title": "Feature availability: signing, warranties, videos, and integrations"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Tutorials",
+      "source": "src/pages/Tutorials.jsx",
+      "guides": [
+        {
+          "slug": "guide-feature-availability",
+          "title": "Feature availability: signing, warranties, videos, and integrations"
+        },
+        {
+          "slug": "guide-support-and-ai",
+          "title": "Use help articles, AI Help, and contact support effectively"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Vendors",
+      "source": "src/pages/Vendors.jsx",
+      "guides": [
+        {
+          "slug": "guide-vendors-directory",
+          "title": "Maintain the subcontractor and supplier directory"
+        }
+      ],
+      "status": "documented"
+    }
+  ]
+}
