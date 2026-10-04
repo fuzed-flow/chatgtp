@@ -1,4 +1,6 @@
 {
+  "buildCommand": "vite build --config tests/help-widget/browser/vite.config.mjs",
+  "outputDirectory": "tests/help-widget/browser/dist",
   "rewrites": [
     {
       "source": "/(.*)",
