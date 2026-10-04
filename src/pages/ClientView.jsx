@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { toast } from "sonner";
-import { createPageUrl } from "../utils";
 import { generateQuotePDF } from "../components/pdf/PDFGenerator";
 
 const GST_RATE = 0.05;
@@ -460,14 +459,14 @@ export default function QuoteView() {
           <div className="inline-flex items-center gap-2 mb-4">
             <div className="h-12 w-12 rounded-xl overflow-hidden shadow-lg bg-white p-1">
               <img 
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698c9a705be60b26da0074d9/c8248c068_PRO-TRADES3.png" 
-                alt="Logo" 
+                src={company?.logo_url || company?.company_logo_url || "https://ochqexofahdssmarnict.supabase.co/storage/v1/object/public/logos/fuzed-flow-logo.png"}
+                alt={`${company?.name || "Fuzed Flow"} Logo`}
                 className="h-full w-full object-contain"
               />
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-bold text-slate-900">{company?.name || "Pro-Trades"}</h1>
-              <p className="text-xs text-slate-600">{company?.city || "Calgary"}</p>
+              <h1 className="text-2xl font-bold text-slate-900">{company?.name || "Fuzed Flow"}</h1>
+              <p className="text-xs text-slate-600">{company?.city || ""}</p>
             </div>
           </div>
           <h2 className="text-3xl font-bold text-slate-900 mb-2">Project Quote</h2>
@@ -773,7 +772,7 @@ export default function QuoteView() {
             <div className="mt-8 pt-6 border-t space-y-4">
               {quote.client_message && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Message from Pro-Trades</p>
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Message from {company?.name || "Fuzed Flow"}</p>
                   <p className="text-sm text-slate-600 whitespace-pre-wrap">{quote.client_message}</p>
                 </div>
               )}

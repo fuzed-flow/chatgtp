@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { toast } from "sonner";
-import { createPageUrl } from "../utils";
 import { generateQuotePDF } from "../components/pdf/PDFGenerator";
 import { formatCurrencyUSD } from "../components/utils/formatCurrency";
 
@@ -322,7 +321,7 @@ export default function ChangeOrderView() {
               </div>
             )}
             {!logoUrl && (
-               <h1 className="text-3xl font-black text-slate-900" style={{ color: brandColor }}>{company?.name || "Pro-Trades"}</h1>
+               <h1 className="text-3xl font-black text-slate-900" style={{ color: brandColor }}>{company?.name || "Fuzed Flow"}</h1>
             )}
             
             <div className="text-sm text-slate-500 mt-3 space-y-1 max-w-md">

@@ -131,7 +131,7 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
   doc.setFontSize(24);
   doc.setTextColor(...colors.primary);
   doc.setFont(undefined, 'bold');
-  doc.text(organization?.name || 'Pro-Trades', margin, yPos + 10);
+  doc.text(organization?.name || 'Fuzed Flow', margin, yPos + 10);
   
   let addrY = yPos + 18;
   doc.setFontSize(9);
@@ -567,7 +567,7 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
     doc.setLineWidth(0.2);
     doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
     
-    const footerText = `${organization?.name || 'Pro-Trades'} • ${documentType} ${documentNumber}`;
+    const footerText = `${organization?.name || 'Fuzed Flow'} • ${documentType} ${documentNumber}`;
     doc.text(footerText, margin, pageHeight - 7);
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
   }
@@ -635,7 +635,7 @@ export async function generateInvoicePDF({
     doc.setFontSize(28);
     doc.setTextColor(...colors.primary);
     doc.setFont(undefined, 'bold');
-    doc.text(organization?.name || 'Pro-Trades', margin, 26);
+    doc.text(organization?.name || 'Fuzed Flow', margin, 26);
   }
 
   let headY = 38;
@@ -891,7 +891,7 @@ export async function generateInvoicePDF({
     doc.setDrawColor(...colors.border);
     doc.setLineWidth(0.2);
     doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
-    const footerText = `${organization?.name || 'Pro-Trades'} • INVOICE ${invoice?.invoice_number || ''}`;
+    const footerText = `${organization?.name || 'Fuzed Flow'} • INVOICE ${invoice?.invoice_number || ''}`;
     doc.text(footerText, margin, pageHeight - 7);
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
   }
@@ -949,7 +949,7 @@ export async function generatePOPDF(po, vendor, items, organization) {
     doc.setFontSize(24);
     doc.setTextColor(...colors.primary);
     doc.setFont(undefined, 'bold');
-    doc.text(organization?.name || 'Pro-Trades', margin, 26);
+    doc.text(organization?.name || 'Fuzed Flow', margin, 26);
   }
 
   let headY = 38;
@@ -1144,7 +1144,7 @@ export async function generatePOPDF(po, vendor, items, organization) {
     doc.setDrawColor(...colors.border);
     doc.setLineWidth(0.2);
     doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
-    const footerText = `${organization?.name || 'Pro-Trades'} • PURCHASE ORDER ${po?.po_number || ''}`;
+    const footerText = `${organization?.name || 'Fuzed Flow'} • PURCHASE ORDER ${po?.po_number || ''}`;
     doc.text(footerText, margin, pageHeight - 7);
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
   }

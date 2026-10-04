@@ -18,6 +18,7 @@ const migrations = await Promise.all([
   '20261004065128_help_embedding_view_access.sql',
   '20261004070726_help_articles_portal_schema.sql',
   '20261004071225_help_articles_portal_content.sql',
+  '20261004155307_fuzed_flow_contractor_portal_branding.sql',
 ].map(name => fs.readFile(local('../../supabase/migrations/' + name), 'utf8')));
 const schema = await fs.readFile(local('./schema.sql'), 'utf8');
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -49,8 +50,8 @@ test('full guide and corrected FAQ migrations insert current source text, preser
     assert.equal(guides.length, 86);
     assert.equal(corrections.length, 22);
     const before = (await db.query('select id,slug from help_faqs order by slug')).rows;
-    await db.exec(migrations[2]);
-    await db.exec(migrations[3]);
+    await db.query('update help_faqs set embedding=$1::vector where slug=$2', [JSON.stringify(Array(1536).fill(0.1)), 'guide-project-contractor-portal']);
+    for (const migration of migrations.slice(2)) await db.exec(migration);
     assert.deepEqual((await db.query('select id,slug from help_faqs order by slug')).rows, before, 'Reapplying the release does not duplicate or replace records.');
     const actual = (await db.query('select * from help_faqs where is_active')).rows;
     const bySlug = new Map(actual.map(article => [article.slug, article]));
@@ -69,6 +70,13 @@ test('full guide and corrected FAQ migrations insert current source text, preser
       assert.deepEqual(saved.related_slugs, expected.related_slugs || [], expected.slug);
     }
     assert.ok(actual.filter(article => article.article_type === 'guide').every(article => article.embedding === null), 'Every new guide is available before embedding maintenance.');
+    const contractorGuide = bySlug.get('guide-project-contractor-portal');
+    assert.match(contractorGuide.answer_long, /Fuzed Flow branded outside portal/);
+    assert.match(contractorGuide.answer_long, /project company’s configured business contact email/);
+    assert.match(contractorGuide.answer_long, /contact who sent their invitation/);
+    assert.doesNotMatch(contractorGuide.answer_long, /Pro[- ]?Trades/i);
+    assert.equal(contractorGuide.embedding, null, 'Updating the guide invalidates its previous embedding.');
+    assert.equal((await db.query("select last_verified_at::text as verified_at from help_faqs where slug='guide-project-contractor-portal'")).rows[0].verified_at, '2026-10-04');
     for (let n = 0; n < roles.length; n++) {
       await actor(db, id(n + 1));
       const visible = (await db.query('select slug from help_faqs where is_active order by slug')).rows.map(row => row.slug);
@@ -93,7 +101,7 @@ test('full guide and corrected FAQ migrations insert current source text, preser
   } finally { await db.close(); }
 });
 
-test('AI retrieves useful current sections for real notification, expense, pricing, availability, and mobile questions', async () => {
+test('AI retrieves useful current sections for real notification, expense, pricing, availability, mobile, and contractor portal questions', async () => {
   const db = await catalogDatabase();
   try {
     await actor(db, id(1));
@@ -106,6 +114,7 @@ test('AI retrieves useful current sections for real notification, expense, prici
       {query: 'document approval electronic signature', slug: 'document-signature-availability', content: /does not currently provide a complete general document[\s\S]*Do not treat a document approval notification as proof/},
       {query: 'general document signing signature tracking availability', slug: 'guide-feature-availability', content: /## Approval and general document signing[\s\S]*does not currently provide a complete general document/},
       {query: 'Employee Portal phone More menu Expenses', slug: 'guide-employee-portal', content: /## Navigate on a phone[\s\S]*\*\*More\*\*[\s\S]*Expenses/},
+      {query: 'contractor portal quote email contact invitation', slug: 'guide-project-contractor-portal', content: /Fuzed Flow[\s\S]*configured business contact email[\s\S]*contact who sent their invitation/},
     ];
     for (const example of cases) {
       const results = (await db.query('select * from search_help_articles($1,null,null,4)', [example.query])).rows;

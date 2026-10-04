@@ -95,7 +95,7 @@ export default function SendInvoiceEmailDialog({ open, onOpenChange, invoiceId, 
       setSubject(`Your Invoice From ${finalCompanyName} is Ready`);
 
       const cName = resolvedName ? resolvedName.split(' ')[0] : 'there';
-      const myName = profile?.full_name || "Your Pro-Trades Team";
+      const myName = profile?.full_name || "Your Fuzed Flow Team";
 
       // 5. Build Dynamic Message Body for Invoices
       const defaultBody = "Hi {{client_name}},\n\nYour invoice {{invoice_number}} is ready for review.\n\nYou can view the detailed breakdown and securely submit your payment using the interactive link below. Let us know if you have any questions!";

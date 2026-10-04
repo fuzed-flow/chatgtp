@@ -34,7 +34,7 @@ export default function SendPODialog({ open, onOpenChange, poId, poData, vendorD
       setSubject(`Purchase Order ${pNum} from ${companyData?.name || settings?.name || "our team"}`);
 
       // 1. Setup Variables
-      const myName = profile?.full_name || "Your Pro-Trades Team";
+      const myName = profile?.full_name || "Your Fuzed Flow Team";
       const compName = companyData?.name || settings?.name || "";
 
       // 2. Pull template or default (⚡ Updated to mention the link)

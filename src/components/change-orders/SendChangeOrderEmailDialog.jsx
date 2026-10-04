@@ -93,7 +93,7 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
       setSubject(`Change Order ${cNum} from ${cpyName}`);
 
       const cName = resolvedName ? resolvedName.split(' ')[0] : 'there';
-      const myName = profile?.full_name || "Your Pro-Trades Team";
+      const myName = profile?.full_name || "Your Fuzed Flow Team";
 
       const defaultBody = "Hi {{client_name}},\n\nWe have submitted a scope modification request, Change Order {{co_number}}, for your project.\n\nPlease tap the link below to review the adjustment details and sign off on the variation.";
       const rawBody = settings?.templates?.co_email_body || defaultBody;

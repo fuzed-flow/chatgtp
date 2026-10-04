@@ -11,7 +11,6 @@ import { Card } from "@/components/ui/card";
 import { format } from "date-fns";
 import { generateInvoicePDF } from "../components/pdf/PDFGenerator";
 import { formatCurrencyUSD } from "../components/utils/formatCurrency";
-import SendInvoiceEmailDialog from "../components/invoices/SendInvoiceEmailDialog";
 
 export default function InvoiceView() {
   const params = new URLSearchParams(window.location.search);
@@ -197,7 +196,7 @@ export default function InvoiceView() {
             </div>
           )}
           {!logoUrl && (
-              <h1 className="text-3xl font-black text-slate-900" style={{ color: brandColor }}>{company?.name || "Pro-Trades"}</h1>
+              <h1 className="text-3xl font-black text-slate-900" style={{ color: brandColor }}>{company?.name || "Fuzed Flow"}</h1>
           )}
           
           <div className="text-sm text-slate-500 mt-3 space-y-1 max-w-md">

@@ -97,7 +97,7 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
       setSubject(`Your Quote From ${finalCompanyName} is Ready To View`);
 
       const cName = resolvedName ? resolvedName.split(' ')[0] : 'there';
-      const myName = profile?.full_name || "Your Pro-Trades Team";
+      const myName = profile?.full_name || "Your Fuzed Flow Team";
 
       // 5. Build Dynamic Message Body
       const defaultBody = "Hi {{client_name}},\n\nPlease find your project quote {{quote_number}} for {{quote_title}} ready for review.\n\nYou can review the line items, choose optional additions, and securely sign off on the package using the interactive link below.";

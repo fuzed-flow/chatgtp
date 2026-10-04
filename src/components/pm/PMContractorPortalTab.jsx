@@ -262,7 +262,7 @@ export default function PMContractorPortalTab({ project }) {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
           <h3 className="text-sm font-bold text-slate-800">Add Documents to Portal</h3>
           <Button variant="outline" size="sm" className="bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100 w-full sm:w-auto" onClick={() => setShareOpen(true)}>
-            <FolderPlus className="h-4 w-4 mr-2 text-blue-600" /> Choose Existing Files
+            <FolderPlus className="h-4 w-4 mr-2 text-amber-600" /> Choose Existing Files
           </Button>
         </div>
         
@@ -276,9 +276,9 @@ export default function PMContractorPortalTab({ project }) {
               onChange={e => setDescription(e.target.value)}
             />
           </div>
-          <label className={`flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed rounded-xl cursor-pointer transition-all ${uploading ? 'border-blue-300 bg-blue-50' : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50'}`}>
+          <label className={`flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed rounded-xl cursor-pointer transition-all ${uploading ? 'border-amber-300 bg-amber-50' : 'border-slate-300 hover:border-amber-400 hover:bg-slate-50'}`}>
             <input type="file" multiple className="hidden" onChange={handleUpload} disabled={uploading} />
-            <Upload className={`h-6 w-6 ${uploading ? 'text-blue-500 animate-pulse' : 'text-slate-400'}`} />
+            <Upload className={`h-6 w-6 ${uploading ? 'text-amber-500 animate-pulse' : 'text-slate-400'}`} />
             <span className="text-sm font-semibold text-slate-700">
               {uploading ? "Uploading to portal..." : "Click to upload a brand new file"}
             </span>
@@ -350,7 +350,7 @@ export default function PMContractorPortalTab({ project }) {
                 return (
                   <div 
                     key={i} 
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'bg-blue-50 border-blue-300 shadow-sm' : 'bg-white border-slate-200 hover:border-blue-300'}`}
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'bg-amber-50 border-amber-300 shadow-sm' : 'bg-white border-slate-200 hover:border-amber-300'}`}
                     onClick={() => {
                       if (isSelected) {
                         setSelectedToShare(prev => prev.filter(s => s.id !== file.id));
@@ -359,8 +359,8 @@ export default function PMContractorPortalTab({ project }) {
                       }
                     }}
                   >
-                    <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-slate-300'}`}>
-                      {isSelected && <CheckCircle2 className="h-3 w-3 text-white" />}
+                    <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-amber-500 border-amber-500' : 'border-slate-300'}`}>
+                      {isSelected && <CheckCircle2 className="h-3 w-3 text-slate-900" />}
                     </div>
                     <div className="h-8 w-8 bg-slate-100 rounded flex items-center justify-center shrink-0">
                       <Icon className="h-4 w-4 text-slate-500" />
@@ -379,7 +379,7 @@ export default function PMContractorPortalTab({ project }) {
             <span className="text-sm font-semibold text-slate-600">{selectedToShare.length} selected</span>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShareOpen(false)}>Cancel</Button>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white" disabled={selectedToShare.length === 0} onClick={handleShareExisting}>
+              <Button className="bg-amber-500 hover:bg-amber-600 text-slate-900" disabled={selectedToShare.length === 0} onClick={handleShareExisting}>
                 Share to Portal
               </Button>
             </div>

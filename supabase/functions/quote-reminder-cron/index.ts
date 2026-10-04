@@ -1,7 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
-const APP_URL = Deno.env.get("APP_URL") || "https://app.pro-trades.com";
+const configuredAppUrl = Deno.env.get("APP_URL");
+const APP_URL = configuredAppUrl && !/^https?:\/\/(?:app\.)?pro-trades\.(?:com|ca)(?:\/|$)/i.test(configuredAppUrl)
+  ? configuredAppUrl.replace(/\/$/, "")
+  : "https://app.fuzedflow.com";
 
 serve(async (req) => {
   try {

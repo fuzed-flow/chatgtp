@@ -644,7 +644,7 @@ export default function InvoiceBuilder() {
         };
 
         const currentClient = clients.find(c => c.id === form.client_id) || { name: 'Client' };
-        const organization = { name: "Pro-Trades" }; 
+        const organization = company || { name: "Fuzed Flow" };
 
         const allPdfItems = phases.flatMap(p => p.items.filter(isItemActive));
 

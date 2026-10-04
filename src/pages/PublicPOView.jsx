@@ -154,7 +154,7 @@ export default function PublicPOView() {
             </div>
           )}
           {!logoUrl && (
-              <h1 className="text-3xl font-black text-slate-900" style={{ color: brandColor }}>{org?.name || "Pro-Trades"}</h1>
+              <h1 className="text-3xl font-black text-slate-900" style={{ color: brandColor }}>{org?.name || "Fuzed Flow"}</h1>
           )}
           
           <div className="text-sm text-slate-500 mt-3 space-y-1 max-w-md">

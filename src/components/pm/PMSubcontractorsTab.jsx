@@ -12,7 +12,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import PMStatusBadge from "./PMStatusBadge";
 
 const TRADES = ["Framing","Electrical","Plumbing","HVAC","Drywall","Flooring","Painting","Cabinets","Concrete","Roofing","Windows/Doors","Landscaping","Other"];
 const ASSIGNMENT_STATUSES = ["Proposed","Approved","Scheduled","On Site","Completed","Removed"];
@@ -372,7 +371,7 @@ ${attachmentSection}
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white" disabled={inviteSending || !inviteMsg} onClick={sendInvite}>
+                <Button className="bg-amber-500 hover:bg-amber-600 text-slate-900" disabled={inviteSending || !inviteMsg} onClick={sendInvite}>
                   {inviteSending ? "Sending..." : <><Send className="h-3.5 w-3.5 mr-1.5" /> Send Invitation</>}
                 </Button>
               </div>
