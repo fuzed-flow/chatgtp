@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -35,12 +35,18 @@ const getProjectName = (p) => {
   return "Unnamed Project";
 };
 
+const getTaskAssignees = (task) => (
+  Array.isArray(task.assigned_to) ? task.assigned_to : task.assigned_to ? [task.assigned_to] : []
+).filter(id => id && id !== "none").map(String);
+
 export default function PMStaffTab({ project }) {
   const qc = useQueryClient();
   const { profile } = useAuth();
   const companyId = profile?.company_id;
 
   const [view, setView] = useState("tasks"); 
+  const [assigneeFilter, setAssigneeFilter] = useState("all");
+  useEffect(() => { setAssigneeFilter("all"); }, [project?.id]);
   
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
@@ -146,6 +152,24 @@ export default function PMStaffTab({ project }) {
   const allCompanyUsers = useMemo(() => {
     return users.length > 0 ? users : profiles;
   }, [users, profiles]);
+
+  const filterUsers = useMemo(() => {
+    const directory = new Map();
+    for (const user of [...users, ...profiles]) {
+      if (user?.id) directory.set(String(user.id), { ...directory.get(String(user.id)), ...user });
+    }
+    return [...directory.values()].sort((a, b) => (a.full_name || a.email || "Unnamed User").localeCompare(b.full_name || b.email || "Unnamed User"));
+  }, [users, profiles]);
+
+  const filteredTasks = useMemo(() => {
+    if (assigneeFilter === "all") return tasks;
+    const user = filterUsers.find(u => String(u.id) === assigneeFilter);
+    return tasks.filter(task => {
+      const assigned = getTaskAssignees(task);
+      if (assigneeFilter === "unassigned") return assigned.length === 0;
+      return assigned.includes(assigneeFilter) || !!(user?.email && assigned.includes(user.email));
+    });
+  }, [tasks, assigneeFilter, filterUsers]);
 
   const unassignedCompanyUsers = useMemo(() => {
     return allCompanyUsers.filter(u => !projectStaff.some(ps => ps.user_id === u.id));
@@ -305,10 +329,25 @@ export default function PMStaffTab({ project }) {
       {view === "tasks" && (
         <Card className="p-0 sm:p-5 border-none sm:border-solid sm:border-slate-200 shadow-none sm:shadow-sm bg-transparent sm:bg-white">
           <div className="flex justify-between items-center mb-4 sm:pb-2 sm:border-b sm:border-slate-100 px-1 sm:px-0">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Project Tasks ({tasks.length})</h3>
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Project Tasks ({assigneeFilter === "all" ? tasks.length : `${filteredTasks.length} of ${tasks.length}`})</h3>
             <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold shadow-sm">
               <Plus className="h-4 w-4 mr-1.5" /> Add Task
             </Button>
+          </div>
+
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="w-full sm:w-64 space-y-1.5">
+              <Label htmlFor="pm-task-assignee" className="text-xs font-semibold text-slate-600">Assigned to</Label>
+              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                <SelectTrigger id="pm-task-assignee" aria-label="Filter tasks by assigned user" className="h-11 bg-white border-slate-200"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="min-h-11">All users</SelectItem>
+                  <SelectItem value="unassigned" className="min-h-11">Unassigned</SelectItem>
+                  {filterUsers.map(user => <SelectItem key={user.id} value={String(user.id)} className="min-h-11">{user.full_name || user.email || "Unnamed User"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {assigneeFilter !== "all" && <Button variant="ghost" className="h-11 self-start text-amber-800" onClick={() => setAssigneeFilter("all")}>Clear filter</Button>}
           </div>
 
           {tasks.length === 0 ? (
@@ -320,9 +359,15 @@ export default function PMStaffTab({ project }) {
                 Create First Task
               </Button>
             </div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="text-center py-12 bg-white sm:bg-slate-50 rounded-xl border border-dashed border-slate-300">
+              <Users className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+              <h3 className="font-bold text-slate-700">No tasks match this filter</h3>
+              <p className="mt-1 text-sm text-slate-500">Choose another user or clear the filter to see all project tasks.</p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-3">
-              {tasks.map(task => {
+              {filteredTasks.map(task => {
                 const isDone = task.status === "Done";
                 const phaseName = phases.find(p => p.id === task.phase_id)?.name;
                 
