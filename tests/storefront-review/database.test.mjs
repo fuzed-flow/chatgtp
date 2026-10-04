@@ -7,10 +7,11 @@ test('confirmed deposits, payment retries, company isolation, project cap and pu
  const db=new PGlite();try{
   await db.exec(await readFile(new URL('../notifications/schema.sql',import.meta.url),'utf8'));
   await db.exec(`create or replace function public.get_auth_company_id() returns uuid language sql stable security definer as $$select company_id from public.profiles where id=auth.uid()$$;
+  create schema vault;create table vault.decrypted_secrets(name text,decrypted_secret text,created_at timestamptz default now());insert into vault.decrypted_secrets(name,decrypted_secret) values('fuzedflow_stripe_connect_webhook','synthetic-key');
   create table invoice_payment_schedules(id uuid primary key default gen_random_uuid(),company_id uuid,invoice_id uuid,amount_type text,percentage numeric,amount numeric,amount_paid numeric default 0,sort_order int,status text);
   grant all on all tables in schema public to anon,authenticated,service_role;`);
   for(const table of ['quote_phases','quote_line_items','invoice_phases','invoice_line_items','purchase_order_line_items','change_order_phases','change_order_line_items'])await db.exec(`create table ${table}(id uuid primary key default gen_random_uuid(),company_id uuid);grant all on ${table} to authenticated,service_role;`);
-  for(const name of ['20261004201943_storefront_review_repairs.sql','20261004204119_project_tenant_boundaries.sql','20261004205809_storefront_enquiries.sql','20261004210507_reviewed_schedule_drafts.sql'])await db.exec(await readFile(new URL('../../supabase/migrations/'+name,import.meta.url),'utf8'));
+  for(const name of ['20261004201943_storefront_review_repairs.sql','20261004204119_project_tenant_boundaries.sql','20261004205809_storefront_enquiries.sql','20261004210507_reviewed_schedule_drafts.sql','20261004222930_stripe_connect_webhook_secret.sql'])await db.exec(await readFile(new URL('../../supabase/migrations/'+name,import.meta.url),'utf8'));
   await db.exec(`grant all on all tables in schema public to service_role;create policy old_broad_profiles on profiles for all to authenticated using(true) with check(true);create policy old_broad_invoices on invoices for all to authenticated using(true) with check(true);`);
   await db.query("insert into companies(id,name,plan_id,max_users) values($1,'Synthetic A','starter',1),($2,'Synthetic B','professional',4)",[id(1),id(2)]);
   await db.query("insert into profiles(id,company_id,role,email) values($1,$2,'admin','fixture@example.test'),($3,$4,'admin','other@example.test')",[id(10),id(1),id(11),id(2)]);
@@ -45,7 +46,9 @@ test('confirmed deposits, payment retries, company isolation, project cap and pu
   await assert.rejects(db.query("insert into projects(company_id,status) values($1,'Lead')",[id(2)]),/row-level security/);
   await assert.rejects(db.query("update companies set max_users=100 where id=$1",[id(1)]),/managed by the payment service/);
   await assert.rejects(db.query("select record_checkout_payment('forged',$1,$2,null,10,current_date)",[id(1),id(30)]),/permission denied/);
+  await assert.rejects(db.query('select review_connect_webhook_secret()'),/permission denied/);
   await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id(11)]);await assert.rejects(db.query('select apply_project_schedule($1)',[id(60)]),/Draft unavailable/);
-  await db.exec('reset role;set role anon');await assert.rejects(db.query('select * from projects'),/permission denied/);await assert.rejects(db.query('update projects set name=\'changed\''),/permission denied/);
+  await db.exec('reset role;set role anon');await assert.rejects(db.query('select * from projects'),/permission denied/);await assert.rejects(db.query('update projects set name=\'changed\''),/permission denied/);await assert.rejects(db.query('select review_connect_webhook_secret()'),/permission denied/);
+  await db.exec('reset role;set role service_role');assert.equal((await db.query('select review_connect_webhook_secret() value')).rows[0].value,'synthetic-key');
  }finally{await db.close();}
 });

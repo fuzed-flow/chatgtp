@@ -2,6 +2,8 @@
 
 The application and storefront changes are published. The additive payment, enquiry and schedule-draft migrations are applied. `20261004204119_project_tenant_boundaries.sql` is committed but **has not been applied**: automatic approval review rejected its broad production permission changes.
 
+The Stripe platform webhook receives subscription lifecycle events. A separate Connect webhook now receives checkout payment and onboarding events from connected accounts. The receiver verifies the distinct signing keys and requires the connected account to match the document's company before recording a payment. Its signing key is encrypted in Supabase Vault and readable only through a service-role function; it is not in this repository. A signed diagnostic event tests the deployed verification path without changing payments or accounts. Historical connected-account payments predating this setup may need reconciliation from Stripe records.
+
 ## Proposed effect
 
 | Change | Scope and effect |
