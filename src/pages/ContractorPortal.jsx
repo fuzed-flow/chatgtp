@@ -3,8 +3,15 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Building2, MapPin, Download, ExternalLink, Info, Mail, ClipboardList, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import TradeResponsePortal from '@/components/vendors/TradeResponsePortal';
 
 export default function ContractorPortal() {
+  const responseParams = new URLSearchParams(window.location.search);
+  if (responseParams.get('request') && responseParams.get('token')) return <TradeResponsePortal requestId={responseParams.get('request')} token={responseParams.get('token')} />;
+  return <ProjectContractorPortal />;
+}
+
+function ProjectContractorPortal() {
   const params = new URLSearchParams(window.location.search);
   const projectId = params.get("projectId");
 

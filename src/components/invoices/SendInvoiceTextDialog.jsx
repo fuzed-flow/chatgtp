@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,12 +12,13 @@ import { toast } from "sonner";
 import { createPageUrl } from "../../utils";
 
 export default function SendInvoiceTextDialog({ open, onOpenChange, invoice, client, onSuccess }) {
-  const { settings } = useAuth();
+  const { settings, profile } = useAuth();
   
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [portalLink, setPortalLink] = useState("");
   const [saving, setSaving] = useState(false);
+  const sendIntent = useRef(null);
 
   useEffect(() => {
     if (open && invoice && client) {
@@ -61,24 +62,20 @@ export default function SendInvoiceTextDialog({ open, onOpenChange, invoice, cli
     const finalSmsPayload = `${message}\n\n${portalLink}`;
 
     try {
-      // 1. Update Master Invoice Status to 'Sent'
-      const { error: invoiceError } = await supabase
-        .from("invoices")
-        .update({ status: "Sent" })
-        .eq("id", invoice.id);
-
-      if (invoiceError) throw invoiceError;
-
       // ⚡ 2. TRIGGER SUPABASE EDGE FUNCTION
-      const { data, error: fnError } = await supabase.functions.invoke('send-sms', { 
-        body: { 
-          phone_number: phone.trim(), 
-          message_body: finalSmsPayload,
-          client_id: client?.id || null 
-        } 
-      });
-      
-      if (fnError) throw new Error(fnError.message || "Failed to trigger SMS function");
+      const signature = JSON.stringify([invoice.id, phone.trim(), finalSmsPayload]);
+      if (sendIntent.current?.signature !== signature) sendIntent.current = { signature, requestId: crypto.randomUUID(), accepted: false };
+      if (!sendIntent.current.accepted) {
+        const { data, error: fnError } = await supabase.functions.invoke('send-sms', {
+          body: { phone_number: phone.trim(), message_body: finalSmsPayload, document_type: "invoice", document_id: invoice.id, request_id: sendIntent.current.requestId }
+        });
+        if (fnError || data?.success !== true) throw new Error(data?.error || fnError?.message || "SMS acceptance could not be confirmed");
+        sendIntent.current.accepted = true;
+      }
+      // Provider acceptance precedes the status change; retries never send another accepted SMS.
+      const { error: statusError } = await supabase.from("invoices").update({ status: "Sent" }).eq("id", invoice.id).eq("company_id", profile.company_id).eq("status", "Draft");
+      if (statusError) throw new Error("SMS was sent, but document status could not be saved. Retry to update the status.");
+      sendIntent.current = null;
 
       toast.success(`Invoice successfully texted to ${phone}!`, { id: loadingToast });
       onSuccess?.();

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
-import { Upload, X, FileText, Image as ImageIcon, Send } from "lucide-react";
+import { Upload, X, FileText, Send } from "lucide-react";
 import { toast } from "sonner";
 
 // Helper to format client names
@@ -33,6 +33,8 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
   const companyId = profile?.company_id;
   const qc = useQueryClient();
   const fileInputRef = useRef(null);
+  const delivery = useRef(null);
+  const sendLock = useRef(false);
 
   const [form, setForm] = useState({
     vendor_id: "none", context_type: "none", context_id: "none",
@@ -67,6 +69,7 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
 
   useEffect(() => {
     if (open) {
+      delivery.current = null;
       if (initialVendor) {
         setForm(f => ({ ...f, vendor_id: String(initialVendor.id), email_to: initialVendor.email || "" }));
       } else {
@@ -89,19 +92,19 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
       let extractedFiles = [];
       
       if (form.context_type === "project") {
-        const { data } = await supabase.from("projects").select("end_photos, documents").eq("id", form.context_id).single();
+        const { data } = await supabase.from("projects").select("end_photos, documents").eq("id", form.context_id).eq('company_id', companyId).single();
         if (data) {
           if (data.end_photos) extractedFiles = [...extractedFiles, ...data.end_photos.map(url => ({ url, name: "Project Photo.jpg", type: "photo" }))];
           if (data.documents) extractedFiles = [...extractedFiles, ...data.documents.map(d => ({ url: d.file_url, name: d.file_name, type: "document" }))];
         }
       } else if (form.context_type === "lead") {
-        const { data } = await supabase.from("leads").select("photos, documents").eq("id", form.context_id).single();
+        const { data } = await supabase.from("leads").select("photos, documents").eq("id", form.context_id).eq('company_id', companyId).single();
         if (data) {
           if (data.photos) extractedFiles = [...extractedFiles, ...data.photos.map(url => ({ url, name: "Lead Photo.jpg", type: "photo" }))];
           if (data.documents) extractedFiles = [...extractedFiles, ...data.documents.map(d => ({ url: d.file_url, name: d.file_name, type: "document" }))];
         }
       } else if (form.context_type === "client") {
-        const { data } = await supabase.from("attachments").select("file_url, file_name").eq("related_type", "Client").eq("related_id", form.context_id);
+        const { data } = await supabase.from("attachments").select("file_url, file_name").eq("related_type", "Client").eq("related_id", form.context_id).eq('company_id', companyId);
         if (data) {
           data.forEach(d => {
              const isPhoto = d.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
@@ -113,7 +116,7 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
       setSelectedContextFiles(extractedFiles.map(f => f.url));
     };
     fetchContextFiles();
-  }, [form.context_type, form.context_id]);
+  }, [form.context_type, form.context_id, companyId]);
 
   const toggleContextFile = (url) => {
     setSelectedContextFiles(prev => prev.includes(url) ? prev.filter(u => u !== url) : [...prev, url]);
@@ -142,6 +145,9 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
 
   const sendRequestMutation = useMutation({
     mutationFn: async () => {
+      if (sendLock.current) return;
+      sendLock.current = true;
+      try {
       const dbAttachmentUrls = [...selectedContextFiles, ...customFiles.map(f => f.url)];
       
       const dbPayload = {
@@ -151,10 +157,14 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
         project_id: form.context_type === "project" ? form.context_id : null,
         lead_id: form.context_type === "lead" ? form.context_id : null,
         client_id: form.context_type === "client" ? form.context_id : null,
+        status: 'Draft',
       };
       
-      const { error: dbError } = await supabase.from("vendor_requests").insert([dbPayload]);
-      if (dbError) throw dbError;
+      if (!delivery.current) {
+        const { data: request, error: dbError } = await supabase.from("vendor_requests").insert([dbPayload]).select('id,response_token').single();
+        if (dbError) throw dbError;
+        delivery.current = { request, requestId: crypto.randomUUID(), sent: false, payload: null };
+      }
 
       let contextName = null;
       let address = null;
@@ -190,11 +200,12 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
         roleString = null;
       }
 
-      const { error: fnError } = await supabase.functions.invoke("send-vendor-request", {
-        body: {
+      const escape = value => String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const responseUrl = `${window.location.origin}/ContractorPortal?request=${delivery.current.request.id}&token=${delivery.current.request.response_token}`;
+      if (!delivery.current.payload) delivery.current.payload = {
           to: form.email_to, cc: form.email_cc, bcc: form.email_bcc,
           subject: `Quote Request from ${compName}: ${form.title}`,
-          scope_of_work: form.scope_of_work,
+          scope_of_work: `${escape(form.scope_of_work)}\n\n<a href="${escape(responseUrl)}">Accept this invitation, decline or submit your quote</a>`,
           attachments: resendAttachments,
           priority: form.priority,
           due_date: form.due_date,
@@ -205,10 +216,21 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
           brand_color: brandColor,
           signature_name: profile?.full_name || profile?.email,
           signature_role: roleString,
-          signature_phone: profile?.phone || company?.phone || null
-        }
-      });
-      if (fnError) throw fnError;
+          signature_phone: profile?.phone || company?.phone || null,
+          sender_email: profile?.email,
+          company_email: company?.settings?.email,
+          request_id: delivery.current.requestId,
+          vendor_request_id: delivery.current.request.id,
+        };
+      if (!delivery.current.sent) {
+        const { data: result, error: fnError } = await supabase.functions.invoke("send-vendor-request", { body: delivery.current.payload });
+        if (fnError || result?.error || !(result?.id || result?.resend_id || result?.success)) throw fnError || new Error(result?.error || 'Request email was not accepted');
+        delivery.current.sent = true;
+      }
+      const { error: recordedError } = await supabase.from('vendor_requests').update({ status: 'Sent', delivered_at: new Date().toISOString() }).eq('id', delivery.current.request.id).eq('company_id', companyId);
+      if (recordedError) throw new Error('Email sent; recording delivery failed. Retry to finish recording without sending it twice.');
+      qc.invalidateQueries({ queryKey: ['project-trade-requests', companyId] });
+      } finally { sendLock.current = false; }
     },
     onSuccess: () => {
       toast.success("Quote Request sent successfully!");
@@ -366,7 +388,7 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
             <Button variant="outline" onClick={() => onOpenChange(false)} className="font-bold order-2 sm:order-1">Cancel</Button>
             <Button 
               className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md order-1 sm:order-2" 
-              onClick={() => sendRequestMutation.mutate()} 
+              onClick={() => { if (!sendLock.current) sendRequestMutation.mutate(); }}
               disabled={sendRequestMutation.isPending || !form.title || !form.scope_of_work || form.vendor_id === "none" || !form.email_to}
             >
               {sendRequestMutation.isPending ? "Sending..." : "Send Request"}

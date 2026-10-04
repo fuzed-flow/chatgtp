@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import PersonalNotificationSettings from "./PersonalNotificationSettings";
 
 export default function NotificationSettings() {
   const { company, settings } = useAuth(); 
@@ -125,17 +126,19 @@ export default function NotificationSettings() {
   }
 
   return (
-    <Card className="p-6 max-w-4xl mx-auto shadow-sm border-slate-200">
+    <div className="max-w-4xl mx-auto space-y-6">
+    <PersonalNotificationSettings />
+    <Card className="p-6 shadow-sm border-slate-200">
       
       {/* HEADER & TOP SAVE BUTTON */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 border-b border-slate-100 pb-6">
         <div>
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
             <Bell className="w-6 h-6 text-amber-500" />
-            Alert Preferences
+            Company document alerts
           </h2>
           <p className="text-slate-500 font-medium mt-1">
-            Choose how you want to be notified when clients interact with your documents.
+            Company contact alerts for client document activity. These are separate from your personal notification preferences.
           </p>
         </div>
         <Button 
@@ -241,5 +244,6 @@ export default function NotificationSettings() {
 
       </div>
     </Card>
+    </div>
   );
 }

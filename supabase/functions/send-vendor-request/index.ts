@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import JSZip from "https://esm.sh/jszip@3.10.1"
 import { encodeBase64 } from "https://deno.land/std@0.208.0/encoding/base64.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const MAX_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB limit
@@ -16,14 +17,51 @@ serve(async (req) => {
     return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' } })
   }
 
+  let deliveryContext: { companyId: string; requestId: string; actor: string; sendKey: string } | null = null;
+  let serviceDb: any = null;
+  let providerAccepted = false;
   try {
+    const authorization = req.headers.get('Authorization');
+    if (!authorization?.startsWith('Bearer ')) throw new Error('Authentication required');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !anonKey || !RESEND_API_KEY) throw new Error('Email service unavailable');
+    const db = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authorization } } });
+    const { data: authData, error: authError } = await db.auth.getUser(authorization.slice(7).trim());
+    if (authError || !authData?.user) throw new Error('Authentication required');
+    const { data: profile, error: profileError } = await db.from('profiles').select('company_id,role,is_active,permissions').eq('id', authData.user.id).single();
+    if (profileError || !profile?.company_id || profile.is_active === false || !['owner','admin','manager','office'].includes(profile.role)) throw new Error('Company management access required');
+    if (!['owner','admin'].includes(profile.role) && Array.isArray(profile.permissions) && profile.permissions.length && !profile.permissions.includes('vendors')) throw new Error('Vendor access required');
     const { 
       to, cc, bcc, subject, scope_of_work, attachments, 
       priority, due_date, project_name, address, 
       company_name, company_logo, brand_color,
       signature_name, signature_role, signature_phone,
-      sender_email, company_email // ⚡ Added fields to capture the sender's email
+      sender_email, company_email,
+      request_id, vendor_request_id,
     } = await req.json()
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (request_id != null && (typeof request_id !== 'string' || !uuid.test(request_id))) throw new Error('Invalid send request');
+    let requestRecord: any = null;
+    if (vendor_request_id != null) {
+      if (typeof vendor_request_id !== 'string' || !uuid.test(vendor_request_id)) throw new Error('Invalid vendor request');
+      const { data, error } = await db.from('vendor_requests').select('id,company_id,project_id,attachments').eq('id', vendor_request_id).eq('company_id', profile.company_id).single();
+      if (error || !data) throw new Error('Vendor request is unavailable');
+      requestRecord = data;
+      deliveryContext = { companyId: profile.company_id, requestId: vendor_request_id, actor: authData.user.id, sendKey: request_id || vendor_request_id };
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (!serviceKey) throw new Error('Email delivery tracking unavailable');
+      serviceDb = createClient(supabaseUrl, serviceKey);
+    }
+    const allowedAttachment = (path: string) => {
+      try {
+        const url = new URL(path);
+        return url.protocol === 'https:' && url.origin === new URL(supabaseUrl).origin
+          && url.pathname.startsWith('/storage/v1/object/public/')
+          && (!requestRecord || (Array.isArray(requestRecord.attachments) && requestRecord.attachments.includes(path)));
+      } catch { return false; }
+    };
+    if (attachments != null && (!Array.isArray(attachments) || attachments.length > 30 || attachments.some((a: any) => !a || typeof a.path !== 'string' || !allowedAttachment(a.path)))) throw new Error('Attachments must be files from this request in company storage');
 
     const color = brand_color || '#f59e0b';
     
@@ -32,6 +70,8 @@ serve(async (req) => {
     const bccArray = parseEmails(bcc);
 
     if (!toArray) throw new Error("At least one 'To' email address is required.");
+    for (const address of [...toArray, ...(ccArray || []), ...(bccArray || [])]) if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) || address.length > 254 || /[\r\n]/.test(address)) throw new Error('Enter valid recipient email addresses');
+    if (typeof subject !== 'string' || !subject.trim() || subject.length > 998 || /[\r\n]/.test(subject) || typeof scope_of_work !== 'string') throw new Error('Email subject and scope are required');
 
     // ⚡ BUILD REPLY-TO ARRAY (Sender + Any CCs)
     const rawReplyTo = [];
@@ -53,9 +93,12 @@ serve(async (req) => {
       const fetchedFiles = await Promise.all(
         attachments.map(async (att: { path: string; filename: string }, index: number) => {
           try {
-            const resp = await fetch(att.path);
-            if (!resp.ok) return null;
+            const resp = await fetch(att.path, { redirect: 'error' });
+            if (!resp.ok) throw new Error('Attachment unavailable');
+            const declared = Number(resp.headers.get('content-length') || 0);
+            if (declared > 30 * 1024 * 1024) throw new Error('Attachment is too large');
             const arrayBuffer = await resp.arrayBuffer();
+            if (arrayBuffer.byteLength > 30 * 1024 * 1024) throw new Error('Attachment is too large');
             return {
               filename: att.filename || `attachment_${index + 1}`,
               path: att.path,
@@ -63,8 +106,8 @@ serve(async (req) => {
               size: arrayBuffer.byteLength
             };
           } catch (e) {
-            console.error(`Failed to download attachment ${att.path}:`, e);
-            return null;
+            console.error('Vendor request attachment could not be loaded');
+            throw new Error('One or more attachments could not be loaded. Please remove or replace them before sending.');
           }
         })
       );
@@ -131,6 +174,7 @@ serve(async (req) => {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${RESEND_API_KEY}`,
+        ...(request_id ? { 'Idempotency-Key': `fuzedflow/${profile.company_id}/${request_id}/vendor-request` } : {}),
       },
       body: JSON.stringify({
         from: 'FuzedFlow <alerts@mail.fuzedflow.com>', 
@@ -206,12 +250,27 @@ serve(async (req) => {
     })
 
     const data = await res.json()
+    providerAccepted = res.ok;
+    if (!res.ok) throw new Error(data?.message || 'Email provider could not send this request');
+    if (res.ok && serviceDb && deliveryContext && data.id) {
+      const { error: trackingError } = await serviceDb.rpc('register_outbound_delivery', {
+        p_provider: 'resend', p_provider_id: data.id, p_company: deliveryContext.companyId,
+        p_related: 'Trade', p_id: deliveryContext.requestId, p_actor: deliveryContext.actor,
+        p_kind: 'document', p_copy: false, p_recipient: toArray[0], p_sender: 'alerts@mail.fuzedflow.com',
+      });
+      if (trackingError) console.error('Vendor delivery accepted; delivery tracking could not be saved');
+    }
     return new Response(JSON.stringify(data), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       status: res.ok ? 200 : 400,
     })
   } catch (error: any) {
-    console.error("Edge function error:", error);
+    if (serviceDb && deliveryContext && !providerAccepted) {
+      try {
+        await serviceDb.rpc('record_sales_event', { p_id: deliveryContext.requestId, p_company: deliveryContext.companyId, p_related: 'Trade', p_event: 'vendor_request_delivery_failed', p_actor: deliveryContext.actor, p_reference: deliveryContext.sendKey, p_message: 'Trade request email could not be sent. Review the recipient and attachments, then retry.' });
+      } catch { console.error('Vendor request delivery failure could not be recorded'); }
+    }
+    console.error('Vendor request email could not be sent');
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       status: 400,

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Trash2, Package, Check, Upload, FileText, Download, Mail, Eye, Send, Menu, Save, CheckCircle, DollarSign } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Package, Check, Upload, FileText, Download, Mail, Eye, Send, Menu, Save, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import StatusBadge from "../components/shared/StatusBadge";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ import AddressAutocomplete from "../components/shared/AddressAutocomplete";
 import { format } from "date-fns";
 import SendPODialog from "../components/purchase-orders/SendPODialog";
 import { generatePOPDF } from "../components/pdf/PDFGenerator";
+import { DELIVERY_STATUSES, purchaseOrderStatusUpdate, purchaseOrderDeliveryUpdate } from "@/lib/costNotificationWorkflows";
 
 export default function PurchaseOrderDetail() {
   const { profile, settings } = useAuth();
@@ -50,7 +51,7 @@ export default function PurchaseOrderDetail() {
     queryKey: ["purchase-order", poId],
     enabled: !!poId && !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("purchase_orders").select("*").eq("id", poId).single();
+      const { data, error } = await supabase.from("purchase_orders").select("*").eq("id", poId).eq("company_id", companyId).single();
       if (error) throw error;
       return data;
     },
@@ -80,7 +81,7 @@ export default function PurchaseOrderDetail() {
     queryKey: ["vendor", po?.vendor_id],
     enabled: !!po?.vendor_id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("vendors").select("*").eq("id", po.vendor_id).single();
+      const { data, error } = await supabase.from("vendors").select("*").eq("id", po.vendor_id).eq("company_id", companyId).single();
       if (error) throw error;
       return data;
     },
@@ -166,17 +167,15 @@ export default function PurchaseOrderDetail() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus) => {
-      const payload = { status: newStatus };
-      if (newStatus === "Approved") {
-        payload.actual_delivery_date = new Date().toISOString().split('T')[0];
-      }
-      const { error } = await supabase.from("purchase_orders").update(payload).eq("id", poId);
+      const payload = purchaseOrderStatusUpdate(newStatus, po);
+      const { error } = await supabase.from("purchase_orders").update(payload).eq("id", poId).eq("company_id", companyId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-order", poId] });
       toast.success("Status updated");
     },
+    onError: (err) => toast.error(`Status update failed: ${err.message}`),
   });
 
   const handleFileUpload = async (file) => {
@@ -201,7 +200,7 @@ export default function PurchaseOrderDetail() {
 
   const updatePOField = async (field, value) => {
     try {
-      const { error } = await supabase.from("purchase_orders").update({ [field]: value }).eq("id", poId);
+      const { error } = await supabase.from("purchase_orders").update({ [field]: value }).eq("id", poId).eq("company_id", companyId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["purchase-order", poId] });
       toast.success("Purchase order saved");
@@ -260,6 +259,7 @@ export default function PurchaseOrderDetail() {
             <div className="h-px bg-slate-100 my-1.5"></div>
             
             <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Update Status</div>
+            <button onClick={() => { setActionsMenuOpen(false); updateStatusMutation.mutate("Pending Approval"); }} disabled={updateStatusMutation.isPending} className="w-full min-h-11 text-left px-3 py-2 text-sm text-amber-800 hover:bg-amber-50 flex items-center"><Check className="h-4 w-4 mr-3" /> Request Approval</button>
             <button 
               onClick={() => { setActionsMenuOpen(false); updateStatusMutation.mutate("Sent"); }} 
               className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center transition-colors"
@@ -309,6 +309,24 @@ export default function PurchaseOrderDetail() {
         </div>
 
         {/* CORE DETAILS CARD */}
+        <Card className="p-4 sm:p-6 border-amber-200 bg-white space-y-4">
+          <h2 className="font-bold text-slate-900">Purchasing and delivery tracking</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><Label htmlFor="po-delivery-status">Delivery status</Label><Select value={po.delivery_status || "Not received"} onValueChange={async (status) => {
+              try { const { error } = await supabase.from("purchase_orders").update(purchaseOrderDeliveryUpdate(status)).eq("id", poId).eq("company_id", companyId); if (error) throw error; queryClient.invalidateQueries({ queryKey: ["purchase-order", poId] }); toast.success("Delivery updated"); }
+              catch (err) { toast.error(`Delivery update failed: ${err.message}`); }
+            }}><SelectTrigger id="po-delivery-status" className="mt-1 min-h-11"><SelectValue /></SelectTrigger><SelectContent>{DELIVERY_STATUSES.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent></Select></div>
+            <div><Label htmlFor="po-cost-category">Cost category</Label><Input id="po-cost-category" className="mt-1 min-h-11" defaultValue={po.budget_category || ""} placeholder="e.g. Electrical" onBlur={e => { if (e.target.value !== (po.budget_category || "")) updatePOField("budget_category", e.target.value.trim() || null); }} /></div>
+            <div><Label htmlFor="po-delivery-date">Expected delivery date</Label><Input id="po-delivery-date" type="date" className="mt-1 min-h-11" value={poForm.expected_delivery_date} onChange={e => setPoForm(f => ({ ...f, expected_delivery_date: e.target.value }))} onBlur={e => { if (e.target.value !== (po.expected_delivery_date || "")) updatePOField("expected_delivery_date", e.target.value || null); }} /></div>
+            <div><Label>Approved amount</Label><p className="mt-2 font-bold">{po.approved_amount == null ? "Awaiting approval" : `$${Number(po.approved_amount).toFixed(2)}`}</p></div>
+          </div>
+          <div><Label htmlFor="po-delivery-notes">Delivery notes</Label><Textarea id="po-delivery-notes" className="mt-1" defaultValue={po.delivery_notes || ""} placeholder="Items still outstanding or supplier's revised delivery date" onBlur={e => { if (e.target.value !== (po.delivery_notes || "")) updatePOField("delivery_notes", e.target.value.trim() || null); }} /></div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button className="min-h-11 bg-amber-500 hover:bg-amber-600 text-slate-900" disabled={!!po.supplier_acknowledged_at} onClick={() => updatePOField("supplier_acknowledged_at", new Date().toISOString())}>{po.supplier_acknowledged_at ? "Supplier acknowledgement recorded" : "Record supplier acknowledgement"}</Button>
+            <Button variant="outline" className="min-h-11" onClick={() => updateStatusMutation.mutate("Cancelled")} disabled={updateStatusMutation.isPending || po.status === "Cancelled"}>Cancel order</Button>
+          </div>
+          <p className="text-xs text-slate-500">Approval records the spending limit. Mark Received only when the complete order arrives; use Partial delivery for outstanding items.</p>
+        </Card>
         <Card className="p-6 border-slate-200 shadow-sm bg-white">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200 mb-6">
             <div>

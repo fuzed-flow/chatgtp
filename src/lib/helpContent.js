@@ -1,4 +1,4 @@
-export const FIELD_HELP_AREAS = ['Account', 'Employee Portal', 'Timesheets', 'Inventory', 'Daily Logs', 'Tasks', 'Notifications', 'Help & Support'];
+export const FIELD_HELP_AREAS = ['Account', 'Employee Portal', 'Timesheets', 'Inventory', 'Daily Logs', 'Tasks', 'Notifications', 'Help & Support', 'Warranty', 'Documents'];
 
 export function canReadHelp(article, role = 'employee') {
   if (['owner', 'admin'].includes(role)) return true;
@@ -11,7 +11,7 @@ export function helpPageRoute(route, role) {
   if (!route || !/^\/[a-zA-Z]/.test(route) || route.startsWith('//') || /[\\\s]/.test(route)) return null;
   const pathname = route.split(/[?#]/, 1)[0];
   if (['employee', 'subcontractor', 'user'].includes(role)) {
-    if (['/EmployeePortal', '/HelpArticles', '/FAQ', '/Contact', '/Tutorials', '/login', '/signup'].includes(pathname)) return route;
+    if (['/EmployeePortal', '/Warranty', '/DocumentRequests', '/HelpArticles', '/FAQ', '/Contact', '/Tutorials', '/login', '/signup'].includes(pathname)) return route;
     const fieldRoutes = { '/Timesheet': '/EmployeePortal?tab=timesheets', '/Inventory': '/EmployeePortal?tab=inventory', '/DailyLogs': '/EmployeePortal?tab=daily_logs', '/Tasks': '/EmployeePortal?tab=tasks' };
     return fieldRoutes[pathname] || null;
   }

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Receipt, ExternalLink, Edit2, Trash2, Camera, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import ExpenseCostContext from './ExpenseCostContext';
 
 const STATUS_COLORS = {
   Submitted: "bg-blue-100 text-blue-800 border-blue-200",
@@ -36,7 +37,7 @@ export default function EPExpenses({ currentUser, companyId }) {
     description: "", 
     payment_method: "Personal Card", 
     project_id: "none", 
-    receipt_url: "" 
+    receipt_url: "", purchase_context: 'none',
   };
   const [form, setForm] = useState(defaultForm);
 
@@ -157,7 +158,7 @@ export default function EPExpenses({ currentUser, companyId }) {
       description: exp.description || "",
       payment_method: exp.payment_method || "Personal Card",
       project_id: exp.project_id || "none",
-      receipt_url: exp.receipt_url || ""
+      receipt_url: exp.receipt_url || "", purchase_context: exp.purchase_order_id ? `po:${exp.purchase_order_id}` : exp.project_material_id ? `material:${exp.project_material_id}` : 'none',
     });
     setEditingId(exp.id);
     setOpen(true);
@@ -189,6 +190,8 @@ export default function EPExpenses({ currentUser, companyId }) {
       payment_method: form.payment_method,
       receipt_url: form.receipt_url || null,
       status: "Submitted",
+      purchase_order_id: form.purchase_context.startsWith('po:') ? form.purchase_context.slice(3) : null,
+      project_material_id: form.purchase_context.startsWith('material:') ? form.purchase_context.slice(9) : null,
     };
 
     if (editingId) {
@@ -338,7 +341,7 @@ export default function EPExpenses({ currentUser, companyId }) {
             
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Project (Optional)</label>
-              <Select value={form.project_id} onValueChange={v => setForm({ ...form, project_id: v })}>
+              <Select value={form.project_id} onValueChange={v => setForm({ ...form, project_id: v, purchase_context: 'none' })}>
                 <SelectTrigger className="mt-1 bg-white font-medium"><SelectValue placeholder="Select project..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— No Project —</SelectItem>
@@ -347,6 +350,7 @@ export default function EPExpenses({ currentUser, companyId }) {
               </Select>
             </div>
 
+            <ExpenseCostContext companyId={companyId} projectId={form.project_id} value={form.purchase_context} onChange={purchase_context => setForm({ ...form, purchase_context })} />
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description</label>
               <Textarea placeholder="What was this purchase for?" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} className="mt-1 bg-white" />

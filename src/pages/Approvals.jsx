@@ -40,7 +40,8 @@ export default function Approvals() {
   const currentUserName = profile?.full_name || "Admin";
 
   // --- VIEW STATE ---
-  const [activeView, setActiveView] = useState("quotes"); // 'quotes', 'change_orders', 'purchase_orders'
+  const [activeView, setActiveView] = useState("quotes");
+  const [searchReviews, setSearchReviews] = useState("");
 
   // --- FILTER & SEARCH STATE ---
   const [searchQuotes, setSearchQuotes] = useState("");
@@ -64,11 +65,11 @@ export default function Approvals() {
     } 
   });
   
-  const { data: quotes = [] } = useQuery({ 
+  const { data: quotes = [], isPending: quotesLoading, error: quotesError, refetch: refetchQuotes } = useQuery({
     queryKey: ["quotes_lookup", companyId], 
     enabled: !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("quotes").select("id, title, quote_number, site_address, total, issue_date, client_id").eq("company_id", companyId);
+      const { data, error } = await supabase.from("quotes").select("id, title, quote_number, site_address, total, issue_date, client_id, status, internal_review_status, next_follow_up_date").eq("company_id", companyId);
       if (error) throw error; return data || [];
     } 
   });
@@ -93,7 +94,7 @@ export default function Approvals() {
   });
 
   // 3. Change Orders
-  const { data: changeOrders = [] } = useQuery({
+  const { data: changeOrders = [], isPending: changeOrdersLoading, error: changeOrdersError, refetch: refetchChangeOrders } = useQuery({
     queryKey: ["change_orders", companyId],
     enabled: !!companyId,
     queryFn: async () => {
@@ -118,6 +119,27 @@ export default function Approvals() {
   const projectMap = Object.fromEntries(projects.map(p => [p.id, p]));
 
   // --- SUPABASE MUTATIONS ---
+  const internalReviewMutation = useMutation({
+    mutationFn: async ({ id, documentType, outcome }) => {
+      if (!companyId || !profile?.id || !["quote", "change_order"].includes(documentType) || !["Approved", "Changes Required"].includes(outcome)) {
+        throw new Error("The review cannot be saved.");
+      }
+      const table = documentType === "quote" ? "quotes" : "change_orders";
+      const { data, error } = await supabase.from(table).update({
+        status: "Draft", internal_review_status: outcome,
+        internal_reviewed_at: new Date().toISOString(), internal_reviewed_by: profile.id,
+      }).eq("id", id).eq("company_id", companyId).eq("status", "Pending Review").select("id").single();
+      if (error || !data?.id) throw error || new Error("This document is no longer awaiting review.");
+    },
+    onSuccess: (_, { id, documentType, outcome }) => {
+      queryClient.invalidateQueries({ queryKey: ["quotes_lookup", companyId] });
+      for (const key of ["quotes", "change_orders", "change-orders"]) queryClient.invalidateQueries({ queryKey: [key] });
+      queryClient.invalidateQueries({ queryKey: [documentType === "quote" ? "quote" : "change-order", id] });
+      toast.success(outcome === "Approved" ? "Internal review approved. The draft is ready to send." : "Returned to draft for changes.");
+    },
+    onError: () => toast.error("Could not save the review. Refresh the document status and try again."),
+  });
+
   const resendQuoteMutation = useMutation({
     mutationFn: async (approvalId) => {
       const approval = quoteApprovals.find(a => a.id === approvalId);
@@ -139,13 +161,14 @@ export default function Approvals() {
 
   const updateCOStatusMutation = useMutation({
     mutationFn: async ({ id, status }) => {
-      const { error } = await supabase.from("change_orders").update({ status, approved_by: currentUserName, approved_at: new Date().toISOString() }).eq("id", id);
-      if (error) throw error;
+      const { data, error } = await supabase.from("change_orders").update({ status, approved_by: currentUserName, approved_at: new Date().toISOString() }).eq("id", id).eq("company_id", companyId).eq("status", "Pending").select("id").single();
+      if (error || !data?.id) throw error || new Error("This change order is no longer pending.");
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["change_orders", companyId] });
       toast.success(`Change Order ${variables.status.toLowerCase()} successfully!`);
-    }
+    },
+    onError: () => toast.error("Could not save the change order decision. Refresh and try again."),
   });
 
   const updatePOStatusMutation = useMutation({
@@ -174,7 +197,7 @@ export default function Approvals() {
   });
 
   const filteredCOs = changeOrders.filter(co => {
-    const matchSearch = !searchCO || co.title?.toLowerCase().includes(searchCO.toLowerCase()) || co.co_number?.toLowerCase().includes(searchCO.toLowerCase());
+    const matchSearch = !searchCO || co.title?.toLowerCase().includes(searchCO.toLowerCase()) || co.co_number?.toLowerCase().includes(searchCO.toLowerCase()) || co.change_order_number?.toLowerCase().includes(searchCO.toLowerCase());
     const matchStatus = filterCO === "all" || co.status === filterCO;
     return matchSearch && matchStatus;
   });
@@ -184,6 +207,11 @@ export default function Approvals() {
     const matchStatus = filterPO === "all" || po.status === filterPO;
     return matchSearch && matchStatus;
   });
+
+  const internalReviews = [
+    ...quotes.filter(quote => quote.status === "Pending Review").map(quote => ({ ...quote, documentType: "quote", documentNumber: quote.quote_number, clientName: clientMap[quote.client_id] })),
+    ...changeOrders.filter(co => co.status === "Pending Review").map(co => ({ ...co, documentType: "change_order", documentNumber: co.change_order_number || co.co_number, clientName: clientMap[projectMap[co.project_id]?.client_id] })),
+  ].filter(document => !searchReviews || [document.title, document.documentNumber, document.clientName].some(value => value?.toLowerCase().includes(searchReviews.trim().toLowerCase())));
 
   return (
     <div className="p-4 md:p-6 w-full max-w-7xl mx-auto space-y-6">
@@ -226,11 +254,53 @@ export default function Approvals() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="quotes">Quote Approvals</SelectItem>
+            <SelectItem value="internal_reviews">Internal Review</SelectItem>
             <SelectItem value="change_orders">Change Orders</SelectItem>
             <SelectItem value="purchase_orders">Purchase Orders</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {activeView === "internal_reviews" && (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">Review drafts before sending them to clients. An internal approval makes a draft ready to send; customer acceptance remains a separate action.</p>
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <Input aria-label="Search internal reviews" placeholder="Search document, number or client..." value={searchReviews} onChange={e => setSearchReviews(e.target.value)} className="h-11 bg-white pl-10" />
+          </div>
+          {quotesLoading || changeOrdersLoading ? (
+            <Card className="border-slate-200 bg-white p-6"><p role="status" className="text-sm text-slate-600">Loading internal reviews...</p></Card>
+          ) : quotesError || changeOrdersError ? (
+            <Card className="space-y-3 border-slate-200 bg-white p-6">
+              <p role="alert" className="text-sm text-red-700">Internal reviews could not be loaded. Try again to check which drafts need a decision.</p>
+              <Button variant="outline" className="h-11" onClick={() => { refetchQuotes(); refetchChangeOrders(); }}>Try again</Button>
+            </Card>
+          ) : internalReviews.length === 0 ? (
+            <Card className="border-dashed border-slate-200 bg-white p-6"><EmptyState icon={FileCheck} title="No internal reviews awaiting a decision" description="Use Request Internal Review in a quote or change order builder to submit a draft." /></Card>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {internalReviews.map(document => (
+                <Card key={`${document.documentType}:${document.id}`} className="space-y-4 border-slate-200 bg-white p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase text-slate-500">{document.documentType === "quote" ? "Quote" : "Change Order"} {document.documentNumber || "Draft"}</p>
+                      <h3 className="break-words font-bold text-slate-900">{document.title || "Untitled document"}</h3>
+                      {document.clientName && <p className="mt-1 text-sm text-slate-600">{document.clientName}</p>}
+                    </div>
+                    <StatusBadge status="Pending Review" />
+                  </div>
+                  <p className="font-semibold text-slate-800">{formatCurrencyUSD(document.total)}</p>
+                  <Button variant="outline" onClick={() => navigate(`/${document.documentType === "quote" ? "QuoteBuilder" : "ChangeOrderBuilder"}?id=${document.id}`)} className="h-11 w-full"><Eye className="mr-2 h-4 w-4" /> Open document</Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button disabled={internalReviewMutation.isPending} onClick={() => internalReviewMutation.mutate({ id: document.id, documentType: document.documentType, outcome: "Approved" })} className="h-11 flex-1 bg-amber-500 font-semibold text-slate-900 hover:bg-amber-600">Approve for sending</Button>
+                    <Button disabled={internalReviewMutation.isPending} onClick={() => internalReviewMutation.mutate({ id: document.id, documentType: document.documentType, outcome: "Changes Required" })} variant="outline" className="h-11 flex-1">Return for changes</Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* --- CONTENT: QUOTE SIGN-OFFS --- */}
       {activeView === "quotes" && (
@@ -296,7 +366,7 @@ export default function Approvals() {
               <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                {["Draft", "Pending", "Approved", "Rejected"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {["Draft", "Pending Review", "Pending", "Approved", "Rejected", "Declined"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -325,13 +395,19 @@ export default function Approvals() {
                     </Button>
                     {co.status === "Pending" && (
                       <>
-                        <Button variant="outline" size="icon" className="h-8 w-8 bg-red-50 border-red-200 hover:bg-red-100" onClick={() => updateCOStatusMutation.mutate({ id: co.id, status: "Rejected" })} title="Reject">
+                        <Button disabled={updateCOStatusMutation.isPending} variant="outline" size="icon" className="h-8 w-8 bg-red-50 border-red-200 hover:bg-red-100" onClick={() => updateCOStatusMutation.mutate({ id: co.id, status: "Rejected" })} title="Reject">
                           <XCircle className="h-4 w-4 text-red-600" />
                         </Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8 bg-emerald-50 border-emerald-200 hover:bg-emerald-100" onClick={() => updateCOStatusMutation.mutate({ id: co.id, status: "Approved" })} title="Approve">
+                        <Button disabled={updateCOStatusMutation.isPending} variant="outline" size="icon" className="h-8 w-8 bg-emerald-50 border-emerald-200 hover:bg-emerald-100" onClick={() => updateCOStatusMutation.mutate({ id: co.id, status: "Approved" })} title="Approve">
                           <CheckCircle className="h-4 w-4 text-emerald-600" />
                         </Button>
                       </>
+                    )}
+                    {co.status === "Pending Review" && (
+                      <div className="flex flex-col gap-2">
+                        <Button disabled={internalReviewMutation.isPending} onClick={() => internalReviewMutation.mutate({ id: co.id, documentType: "change_order", outcome: "Approved" })} className="h-11 bg-amber-500 text-slate-900 hover:bg-amber-600">Approve for sending</Button>
+                        <Button disabled={internalReviewMutation.isPending} onClick={() => internalReviewMutation.mutate({ id: co.id, documentType: "change_order", outcome: "Changes Required" })} variant="outline" className="h-11">Return for changes</Button>
+                      </div>
                     )}
                   </div>
                 )}

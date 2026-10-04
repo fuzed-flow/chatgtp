@@ -1,0 +1,221 @@
+[
+  {
+    "slug": "guide-personal-notification-delivery",
+    "question": "Choose personal notification channels, quiet hours and summaries",
+    "feature_area": "Notifications",
+    "audience": "all",
+    "route": "/EmployeePortal",
+    "answer_short": "Use My notifications to choose your own in-app, email, SMS, device push and digest preferences. Your role and assigned work still determine which events you receive.",
+    "answer_long": "## Open your own preferences\nOpen the notification bell and choose its settings or gear button. Owners and administrators can also open **Admin Settings → Notifications → My notifications**. These settings belong to your account. They do not enable external alerts for every person in your company.\n\n## Choose channels and categories\n1. Keep **In-app** enabled to see routed updates in the bell. It starts enabled.\n2. Enable **Instant email** if you want individual eligible updates at your saved account email.\n3. Enable **SMS text messages** only if you want texts. Enter **My mobile number** with its country code, such as the international +1 format for Canada or the United States.\n4. Use **Device push notifications** and **Connect this device** to request browser permission for the phone or computer you are using.\n5. Choose the categories you want, then select **Save my preferences**.\n\nExternal channels and digests start off. Delivery needs the platform's configured provider, scheduled dispatcher, supported device and your permission; a saved switch alone does not prove that a message was delivered. Contact support if an opted-in channel remains unavailable.\n\n## Device push on phones\nOpen Fuzed Flow over HTTPS in a supported browser. On iPhone or iPad running iOS/iPadOS 16.4 or later, add the app to your Home Screen and open the installed app before connecting push. Follow the device's permission prompt. On other supported devices, follow the browser's installation and permission controls where offered. The browser can deny or revoke permission. **Disable on this device** removes this device's subscription; signing out also removes it. Connect each device separately.\n\n## Quiet hours and summaries\nEnable **Quiet hours for email, SMS and push**, choose start/end times and your timezone, then save. This delays external personal alerts during that period while retaining the in-app history.\n\nChoose **Email digest → Daily summary** or **Weekly summary**. Set **Send after**, and choose **Day** for weekly summaries. Digest email is separate from the Instant email setting and includes future eligible updates after opting in. Category choices apply to summaries too. Returning the digest setting to Off stops future summaries.\n\n## Troubleshooting\nCheck the correct company/account, your role, assignment, category choices, Action Required-only filter, device permission and quiet hours. Company document alerts and the email dialog's **Send me a copy** are separate company-address workflows. Do not change company contact settings to troubleshoot your personal device.",
+    "source_files": [
+      "src/components/shared/EnhancedNotificationCenter.jsx",
+      "src/pages/AdminSettings.jsx",
+      "supabase/migrations/20261004173154_notification_personal_delivery.sql"
+    ],
+    "search_terms": [
+      "phone notifications",
+      "push",
+      "sms",
+      "email alerts",
+      "quiet hours",
+      "daily digest",
+      "weekly digest",
+      "my notifications"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "guide",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "guide-warranty-claims",
+    "question": "Create, assign and resolve warranty claims",
+    "feature_area": "Warranty",
+    "audience": "all",
+    "route": "/Warranty",
+    "answer_short": "Track warranty intake, assigned responsibility, response deadlines, repair visits and customer confirmation. Share a private expiring link when the customer needs to submit or update a claim.",
+    "answer_long": "## Open warranty work\nOpen **Warranty** from company navigation. Owners, administrators, permitted office staff and project managers can manage accessible claims. Assigned field staff can read their assigned claim and add an update; that access does not grant control of other company claims.\n\n## Record and assign a claim\n1. Select **New claim** and choose the project.\n2. Enter **Claim title** and **Issue details**. Customer identity defaults from the project's saved client; review any entered contact corrections.\n3. Choose **Priority**, **Assigned team member** and **Response deadline**.\n4. Set **Repair visit** when a visit has been arranged, then select **Save claim**.\n5. Select the claim to read its details and **Claim history**. The saved actor and date are retained for lifecycle changes.\n\nThe assigned person receives an assignment alert. Leadership and the responsible person receive relevant customer updates, response deadlines, repair changes and resolution/reopening alerts. Completed claims stop overdue-response reminders.\n\n## Give the customer access\nUnder **Customer warranty access**, choose a project and select **Email warranty access**. The project must have a saved client with a valid email. This explicitly queues an email to that client containing a private project link. The customer can submit a new claim, add information, confirm a repair and reopen a resolved claim. The link expires after 30 days when created through this control. Renewing access revokes the earlier link.\n\nFor a single existing claim, use **Email claim access to customer** in its detail. That link covers the selected claim. Keep the displayed private link secure and share it only with the intended customer. An expired link requires the company to issue new access.\n\n## Update, confirm or reopen\nUse **Manage claim** to assign work, change its status, adjust the response deadline or arrange/reschedule a visit. Add **Repair / resolution details** before choosing Awaiting Customer, Resolved or Closed. **Awaiting Customer** means the completed repair needs customer confirmation; the customer uses **Confirm repair complete** to resolve it.\n\nWrite updates under **Add a claim update**. Check **Show this update in the customer's warranty link** only for text you intend the customer to read. Internal notes stay out of the customer link. Resolved or Closed claims can be reopened, and customers must enter the reason for another look.\n\n## Mobile and troubleshooting\nForms scroll within the dialog and actions have large touch targets. Wait for the save result before leaving. If client access cannot be emailed, confirm the project-client relationship and client email. A queued email still depends on delivery service. A document upload or quote warranty term does not itself submit a claim.",
+    "source_files": [
+      "src/pages/Warranty.jsx",
+      "src/pages/WarrantyResponse.jsx",
+      "supabase/migrations/20261004173051_warranty_document_workflows.sql"
+    ],
+    "search_terms": [
+      "warranty",
+      "claim",
+      "repair visit",
+      "response deadline",
+      "customer warranty",
+      "reopen",
+      "confirm repair"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "guide",
+    "read_minutes": 3,
+    "related_slugs": []
+  },
+  {
+    "slug": "guide-document-requests",
+    "question": "Request and track a general document review or electronic signature",
+    "feature_area": "Documents",
+    "audience": "office",
+    "route": "/PMProjects",
+    "answer_short": "Upload a project document, create a named review or signature request, email its private link and track an immutable response/activity record.",
+    "answer_long": "## Choose a saved project document\nOpen the project's **Quotes & Docs** tab. Upload the file with **Upload Document**, fill its metadata and choose **Save Document**. Confirm the file opens before requesting a response. The review/signature workflow covers saved project documents; quote and change-order customer approvals remain their own workflows.\n\n## Create the request\n1. In **Reviews & signatures**, select **Request review / signature**.\n2. Choose **Saved document** and **Response needed**: Electronic signature or Review acknowledgement.\n3. Choose a saved team member or leave **Recipient** on Customer or external recipient.\n4. Enter the recipient's full name and email. Check them carefully before proceeding.\n5. Choose **Link expires** and enter any **Instructions**.\n6. Select **Create and email request** and wait for the result.\n\nThe request records the selected document's filename, link and available file checksum. New project uploads calculate a SHA-256 checksum. It also records the named recipient, request type, expiry, requesting user and date. The email is explicitly queued for the intended recipient and its private token grants access only to that document response, not the company workspace.\n\n## Follow the response\nRead each card's Pending, Reviewed, Signed, Declined, Expired or Cancelled status. **Open request** opens its secure recipient page when you are authorized. **Activity record** shows creation, link/email actions, response name, consent record and timestamps. **Download activity record** saves the response and activity as a JSON record for your files. A completed response cannot be replaced by pressing the response action again.\n\n## Remind, revoke or request again\nFor a pending request, **Renew link & remind** issues a new link and queues a reminder; earlier links stop working. Reminder retries with the same captured link are deduplicated. **Cancel request** revokes the pending request's links. For an expired request, select **Request again** and review the recipient, document and new expiry before emailing a fresh request.\n\nIf creation succeeds but queuing the email fails, leave the dialog open and choose **Retry request email**. This uses the already-created request rather than creating another one. Do not share private links with someone other than the intended recipient.\n\n## Mobile and limits\nOn phones, scroll the request dialog to its footer. New actions use large touch targets and stack where space is limited. An uploaded contract alone is not a signature: the recipient must open the request and explicitly complete its consent action. Company sales approval status is separate from this general document response.",
+    "source_files": [
+      "src/components/documents/DocumentWorkflows.jsx",
+      "src/pages/DocumentResponse.jsx",
+      "src/components/pm/PMQuotesDocsTab.jsx",
+      "supabase/migrations/20261004173051_warranty_document_workflows.sql"
+    ],
+    "search_terms": [
+      "signature",
+      "document review",
+      "electronic signature",
+      "request signature",
+      "secure link",
+      "activity record",
+      "consent"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "guide",
+    "read_minutes": 3,
+    "related_slugs": []
+  },
+  {
+    "slug": "guide-document-recipient",
+    "question": "Review, sign or decline a document shared with you",
+    "feature_area": "Documents",
+    "audience": "all",
+    "route": "/DocumentRequests",
+    "answer_short": "Open Document requests for your assigned review/signature requests, or use the private link emailed to you. Inspect the saved version and explicitly record your name and consent.",
+    "answer_long": "## Your assigned document inbox\nSigned-in subscribers can open **Document requests** to find the review and signature requests they are allowed to access. A notification opens and highlights its exact request, including requests older than the recent list. Choose **View document version** to inspect the saved file. For a Pending request, **Open request** obtains limited access to its response page. Completed cards retain the recorded status, name, date and comments; **Activity record** shows the audit history.\n\n## Start from the message sent to you\nYour contractor or company sends a secure document request link addressed to the named recipient. Open that original link in a regular browser. You do not need access to the private company workspace to respond. Keep the link private because it is the capability that opens this particular document request.\n\nThe page identifies the company, document title, intended recipient, instructions and expiry. Check these details before taking action. If the name or document is unexpected, contact the sender instead of forwarding the private link to someone else.\n\n## Inspect and respond\n1. Select **Open** beside the document filename to inspect the file in a new tab.\n2. Return to the response page and enter **Your full name**.\n3. Add **Comments** if there is a qualification, question or information the sender needs to retain.\n4. For a signature request, read and check the consent statement agreeing to sign electronically using the name entered above. For a review request, check the acknowledgement that you reviewed the document.\n5. Choose **Sign document** or **Complete review** and wait for **Response recorded**.\n\nThe app records the full name, response time, comments, consent version and saved document reference/checksum where available. Do not leave while the button is saving. Once a response is recorded, repeating the action does not overwrite it with another decision.\n\n## Decline or request a correction\nSelect **Decline request** if you cannot complete the requested response. Enter your full name and use Comments to explain a correction or question. Declining does not require the positive signing-consent checkbox. The sender receives the recorded status and can issue a corrected new request when appropriate.\n\n## Expired or renewed links\nLinks have an expiry and can be cancelled or renewed by the sender. A renewed request link replaces earlier links. If the page reports that the link is invalid or expired, ask the sender for current access rather than guessing a different URL or opening a private builder page.\n\n## On a phone\nThe file opens separately from the response form. Return to the original browser tab after reviewing it, then scroll to the consent and response actions. Confirm that the recorded success message appears. If saving fails, retain the visible error and ask the sender for help; a ticked consent box alone does not mean a response was saved.",
+    "source_files": [
+      "src/pages/DocumentResponse.jsx",
+      "supabase/migrations/20261004173051_warranty_document_workflows.sql",
+      "src/pages/DocumentRequests.jsx",
+      "src/components/documents/DocumentWorkflows.jsx"
+    ],
+    "search_terms": [
+      "sign document",
+      "recipient",
+      "consent",
+      "decline document",
+      "complete review",
+      "expired signature link"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "guide",
+    "read_minutes": 2,
+    "related_slugs": [
+      "guide-document-requests"
+    ]
+  },
+  {
+    "slug": "guide-equipment-reservations",
+    "question": "Reserve equipment, record checkout and return reusable tools",
+    "feature_area": "Inventory",
+    "audience": "all",
+    "route": "/Inventory",
+    "answer_short": "Mark reusable items as equipment, reserve quantities for a project, record checkout and return, and monitor conflicts, condition and maintenance dates.",
+    "answer_long": "## Identify reusable equipment\nPermitted office/project staff open **Inventory** and choose **New item** or edit an existing item. Set **Item type** to Equipment / reusable tool. Review the available quantity and choose **Equipment condition**: Available, Maintenance, Damaged or Missing. Enter **Next maintenance date** when the tool or equipment has a service requirement.\n\nInventory stock and equipment reservations are related records. A condition or maintenance date is not proof that a physical inspection has been completed. Use your company's maintenance process and record the next date accurately.\n\n## Reserve and check out\n1. Open the item's quick view and find **Reservations and returns**.\n2. Select **Reserve**.\n3. Enter **Quantity**, **Project**, **Assigned to**, **Start date**, **Return due** and useful **Notes**.\n4. Select **Save reservation**.\n5. Review any conflict warning. The workflow can retain the reservation and alert management when overlapping demand exceeds availability; resolve the conflict before relying on the item being available.\n6. When the item physically leaves storage, select **Check out** for the reservation.\n\nA reservation records intended use. Checkout records the actual handover. Do not use a reservation status alone as evidence that the assigned person collected the equipment.\n\n## Return, cancel or report condition\nUse **Record return** when the equipment is physically returned. Confirm the correct reservation and record any requested return details. Cancel a reservation when planned use is no longer needed; retain the history rather than creating a replacement reservation to undo a return.\n\nEdit the item's **Equipment condition** to report Maintenance, Damaged or Missing. This alerts the appropriate company staff. Keep the issue description and any inspection evidence in the company's normal equipment records and do not promise that a tool is usable solely because a notification was marked read.\n\n## Alerts and mobile use\nRelevant alerts cover reservation conflicts, maintenance dates, overdue returns and damaged/missing equipment. They remain limited by company access and personal notification preferences. The forms use responsive layouts and scrollable dialogs on phones. Scroll through the return deadline and notes before saving. If a save fails, check the list before retrying so an accepted reservation is not duplicated.\n\n## Field staff: request and return your equipment\nOpen **Employee Portal → Inventory → My equipment** and check the item, quantity, project and return due date on your assigned reservation. Select **Request checkout** when the reservation is Reserved and the equipment is available. The request remains Reserved, showing that office approval is required, until the office uses the item's **Reservations and returns → Check out** action for the actual handover.\n\nAfter physically handing back checked-out equipment, select **Confirm equipment returned**. You can request checkout and confirm return only for your own assigned reservation. If the item is unavailable or a reservation is missing, contact the office rather than recording material consumption for a reusable tool. Notification links highlight the relevant item/reservation, including older records. On phones, scroll through the card and confirm the saved status after each action.",
+    "source_files": [
+      "src/pages/Inventory.jsx",
+      "supabase/migrations/20261004173132_subscriber_costs_assets_notifications.sql",
+      "src/components/employee/EPEquipmentReservations.jsx",
+      "src/components/inventory/InventoryReservations.jsx"
+    ],
+    "search_terms": [
+      "equipment",
+      "reserve",
+      "reservation conflict",
+      "return due",
+      "maintenance",
+      "damaged",
+      "missing",
+      "my equipment",
+      "request checkout",
+      "confirm equipment returned",
+      "office approval"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "guide",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "guide-task-discussion-dependencies",
+    "question": "Discuss a task and set prerequisites before work starts",
+    "feature_area": "Tasks",
+    "audience": "all",
+    "route": "/Tasks",
+    "answer_short": "Post task-specific comments and connect production-task prerequisites. Completing all prerequisites generates a readiness alert without automatically doing the work.",
+    "answer_long": "## Open the right task\nOpen **Tasks** and select the task, or open a project's **Staff & Tasks** tab and choose **Edit Task**. Check the task title, project and assigned person before adding information. Field users open their assigned task from **Employee Portal → Tasks**; the field view does not grant permission to edit another person's assignment or prerequisite plan.\n\n## Discuss the task\n1. Find **Task discussion** in the detail view.\n2. Enter a useful comment about the work, decision or question.\n3. Select **Post comment** and wait for the saved comment to appear.\n4. Check the author and date in the discussion before relying on a new instruction.\n\nTask comments are separate from general project daily logs and help/support questions. Comments can notify the people involved in the task; they do not automatically email the customer. Avoid placing customer-facing promises or private staff information in the wrong discussion.\n\n## Add a prerequisite\nFor a production task, use **Prerequisites → Choose a prerequisite → Add prerequisite**. Choose another task from the same project that must be completed first. The app rejects circular dependencies and links to tasks outside the project.\n\nA prerequisite is a planning dependency. When all linked prerequisite tasks are complete, the app can notify that the task is ready to start. It does not complete the dependent task automatically, change the physical schedule by itself or prove that required materials and inspections are available. Check the site and the saved task instructions before beginning.\n\nField staff can read the prerequisite list for their assigned task. A permitted project manager or office user controls changes to the dependency plan. If the task is still blocked after a readiness alert, check whether another dependency was added or a completed prerequisite was reopened.\n\n## Dates, assignments and mobile use\nAssignment/reassignment, priority changes, due/overdue dates and completion can generate their own routed alerts. Choose personal channels in **My notifications** if you want eligible updates outside the app. On a phone, open the task detail and scroll to its discussion or prerequisites; controls use large touch targets. If posting fails, preserve the comment and check whether it was saved before repeating it.",
+    "source_files": [
+      "src/pages/Tasks.jsx",
+      "src/components/pm/PMStaffTab.jsx",
+      "src/components/employee/EPTasks.jsx"
+    ],
+    "search_terms": [
+      "task comment",
+      "discussion",
+      "prerequisite",
+      "dependency",
+      "ready to start",
+      "priority change",
+      "assigned task"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "guide",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "guide-notification-events",
+    "question": "Understand notification wording, recipients and event coverage",
+    "feature_area": "Notifications",
+    "audience": "all",
+    "route": "/EmployeePortal",
+    "answer_short": "Notifications identify the actor, action, record and date when available. Only eligible people receive an event, and marking it read does not complete the work.",
+    "answer_long": "## Read the actor and action\nA notification describes who performed the action, what changed, the named record and when it happened. A lead example is **Gary Byrne created Lead Tim Rich on Oct 2nd, 2026**. Customer actions identify the customer where the workflow records that identity; scheduled reminders identify the system rather than inventing a staff action.\n\nDates use the company's or saved notification timezone where the interface supports it. The timestamp belongs to the event being reported. Opening an old alert today does not mean the action happened today.\n\n## Know who receives an event\nRecipients depend on company membership, active role, module permission, project membership and the person explicitly assigned to the work. Owners and office staff receive the business events their role covers; project managers receive accessible project events; field staff receive their own assigned work and eligible project updates. An alert never grants access to a record your role cannot open.\n\nThe notification bell can filter by category, read state and severity. **Action Required only** hides Important and FYI updates; turn it off when checking whether a lower-priority event arrived. Marking an alert read changes its read state, not the lead, task, payment, signature or warranty status.\n\n## Events to expect\nEligible alerts cover lead creation/assignment/replies/follow-ups/meetings; quote and change-order internal reviews, customer decisions, follow-ups and deadlines; invoices, recorded payments and delivery problems; project dates, phases, tasks, dependencies and discussion; daily logs, site issues and safety; staff hours, leave and timesheet reminders; purchases, deliveries, cost limits and equipment; plans, document responses and warranty activity; account/subscription/security changes; platform support and announcements.\n\nA document's manually selected Sent status is different from a provider-confirmed dispatch. A budget alert is a threshold signal, not an accounting reconciliation. A customer acceptance or general document signature is also different from an internal approval to send.\n\n## Personal delivery and summaries\nUse **My notifications** to choose categories, instant email, SMS, device push, quiet hours and daily/weekly digests. External channels require configured service and valid opted-in contact/device information. Newly enabled summaries contain future eligible activity; they do not replay all historical messages.\n\n## Missing or unexpected alerts\nCheck the company/account, assignment, permissions, selected filters and personal preferences. If a notification points to an unavailable record, ask the company administrator to check access or whether the record was removed. For support, include the event category, approximate date and record name without sharing a private customer token.",
+    "source_files": [
+      "src/components/shared/EnhancedNotificationCenter.jsx",
+      "src/lib/notificationLinks.js",
+      "supabase/migrations/20261003220500_role_based_notifications.sql"
+    ],
+    "search_terms": [
+      "notification actor",
+      "created lead",
+      "who receives",
+      "date",
+      "missing notification",
+      "categories",
+      "action required"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "guide",
+    "read_minutes": 3,
+    "related_slugs": []
+  }
+]

@@ -31,6 +31,10 @@ import Tutorials from './pages/Tutorials';
 import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
 import HelpArticles from './pages/HelpArticles';
+import Warranty from './pages/Warranty';
+import DocumentRequests from './pages/DocumentRequests';
+import DocumentResponse from './pages/DocumentResponse';
+import WarrantyResponse from './pages/WarrantyResponse';
 
 // --- COMPONENTS ---
 import AIHelpWidget from "./components/shared/AIHelpWidget";
@@ -118,6 +122,12 @@ const AuthenticatedApp = () => {
         <Route path="/Contact" element={
             <LayoutWrapper currentPageName="Contact"><Contact /></LayoutWrapper>
         } />
+        <Route path="/Warranty" element={
+            <LayoutWrapper currentPageName="Warranty"><Warranty /></LayoutWrapper>
+        } />
+        <Route path="/DocumentRequests" element={
+            <LayoutWrapper currentPageName="DocumentRequests"><DocumentRequests /></LayoutWrapper>
+        } />
         <Route path="/Settings" element={
           <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName="Team Settings"><TeamSettings /></LayoutWrapper>
@@ -174,6 +184,8 @@ function AppRoutes() {
           <Route path="/PublicInvoiceView" element={<PublicInvoiceView />} />
           <Route path="/PublicChangeOrderView" element={<PublicChangeOrderView />} />
           <Route path="/PublicPOView" element={<PublicPOView />} />
+          <Route path="/DocumentResponse" element={<DocumentResponse />} />
+          <Route path="/WarrantyResponse" element={<WarrantyResponse />} />
 
           {/* 🔴 PROTECTED APP ROUTES */}
           {/* Only these routes pass through the AuthProvider */}

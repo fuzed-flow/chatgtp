@@ -16,6 +16,8 @@ import {
   Users, Plus, CheckCircle2, Circle, Edit2, Trash2, GitBranch, MoreVertical, ShieldCheck, Calendar
 } from "lucide-react";
 import { toast } from "sonner";
+import TaskWorkflowPanel from "@/components/tasks/TaskWorkflowPanel";
+import PMManagementHoursPanel from "@/components/pm/PMManagementHoursPanel";
 import CreateTaskDialog from "../tasks/CreateTaskDialog"; 
 
 // --- HELPERS ---
@@ -449,6 +451,7 @@ export default function PMStaffTab({ project }) {
         </Card>
       )}
 
+      <PMManagementHoursPanel project={project} staff={projectStaff} users={filterUsers} />
       {/* --- STAFF VIEW --- */}
       {view === "staff" && (
         <Card className="p-0 sm:p-5 border-none sm:border-solid sm:border-slate-200 shadow-none sm:shadow-sm bg-transparent sm:bg-white">
@@ -716,6 +719,7 @@ export default function PMStaffTab({ project }) {
               )}
             </div>
 
+            {taskForm.id && <TaskWorkflowPanel task={{ ...taskForm, project_id: taskForm.project_id === "none" ? null : taskForm.project_id }} />}
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t border-slate-100 mt-2">
               <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)} className="w-full sm:w-auto font-bold order-2 sm:order-1">Cancel</Button>
               <Button type="submit" className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold shadow-md order-1 sm:order-2" disabled={!taskForm.title || saveEditedTask.isPending}>

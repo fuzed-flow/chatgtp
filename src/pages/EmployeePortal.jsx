@@ -23,18 +23,22 @@ import EPTimeClock from "@/components/employee/EPTimeClock";
 import EPInventory from "@/components/employee/EPInventory";
 import EPAssignedWork from "@/components/employee/EPAssignedWork";
 
+const HR_TABS = new Set(["time_clock", "timesheets", "payroll", "vacation_tracker", "expenses"]);
+
 export default function EmployeePortal() {
   const { profile: authProfile, settings, company } = useAuth();
   const companyId = authProfile?.company_id;
   const authUserId = authProfile?.id;
+  const canAccessHR = checkAccess(company?.plan_id, 'hasHR');
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { search } = useLocation();
-  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(search).get("tab") || "time_clock");
+  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(search).get("tab") || (canAccessHR && settings?.features?.time_clock !== false ? "time_clock" : "projects"));
   useEffect(() => {
     const requested = new URLSearchParams(search).get("tab");
     if (["time_clock","timesheets","payroll","vacation_tracker","expenses","daily_logs","tasks","inventory","profile","projects","schedule"].includes(requested)) setActiveTab(requested);
-  }, [search]);
+    else if (!requested) setActiveTab(canAccessHR && settings?.features?.time_clock !== false ? "time_clock" : "projects");
+  }, [search, canAccessHR, settings?.features?.time_clock]);
 
   // Fetch strictly the logged-in user
   const { data: currentUser } = useQuery({
@@ -48,16 +52,6 @@ export default function EmployeePortal() {
       return profileData || null;
     }
   });
-
-  // 👇 THE GATEKEEPER (Safely placed AFTER all hooks!) 👇
-  const canAccessPortal = checkAccess(company?.plan_id, 'hasHR');
-
-  if (!canAccessPortal) {
-    return <UpgradeWall featureName="Employee Portal & Time Tracking" requiredPlan="Professional" />;
-  }
-  // 👆 ------------------ 👆
-
-  // ... The rest of your Employee Portal component (activeTab state, UI return) continues below ...
 
   // 2. We dynamically check the Admin's toggles! 
   // (We use !== false so that if they haven't clicked anything yet, it defaults to TRUE and shows the tab)
@@ -79,7 +73,7 @@ export default function EmployeePortal() {
     { key: "payroll", label: "My Pay", mobileLabel: "Pay", icon: DollarSign, enabled: companySettings.enable_payroll },
     { key: "vacation_tracker", label: "My Time Off", mobileLabel: "Time Off", icon: Palmtree, enabled: companySettings.enable_vacation },
     { key: "expenses", label: "My Expenses", mobileLabel: "Expenses", icon: Receipt, enabled: companySettings.enable_expenses },
-  ].filter(t => t.enabled);
+  ].filter(t => t.enabled && canAccessHR);
 
   const PROJECT_TABS = [
     { key: "projects", label: "My Projects", mobileLabel: "Projects", icon: Briefcase, enabled: true },
@@ -104,6 +98,12 @@ export default function EmployeePortal() {
   const sharedProps = { currentUser, companyId };
 
   const renderContent = () => {
+    if (HR_TABS.has(activeTab) && !canAccessHR) {
+      return <UpgradeWall featureName="Time Tracking & Personal HR" requiredPlan="Professional" />;
+    }
+    if (!allTabs.some(tab => tab.key === activeTab)) {
+      return <div role="status" className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">This section is disabled in your company's settings. Contact your administrator to review access.</div>;
+    }
     switch (activeTab) {
       case "time_clock": return <EPTimeClock {...sharedProps} />;
       case "timesheets": return <EPTimesheets {...sharedProps} />;
@@ -197,7 +197,7 @@ export default function EmployeePortal() {
 
       {/* --- MOBILE NAV BAR --- */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        {MY_HR_TABS.slice(0, 4).map(tab => {
+        {(MY_HR_TABS.length ? MY_HR_TABS : PROJECT_TABS).slice(0, 4).map(tab => {
           const isActive = activeTab === tab.key;
           return (
             <button key={tab.key} onClick={() => handleTabChange(tab.key)}

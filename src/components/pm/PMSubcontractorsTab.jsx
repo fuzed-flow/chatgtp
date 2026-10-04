@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -33,16 +33,18 @@ export default function PMSubcontractorsTab({ project }) {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteSent, setInviteSent] = useState(false);
+  const inviteLock = useRef(false);
+  const inviteDelivery = useRef(null);
   
   const [assignForm, setAssignForm] = useState({ subcontractor_id: "", phase_id: "none", status: "Proposed", scheduled_start: "", scheduled_end: "", agreed_amount: "", role_notes: "" });
-  const [subForm, setSubForm] = useState({ company_name: "", trade: "Other", contact_name: "", phone: "", email: "", wcb_policy: "", insurance_expiry: "", notes: "", is_active: true });
+  const [subForm, setSubForm] = useState({ company_name: "", trade: "Other", contact_name: "", phone: "", email: "", wcb_policy: "", insurance_expiry: "", certification_expiry: '', notes: "", is_active: true });
 
   // --- SUPABASE QUERIES ---
   const { data: phases = [] } = useQuery({ 
     queryKey: ["pm_phases", project?.id], 
     enabled: !!project?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("project_phases").select("*").eq("project_id", project.id);
+      const { data, error } = await supabase.from("project_phases").select("*").eq("project_id", project.id).eq('company_id', companyId);
       if (error) throw error;
       return data || [];
     } 
@@ -72,11 +74,16 @@ export default function PMSubcontractorsTab({ project }) {
     queryKey: ["pm_proj_subs", project?.id], 
     enabled: !!project?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("project_subcontractors").select("*").eq("project_id", project.id);
+      const { data, error } = await supabase.from("project_subcontractors").select("*").eq("project_id", project.id).eq('company_id', companyId);
       if (error) throw error;
       return data || [];
     } 
   });
+  const { data: company } = useQuery({ queryKey: ['trade-invite-company', companyId], enabled: !!companyId,
+    queryFn: async () => { const { data, error } = await supabase.from('companies').select('name,settings').eq('id', companyId).single(); if (error) throw error; return data; } });
+  const { data: requests = [] } = useQuery({ queryKey: ['project-trade-requests', companyId, project?.id], enabled: !!companyId && !!project?.id,
+    queryFn: async () => { const { data, error } = await supabase.from('vendor_requests').select('id,vendor_id,title,status,response_amount,response_message,responded_at,delivered_at').eq('company_id', companyId).eq('project_id', project.id).order('created_at', { ascending: false }); if (error) throw error; return data || []; } });
+  const decideRequest = useMutation({ mutationFn: async ({ id, status }) => { const { error } = await supabase.from('vendor_requests').update({ status }).eq('company_id', companyId).eq('id', id); if (error) throw error; }, onSuccess: () => { qc.invalidateQueries({ queryKey: ['project-trade-requests', companyId, project.id] }); toast.success('Quote decision recorded'); }, onError: err => toast.error(err.message) });
 
   // Merged list: vendors first (main file), then any PM-only subs not already covered
   const vendorIds = new Set(vendors.map(v => v.id));
@@ -93,13 +100,14 @@ export default function PMSubcontractorsTab({ project }) {
     mutationFn: async (d) => {
       const payload = { ...d, company_id: companyId };
       if (!payload.insurance_expiry) payload.insurance_expiry = null;
+      if (!payload.certification_expiry) payload.certification_expiry = null;
       const { error } = await supabase.from("subcontractors").insert([payload]);
       if (error) throw error;
     }, 
     onSuccess: () => { 
       qc.invalidateQueries({ queryKey: ["subcontractors"] }); 
       setNewSubOpen(false); 
-      setSubForm({ company_name: "", trade: "Other", contact_name: "", phone: "", email: "", wcb_policy: "", insurance_expiry: "", notes: "", is_active: true }); 
+      setSubForm({ company_name: "", trade: "Other", contact_name: "", phone: "", email: "", wcb_policy: "", insurance_expiry: "", certification_expiry: '', notes: "", is_active: true });
       toast.success("Subcontractor created");
     } 
   });
@@ -141,6 +149,7 @@ export default function PMSubcontractorsTab({ project }) {
   });
 
   const openInvite = (sub) => {
+    inviteDelivery.current = null;
     setInviteSub(sub);
     setInviteMsg(`We are currently preparing for an upcoming project and would like to invite you to provide a quote for your scope of work.\n\nProject Details:\nLocation: ${project.site_address || "TBD"}\nScope: ${project.name}\nTimeline: \nDrawings/Scope: Available through Contractor Portal link\n\nPlease let me know if you're available and interested, all relevant information for the project is available in the Contractor Portal link attached.`);
     setInviteAttachments([]);
@@ -154,12 +163,11 @@ export default function PMSubcontractorsTab({ project }) {
     setUploadingFile(true);
     try {
       if (file.size > 20 * 1024 * 1024) throw new Error("Choose a file smaller than 20 MB.");
-      const path = `${companyId}/${project.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-      const { error } = await supabase.storage.from("contractor_portal").upload(path, file);
+      const filePath = `${companyId}/requests/${crypto.randomUUID()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { error } = await supabase.storage.from('vendor').upload(filePath, file);
       if (error) throw error;
-      const { data: link } = supabase.storage.from("contractor_portal").getPublicUrl(path);
-      const file_url = link.publicUrl;
-      setInviteAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+      const { data } = supabase.storage.from('vendor').getPublicUrl(filePath);
+      setInviteAttachments(prev => [...prev, { name: file.name, url: data.publicUrl }]);
     } catch (err) {
       toast.error(err.message || "Failed to upload file");
     } finally {
@@ -169,30 +177,51 @@ export default function PMSubcontractorsTab({ project }) {
   };
 
   const sendInvite = async () => {
-    if (!inviteSub?.email) return;
+    if (!inviteSub?.email || inviteLock.current) return;
+    inviteLock.current = true;
     setInviteSending(true);
     try {
-      const portalUrl = contractorPortalUrl(project);
+      const escape = value => String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      if (!inviteDelivery.current) {
+        let vendorId = inviteSub.id;
+        const matchingVendor = vendors.find(v => v.email && v.email.toLowerCase() === inviteSub.email.toLowerCase());
+        if (inviteSub._source === 'pm' && matchingVendor) vendorId = matchingVendor.id;
+        else if (inviteSub._source === 'pm') {
+          const { data: vendorRow, error: vendorError } = await supabase.from('vendors').insert({ company_id: companyId, name: inviteSub.company_name, contact_name: inviteSub.contact_name, email: inviteSub.email, phone: inviteSub.phone, category: inviteSub.trade || 'Other', insurance_expiry: inviteSub.insurance_expiry || null, wcb_policy: inviteSub.wcb_policy || null }).select('id').single();
+          if (vendorError) throw vendorError;
+          vendorId = vendorRow.id;
+        }
+        const { data: request, error: requestError } = await supabase.from('vendor_requests').insert({ company_id: companyId, vendor_id: vendorId, project_id: project.id, created_by: profile.id, title: `Quote request: ${project.name}`, scope_of_work: inviteMsg, attachments: inviteAttachments.map(a => a.url), status: 'Draft' }).select('id,response_token').single();
+        if (requestError) throw requestError;
+        inviteDelivery.current = { request, requestId: crypto.randomUUID(), sent: false, payload: null };
+      }
+      const delivery = inviteDelivery.current;
+      const portalUrl = `${window.location.origin}/ContractorPortal?request=${delivery.request.id}&token=${delivery.request.response_token}`;
       let attachmentSection = "";
       if (inviteAttachments.length > 0) {
-        attachmentSection = `<br/><br/><strong>Attached Documents:</strong><br/>${inviteAttachments.map(a => `<a href="${escapeHtml(a.url)}">${escapeHtml(a.name)}</a>`).join("<br/>")}`;
+        attachmentSection = `<br/><br/><strong>Attached Documents:</strong><br/>${inviteAttachments.map(a => `<a href="${escape(a.url)}">${escape(a.name)}</a>`).join("<br/>")}`;
       }
       const htmlBody = `
-<p>Hi ${escapeHtml(inviteSub.contact_name || inviteSub.company_name)},</p>
+<p>Hi ${escape(inviteSub.contact_name || inviteSub.company_name)},</p>
 <p>I hope you're doing well.</p>
-<p>${escapeHtml(inviteMsg).replace(/\n/g, '<br/>')}</p>
+<p>${escape(inviteMsg).replace(/\n/g, '<br/>')}</p>
 ${attachmentSection}
 <br/>
-<p><strong>Contractor Portal:</strong> <a href="${portalUrl}">${portalUrl}</a></p>
+<p><strong>Respond to the quote request:</strong> <a href="${escape(portalUrl)}">Accept invitation, decline or submit your quote</a></p>
+<p><strong>Project documents:</strong> <a href="${escape(contractorPortalUrl(project))}">Review project documents</a></p>
 <br/>
 <p>Best regards,</p>
       `;
       
-      // Preserved custom email integration
-      const { data: emailResult, error: emailError } = await supabase.functions.invoke("send-email", { body: {
-        to_email: inviteSub.email, subject: `Quote Request — ${project.name}`, html_body: htmlBody, company_id: companyId,
-      }});
-      if (emailError || emailResult?.error) throw new Error(emailResult?.error || "Email could not be sent.");
+      if (!delivery.payload) delivery.payload = { to: inviteSub.email, subject: `Quote Request from ${company?.name || 'Fuzed Flow'} — ${project.name}`, scope_of_work: htmlBody, sender_email: profile.email, company_email: company?.settings?.email, company_name: company?.name || 'Fuzed Flow', signature_name: profile.full_name || profile.email, request_id: delivery.requestId, vendor_request_id: delivery.request.id, attachments: inviteAttachments.map(a => ({ filename: a.name, path: a.url })) };
+      if (!delivery.sent) {
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-vendor-request', { body: delivery.payload });
+        if (emailError || emailResult?.error || !(emailResult?.id || emailResult?.resend_id || emailResult?.success)) throw emailError || new Error(emailResult?.error || 'Invitation could not be sent');
+        delivery.sent = true;
+      }
+      const { error: deliveryError } = await supabase.from('vendor_requests').update({ status: 'Sent', delivered_at: new Date().toISOString() }).eq('id', delivery.request.id).eq('company_id', companyId);
+      if (deliveryError) throw new Error('Email sent; recording its delivery failed. Retry to finish recording without sending it twice.');
+      qc.invalidateQueries({ queryKey: ['project-trade-requests', companyId, project.id] });
       
       const alreadyAssigned = assignments.some(a => a.subcontractor_id === inviteSub.id);
       if (!alreadyAssigned) {
@@ -207,8 +236,9 @@ ${attachmentSection}
       }
       setInviteSent(true);
     } catch (err) {
-      toast.error("Failed to send invite email");
+      toast.error(err.message || "Failed to send invite email");
     } finally {
+      inviteLock.current = false;
       setInviteSending(false);
     }
   };
@@ -228,6 +258,7 @@ ${attachmentSection}
         </div>
 
         <TabsContent value="assigned" className="mt-0">
+          {requests.length > 0 && <section className="mb-5 space-y-3"><h3 className="font-bold text-slate-900">Trade quote requests</h3>{requests.map(r => <Card key={r.id} className="p-4 space-y-2 border-amber-200"><p className="font-bold">{r.title} · {r.status}</p>{r.response_amount != null && <p className="font-bold text-emerald-700">Quote: ${Number(r.response_amount).toFixed(2)}</p>}{r.response_message && <p className="text-sm text-slate-600 whitespace-pre-wrap">{r.response_message}</p>}{['Received', 'Quoted'].includes(r.status) && <div className="flex flex-wrap gap-2"><Button className="min-h-11 bg-amber-500 hover:bg-amber-600 text-slate-900" disabled={decideRequest.isPending} onClick={() => decideRequest.mutate({ id: r.id, status: 'Approved' })}>Approve quote</Button><Button variant="outline" className="min-h-11 text-red-700" disabled={decideRequest.isPending} onClick={() => decideRequest.mutate({ id: r.id, status: 'Rejected' })}>Decline quote</Button></div>}</Card>)}</section>}
           <div className="space-y-3">
             {assignments.map(a => {
               const sub = subMap[a.subcontractor_id];
@@ -335,7 +366,7 @@ ${attachmentSection}
 
       {/* Invite to Quote Dialog */}
       <Dialog open={inviteOpen} onOpenChange={v => { setInviteOpen(v); if (!v) setInviteSent(false); }}>
-        <DialogContent aria-describedby={undefined} className="max-w-lg">
+        <DialogContent aria-describedby={undefined} className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Send className="h-5 w-5 text-blue-500" /> Invite to Quote</DialogTitle></DialogHeader>
           {inviteSent ? (
             <div className="flex flex-col items-center py-6 gap-3">
@@ -388,7 +419,7 @@ ${attachmentSection}
 
       {/* Assign Dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-        <DialogContent aria-describedby={undefined}><DialogHeader><DialogTitle>Assign Subcontractor</DialogTitle></DialogHeader>
+        <DialogContent aria-describedby={undefined} className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Assign Subcontractor</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
               <Label>Subcontractor *</Label>
@@ -478,6 +509,7 @@ ${attachmentSection}
             <div className="grid grid-cols-2 gap-4">
               <div><Label>WCB / Safety Policy</Label><Input className="mt-1" value={subForm.wcb_policy} onChange={e => setSubForm({...subForm, wcb_policy: e.target.value})} /></div>
               <div><Label>Insurance Expiry</Label><Input type="date" className="mt-1 w-full" value={subForm.insurance_expiry || ""} onChange={e => setSubForm({...subForm, insurance_expiry: e.target.value})} /></div>
+              <div><Label htmlFor="sub-certification-expiry">Certification Expiry</Label><Input id="sub-certification-expiry" type="date" className="mt-1 min-h-11 w-full" value={subForm.certification_expiry || ''} onChange={e => setSubForm({ ...subForm, certification_expiry: e.target.value })} /></div>
             </div>
             <div><Label>Internal Notes</Label><Textarea className="mt-1" rows={2} value={subForm.notes} onChange={e => setSubForm({...subForm, notes: e.target.value})} placeholder="Quality of work, payment terms, etc." /></div>
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">

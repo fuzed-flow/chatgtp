@@ -52,7 +52,8 @@ export default function QuoteBuilder() {
   const [form, setForm, hydrateForm] = useDocumentState({
     title: "", client_id: clientId || "", lead_id: leadId || "",
     status: "Draft", issue_date: format(new Date(), "yyyy-MM-dd"),
-    expiry_date: "", notes: "", 
+    expiry_date: "", next_follow_up_date: "", notes: "",
+    internal_review_status: null, internal_reviewed_at: null, internal_reviewed_by: null,
     client_message: settings?.quote_client_message || "", 
     terms: settings?.default_terms || "",                 
     overall_scope: settings?.quote_intro || "",           
@@ -136,9 +137,9 @@ export default function QuoteBuilder() {
     queryKey: ["phase-templates", companyId], enabled: !!companyId,
     queryFn: async () => { const { data } = await supabase.from("phase_templates").select("*").eq("company_id", companyId).eq("is_active", true); return data || []; } 
   });
-  const { data: quoteTemplates = [], isFetched: quoteTemplatesFetched, error: quoteTemplatesLoadError } = useQuery({ 
+  const { data: quoteTemplates = [], isFetched: quoteTemplatesFetched, error: quoteTemplatesLoadError } = useQuery({
     queryKey: ["quote-templates-list", companyId], enabled: !!companyId,
-    queryFn: async () => { const { data, error } = await supabase.from("quotes").select("*").eq("company_id", companyId).eq("is_template", true); if (error) throw error; return data || []; } 
+    queryFn: async () => { const { data, error } = await supabase.from("quotes").select("*").eq("company_id", companyId).eq("is_template", true); if (error) throw error; return data || []; }
   });
   const { data: companyResources = [], isLoading: loadingResources } = useQuery({ 
     queryKey: ["company_resources", companyId], enabled: !!companyId,
@@ -279,6 +280,10 @@ export default function QuoteBuilder() {
         status: existingQuote.status || (isTemplate ? "Template" : "Draft"),
         issue_date: existingQuote.issue_date || format(new Date(), "yyyy-MM-dd"), 
         expiry_date: existingQuote.expiry_date || "",
+        next_follow_up_date: existingQuote.next_follow_up_date || "",
+        internal_review_status: existingQuote.internal_review_status || null,
+        internal_reviewed_at: existingQuote.internal_reviewed_at || null,
+        internal_reviewed_by: existingQuote.internal_reviewed_by || null,
         notes: existingQuote.notes || "", client_message: existingQuote.client_message || "", terms: existingQuote.terms || "", 
         overall_scope: existingQuote.overall_scope || "", show_overall_scope: existingQuote.show_overall_scope !== false,
         deposit_amount: existingQuote.deposit_amount || 0, discount_amount: existingQuote.discount_amount || 0,
@@ -751,7 +756,7 @@ export default function QuoteBuilder() {
     (templateId && !quoteId && (hydratedTemplateId.current !== templateId || !hasLoadedPhases.current || !hasLoadedSchedule.current))
   );
 
-  const handleSave = async (newStatus = null, forceSaveAsTemplate = false, skipToast = false, stayInBuilder = false) => {
+  const handleSave = async (newStatus = null, forceSaveAsTemplate = false, skipToast = false, stayInBuilder = false, expectedStatus = null) => {
     if (saveInFlight.current) return null;
     if (isDocumentLoading) { toast.error("Please wait for the quote to finish loading before saving."); return null; }
     const activeTitle = localTitle;
@@ -795,6 +800,7 @@ export default function QuoteBuilder() {
         status: finalStatus,
         issue_date: latestForm.issue_date || null,
         expiry_date: latestForm.expiry_date || null,
+        next_follow_up_date: forceSaveAsTemplate || isTemplate || existingQuote?.is_template ? null : latestForm.next_follow_up_date || null,
         notes: latestForm.notes || "",
         client_message: latestForm.client_message || "",
         terms: latestForm.terms || "",
@@ -841,8 +847,11 @@ export default function QuoteBuilder() {
           pendingCounterUpdate.current = currentCounter + 1;
         }
       } else {
-        const { error: quoteUpdateError } = await supabase.from("quotes").update(quoteData).eq("id", quoteId).eq("company_id", companyId).select("id").single();
+        let quoteUpdate = supabase.from("quotes").update(quoteData).eq("id", quoteId).eq("company_id", companyId);
+        if (expectedStatus !== null) quoteUpdate = quoteUpdate.eq("status", expectedStatus);
+        const { data: updatedQuote, error: quoteUpdateError } = await quoteUpdate.select("id").single();
         if (quoteUpdateError) throw new Error(`Quotes Update: ${quoteUpdateError.message}`);
+        if (!updatedQuote?.id) throw new Error("The quote status has changed. Refresh before saving.");
       }
 
       if (pendingCounterUpdate.current !== null) {
@@ -895,6 +904,8 @@ export default function QuoteBuilder() {
 
       await queryClient.invalidateQueries({ queryKey: ["company", companyId] }); 
       await queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      await queryClient.invalidateQueries({ queryKey: ["quote", savedQuoteId] });
+      await queryClient.invalidateQueries({ queryKey: ["quotes_lookup", companyId] });
       await queryClient.invalidateQueries({ queryKey: ["quote-templates-list"] });
       await queryClient.invalidateQueries({ queryKey: ["quote-phases", savedQuoteId] });
       await queryClient.invalidateQueries({ queryKey: ["quote-items", savedQuoteId] });
@@ -921,6 +932,40 @@ export default function QuoteBuilder() {
       toast.dismiss();
       console.error("Quote save failed:", error);
       toast.error(`Quote was not fully saved: ${error.message || "Please try again."}`);
+      return null;
+    } finally {
+      saveInFlight.current = false;
+      setSaving(false);
+    }
+  };
+
+  const handleRequestInternalReview = async () => {
+    if (saveInFlight.current) return null;
+    if (isTemplate || existingQuote?.is_template || !["Draft", "Sent", "Pending Review"].includes(form.status)) {
+      toast.error("Only draft or sent quotes can be submitted for internal review.");
+      return null;
+    }
+    const persistedStatus = form.status;
+    const requestRevision = getRevision();
+    const savedId = await handleSave(null, false, true, false, persistedStatus);
+    if (!savedId) return null;
+    if (getRevision() !== requestRevision) {
+      toast.error("Your latest edits are still unsaved. Save them before requesting review.");
+      return null;
+    }
+    saveInFlight.current = true;
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.from("quotes").update({
+        status: "Pending Review", internal_review_status: "Pending", internal_reviewed_at: null, internal_reviewed_by: null,
+      }).eq("id", savedId).eq("company_id", companyId).eq("status", persistedStatus).select("id").single();
+      if (error || !data?.id) throw error || new Error("The quote status has changed.");
+      hydrateForm(prev => ({ ...prev, status: "Pending Review", internal_review_status: "Pending", internal_reviewed_at: null, internal_reviewed_by: null }));
+      for (const queryKey of [["quote", savedId], ["quotes"], ["quotes_lookup", companyId]]) await queryClient.invalidateQueries({ queryKey });
+      toast.success("Quote submitted for internal review.");
+      return savedId;
+    } catch {
+      toast.error("The quote was saved, but review could not be requested. Refresh its status and try again.");
       return null;
     } finally {
       saveInFlight.current = false;
@@ -1229,6 +1274,19 @@ export default function QuoteBuilder() {
             
             <div className="h-px bg-slate-100 my-1.5"></div>
             <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status & Workflow</div>
+
+            {!(isTemplate || existingQuote?.is_template) && (
+              <button
+                disabled={saving || isDocumentLoading || !["Draft", "Sent", "Pending Review"].includes(form.status)}
+                onClick={() => {
+                  setActionsMenuOpen(false);
+                  handleRequestInternalReview();
+                }}
+                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 flex items-center transition-colors disabled:opacity-50"
+              >
+                <Eye className="h-4 w-4 mr-3 text-amber-600" /> Request Internal Review
+              </button>
+            )}
             
             <button 
               onClick={() => { setActionsMenuOpen(false); handleSave("Sent"); }} 
@@ -1329,6 +1387,7 @@ export default function QuoteBuilder() {
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2 truncate">
                   <span className="truncate">{quoteId ? (existingQuote?.is_template ? "Edit Template" : "Edit Quote") : (isTemplate ? "New Template" : "New Quote")}</span>
                   {existingQuote && !existingQuote?.is_template && <StatusBadge status={existingQuote.status} />}
+                  {form.internal_review_status && <span className="text-xs font-medium text-amber-800">Internal review: {form.internal_review_status === "Approved" ? "Approved for sending" : form.internal_review_status === "Changes Required" ? "Changes required" : "Awaiting review"}</span>}
                 </h1>
                 {existingQuote?.quote_number && !existingQuote?.is_template && <p className="text-xs text-slate-500 mt-0.5">{existingQuote.quote_number}</p>}
               </div>
@@ -1457,6 +1516,11 @@ export default function QuoteBuilder() {
                   <div>
                     <Label className="text-slate-900 font-medium">Expiry Date</Label>
                     <Input type="date" value={form.expiry_date} onChange={e => setForm({...form, expiry_date: e.target.value})} className="bg-white text-slate-900" />
+                  </div>
+                  <div>
+                    <Label htmlFor="quote-next-follow-up-date" className="text-slate-900 font-medium">Next Follow-up Date</Label>
+                    <Input id="quote-next-follow-up-date" type="date" value={form.next_follow_up_date} onChange={e => setForm(f => ({...f, next_follow_up_date: e.target.value}))} aria-describedby="quote-follow-up-hint" className="h-11 bg-white text-slate-900" />
+                    <p id="quote-follow-up-hint" className="mt-1 text-xs text-slate-500">Optional date to remind your team to follow up.</p>
                   </div>
                 </>
               )}

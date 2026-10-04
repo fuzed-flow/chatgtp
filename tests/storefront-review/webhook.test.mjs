@@ -1,12 +1,24 @@
-import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {readFile} from 'node:fs/promises';import {stripTypeScriptTypes} from 'node:module';
-import {getPlanIdFromPrice,getUserLimitFromQuantity,getUsdPriceId} from '../../supabase/functions/_shared/subscriptionPlans.js';import {currencyFactor} from '../../supabase/functions/_shared/checkout.js';
-async function handler(fail=false,boundAccount='acct_fixture'){let fn;const payments=[],updates=[];class Stripe{static createFetchHttpClient(){return {}}static createSubtleCryptoProvider(){return {}}webhooks={constructEventAsync:async(body,signature,secret)=>{if(signature!==secret+'-fixture')throw new Error('invalid signature');return JSON.parse(body)}};subscriptions={retrieve:async()=>({customer:'cus_fixture',status:'active',items:{data:[{price:{id:'price_1UMs8NIfI96QPT6l4fb4CV40'},quantity:2}]}})}};
- const db={rpc:async(name,args)=>{payments.push({name,args});return{error:fail?new Error('database unavailable'):null}},from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{stripe_account_id:boundAccount},error:null})})}),update:values=>({eq:async()=>{updates.push(values);return{error:fail?new Error('database unavailable'):null}}})})};
- let source=await readFile(new URL('../../supabase/functions/stripe-webhook/index.ts',import.meta.url),'utf8');source=stripTypeScriptTypes(source.replace(/^import .*\n/gm,''));new vm.Script(source).runInContext(vm.createContext({Stripe,createClient:()=>db,getPlanIdFromPrice,getUserLimitFromQuantity,getUsdPriceId,currencyFactor,Deno:{env:{get:key=>key==='STRIPE_WEBHOOK_SECRET'?'platform':key==='STRIPE_CONNECT_WEBHOOK_SECRET'?'connect':'fixture'},serve:f=>{fn=f}},Response,Date,console}));return{fn,payments,updates};
-}
-const request=(type,object,account)=>new Request('https://example.test',{method:'POST',headers:{'Stripe-Signature':account?'connect-fixture':'platform-fixture'},body:JSON.stringify({type,account,created:1791130000,data:{object}})});
-test('unpaid delayed checkout cannot record a payment; successful delayed payment can',async()=>{const h=await handler();const s={id:'cs_fixture',mode:'payment',payment_status:'unpaid',amount_total:20000,currency:'usd',metadata:{company_id:'company_fixture',invoice_id:'invoice_fixture'}};await h.fn(request('checkout.session.completed',s,'acct_fixture'));assert.equal(h.payments.length,0);await h.fn(request('checkout.session.async_payment_succeeded',{...s,payment_status:'paid'},'acct_fixture'));assert.equal(h.payments.length,1);assert.equal(h.payments[0].args.p_amount,200);assert.equal(h.payments[0].args.p_invoice,'invoice_fixture');});
-test('database failure is retryable and signature is required',async()=>{const h=await handler(true);assert.equal((await h.fn(request('checkout.session.completed',{id:'cs_fixture',mode:'payment',payment_status:'paid',amount_total:1000,currency:'usd',metadata:{company_id:'c',quote_id:'q'}},'acct_fixture'))).status,500);assert.equal((await h.fn(new Request('https://example.test',{method:'POST'}))).status,400);});
-test('subscription checkout and invoice lifecycle synchronize paid seats',async()=>{const h=await handler();await h.fn(request('checkout.session.completed',{mode:'subscription',subscription:'sub_fixture'}));assert.equal(h.updates[0].max_users,4);await h.fn(request('invoice.paid',{parent:{subscription_details:{subscription:'sub_fixture'}}}));assert.equal(h.updates.length,2);assert.equal(h.updates[1].plan_id,'professional');});
-test('a connected account cannot credit another company or alter platform subscriptions',async()=>{const h=await handler(false,'acct_other');const payment={mode:'payment',payment_status:'paid',amount_total:1000,metadata:{company_id:'another_company',quote_id:'q'}};const response=await h.fn(request('checkout.session.completed',payment,'acct_fixture'));assert.equal((await response.json()).ignored,true);assert.equal(h.payments.length,0);await h.fn(request('checkout.session.completed',{mode:'subscription',subscription:'sub_fixture'},'acct_fixture'));assert.equal(h.updates.length,0);await h.fn(request('checkout.session.completed',payment));assert.equal(h.payments.length,0);});
-test('connected onboarding updates payment readiness for that Stripe account',async()=>{const h=await handler();assert.equal((await h.fn(request('account.updated',{id:'acct_fixture',charges_enabled:true},'acct_fixture'))).status,200);assert.equal(h.updates[0].stripe_charges_enabled,true);});
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fixture,checkout,event,request,subscription,payments,updates,COMPANY,ACCOUNT,CUSTOMER} from '../sales-notifications/stripe-handler-fixture.mjs';
+import {SUBSCRIPTION_PRICES} from '../../supabase/functions/_shared/subscriptionPlans.js';
+test('unpaid delayed checkout cannot record a payment; successful delayed payment can',async()=>{
+ const h=fixture('stripe-webhook');await h.handler(request(event('checkout.session.completed',checkout({payment_status:'unpaid'}))));assert.equal(payments(h).length,0);
+ await h.handler(request(event('checkout.session.async_payment_succeeded',checkout({amount_total:20000,currency:'usd'}))));assert.equal(payments(h).length,1);assert.equal(payments(h)[0].args.p_amount,200);
+});
+test('database failure is retryable and signature is required',async()=>{
+ const h=fixture('stripe-webhook',{rpcResults:{record_stripe_payment:{data:null,error:{message:'unavailable'}}}});assert.equal((await h.handler(request(event()))).status,500);assert.equal((await h.handler(request(event(),null))).status,400);
+});
+test('subscription checkout and invoice lifecycle synchronize purchased seats',async()=>{
+ const sub=subscription({items:{data:[{price:{id:SUBSCRIPTION_PRICES.professional.monthly},quantity:2}]}});
+ const h=fixture('stripe-webhook',{verificationSecret:'synthetic-platform-secret',subscription:sub});
+ await h.handler(request(event('checkout.session.completed',{mode:'subscription',subscription:'sub_synthetic',customer:CUSTOMER},null)));assert.equal(updates(h)[0].payload.max_users,4);
+ await h.handler(request(event('invoice.paid',{customer:CUSTOMER,parent:{subscription_details:{subscription:'sub_synthetic'}}},null)));assert.equal(updates(h).findLast(q=>q.payload.max_users)?.payload.max_users,4);
+});
+test('a connected account cannot credit another company or alter platform subscriptions',async()=>{
+ const h=fixture('stripe-webhook');assert.equal((await h.handler(request(event('checkout.session.completed',checkout(),'acct_other')))).status,500);assert.equal(payments(h).length,0);
+ await h.handler(request(event('checkout.session.completed',{mode:'subscription',subscription:'sub_synthetic',customer:CUSTOMER})));assert.equal(updates(h).length,0);
+});
+test('connected onboarding updates payment readiness for that Stripe account',async()=>{
+ const h=fixture('stripe-webhook');assert.equal((await h.handler(request(event('account.updated',{id:ACCOUNT,charges_enabled:true})))).status,200);assert.equal(updates(h)[0].payload.stripe_charges_enabled,true);assert.deepEqual(updates(h)[0].filters,[['stripe_account_id',ACCOUNT]]);
+});

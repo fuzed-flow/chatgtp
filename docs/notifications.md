@@ -1,42 +1,34 @@
-# Role-based in-app notifications
+# Subscriber notifications
 
-This release extends the existing bell and notification centre. It uses private rows per recipient, three priority levels, the Unread/All/Mentions/Projects/Financial/Action Required filters, paginated history, consistent read state, and a personal action-only preference. The preference filters both the feed and unread badge; it does not delete history.
+This release adds the missing event sources and the workflows subscribers need to act on them. Future notifications name the trusted actor, saved record and date, for example: “Gary Byrne created lead Tim Rich on October 2, 2026.” Dates use the company timezone. Automated events use Fuzed Flow; validated customer actions use the saved contact. Historical alerts retain their original wording rather than inventing an actor.
+
+## Coverage
+
+| Area | Added notifications and workflows |
+| --- | --- |
+| Leads and clients | Assignment, follow-up, won/lost, conversion, incoming replies, unanswered messages and client reminders |
+| Sales documents | Separate internal review and customer acceptance, expiry, deadlines, follow-ups, confirmed sends, copies, receipts and delivery failures |
+| Payments and subscriptions | Confirmed deposits and invoice payments, partial payments, failures, refunds, disputes, renewal reminders, card expiry and usage limits |
+| Projects and tasks | Start dates, phases, prerequisites, milestones, staff removal, priority/due changes, comments and dependencies |
+| People and field work | Leave decisions, approved-leave exclusions, allocated submission reminders, missing clock-out, overtime and PM-hour caps; structured daily-log safety, weather and blocker review |
+| Purchasing and trades | PO acknowledgement, delay, partial delivery, cancellation and over-approved cost; trade invitation/response and vendor insurance/certificate expiry |
+| Equipment and costs | Reservations, checkout requests, returns, conflicts, maintenance and condition; atomic material usage/refunds; category, committed and labour budgets |
+| Warranty and documents | Claims, repair visits, customer updates and closure; review/signature requests, expiry, immutable audit and document snapshot; drawing revisions |
+| Permits and inspections | Status, information requests, expiry, inspection schedules and results |
+| Support and updates | Private subscriber support threads, support replies/resolution and platform feature/help/service announcements |
+
+Notifications link to the saved record on desktop and mobile. Field staff can open assigned projects, plans and phases without an HR-plan upgrade. Personal staff decisions open their own employee portal rather than restricted management screens.
 
 ## Delivery and access
 
-Owners and administrators receive company-level events. Office staff receive events for their permitted modules. Project managers receive project events for assigned projects and allowed modules. Employees and subcontractors receive their own assignments, timesheet/expense decisions, mentions, and personal security alerts. Invoice/payment alerts are limited to owners, administrators, and office staff. Inactive users are excluded. Read access rechecks current permissions so role revocation also restricts historical notifications.
+Existing role and module routing remains in place. Owners/admins receive company events; office staff receive permitted modules; managers receive assigned projects; field staff receive their own work. Inactive users and revoked permissions are rechecked. Finance details remain restricted. Public customer/trade response tokens expose only a projected request and cannot list internal tables.
 
-Database triggers create internal alerts; public document activity uses the validated company-notifier relay. Client-side notification inserts were removed. Duplicate payments, document views, change requests, and reminder runs are deduplicated. Internal document previews do not count as client views. Realtime updates refresh the feed; a 60-second poll is the fallback.
+In-app alerts remain automatic. Personal email, SMS, browser/phone push and daily/weekly summaries are opt-in in notification settings. Quiet hours, categories and timezones are configurable. Settings capture future events and do not replay historical alerts. A private leased outbox prevents duplicate sends; delivery failures produce a private in-app alert and cannot recursively send themselves.
 
-## Working event sources
+Reminders run through the existing hourly minute-10 company-timezone schedule. Allocated-work reminders exclude approved leave. The delivery dispatcher is activated separately after the complete release is approved and deployed. Push requires browser permission and a registered device; phone availability depends on browser support.
 
-| Area | Supported events |
-| --- | --- |
-| Leads | New lead creation alerts owners, administrators, and managers/office staff with Leads access, including the creator. Alerts require action, link to the lead, and deduplicate per lead. Updates do not repeat the creation alert. |
-| Projects and tasks | Project creation, staff assignment, status/date/budget changes, milestone completion, task creation/assignment/reassignment/completion, due-today and overdue reminders |
-| Quotes | Creation, review status, sent/approved/declined/expired status, revisions, conversion to a project, client views/change requests, saved optional-item selections |
-| Change orders | Creation, review/approval/decline status, revisions, client views/change requests, successful project-budget sync |
-| Invoices and payments | Creation, sent status, revisions, recorded payments/partial payments, due-soon and overdue reminders; payment-failed status if recorded by a source workflow |
-| Scheduling | Event creation/change/cancellation, subcontractor scheduling/rescheduling, tomorrow's scheduled-work reminders, inspection/site-meeting timeline entries |
-| Daily logs and communication | Log submission, photos, safety concerns, blockers, weather-delay text, completed-work categories, project comments, explicit mentions, incoming client messages |
-| Timesheets and expenses | Submitted/pending, approved, rejected; missing submissions only with explicit resource allocation and scheduled work; approved weekly payroll hours |
-| Documents | Uploads and file changes on existing document/resource/permit tables, inspection-report document types |
-| Subcontractors and materials | Added/invited, quote-received status, work accepted/declined/completed, insurance-expiry reminders, recorded material readiness/backorders |
-| Inventory and financials | Stock thresholds and recorded transactions; budget and labour allowance thresholds; expense/profit impact and significant stored budget-margin changes |
-| Users and security | Invitations, user/profile changes, roles/permissions, deactivation/removal, settings/subscription changes; password/email/MFA changes and unfamiliar stored session user agents |
+## Verification
 
-## Limits and follow-up work
+Tests use synthetic tenants, users, saved documents and mocked provider responses. They exercise SQL policies/triggers/RPCs, real handler authentication/signatures/replay behavior, actor/date formatting, confirmation of accepted sends, record destinations, permission changes, summaries and UI workflows. No customer messages, payments or live test notifications are sent.
 
-These are in-app alerts, not a new phone push-notification system. Existing company email/SMS preferences remain separate from the personal in-app action-only setting.
-
-The app does not currently provide complete warranty-claim handling, general document e-signing/review, standalone client selections with deadlines/allowances, direct team messaging/replies/announcements, WCB-expiry tracking, client-portal login tracking, final-invoice classification, per-category budget thresholds, PM-hour caps, or failed-login event ingestion. Those events need source workflows or fields before working notifications can be added. Basic project issues exist; resolving them produces a completion alert, but this is not a warranty-claims module. Quote/change-order approval is supported and is separate from capturing a signed document. Inspection scheduling exists; a dedicated inspection-result workflow is not added here.
-
-Security changes are fail-open for the notification operation so an alert failure cannot block sign-in, account recovery, or MFA. A changed browser user agent is a heuristic, not a verified new-device identity. Existing source-table authorization and unrelated legacy security-advisor findings are outside this notification release; it does not claim a complete app security audit.
-
-Reminders run hourly at minute 10, after 8 AM in the company timezone. Invalid or missing timezones fall back to America/Edmonton. Repeated runs create one reminder per relevant due date/threshold. Missing submissions are never inferred for every employee merely because a date has passed. Budget checks currently compare approved expenses with the stored total cost budget; labour checks compare approved time with estimated task hours.
-
-## Verification and rollout
-
-Run `node --test tests/notifications/notifications.test.mjs` and `npm run build`. Database tests use synthetic records in two companies and all six roles, checking real SQL RLS/column grants, self-promotion denial, role revocation, tenant isolation, links, read state, portal deduplication, reminders, legacy null read state, and expansion of the legacy role constraint.
-
-The browser fixture in tests/notifications/browser uses synthetic data only and is not included in the normal production bundle. Apply the SQL migration, deploy company-notifier with its existing public-portal JWT configuration, then deploy the frontend. Validate notification grants/triggers/cron and verify the Vercel production commit. The public relay retains existing shared-document access conventions; public-link authentication is not redesigned in this release.
+See [notification-release.md](notification-release.md) for rollout status, exact production approval scope and external receiving-email DNS requirements.

@@ -1,5 +1,5 @@
 import { parseRecordDate, paymentDate } from "@/lib/reporting";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,6 +26,7 @@ export default function SendReceiptDialog({ open, onOpenChange, payments, invoic
   const [subject, setSubject] = useState("Your Payment Receipt");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const sendIntent = useRef(null);
   
   // ⚡ STATE TO HOLD ACTUAL COMPANY DATA
   const [companyData, setCompanyData] = useState(null);
@@ -152,12 +153,17 @@ export default function SendReceiptDialog({ open, onOpenChange, payments, invoic
       `;
 
       // ⚡ ATTACH THE PDF TO THE EDGE FUNCTION PAYLOAD
-      const { error } = await supabase.functions.invoke('send-email', {
-        body: {
+      const signature = JSON.stringify([selectedClientId, selectedPaymentIds, email, subject, message]);
+      if (sendIntent.current?.signature !== signature) sendIntent.current = { signature, payload: {
           to_email: email,
           subject: subject,
           html_body: emailHtml,
           client_id: selectedClientId,
+          document_type: "invoice",
+          document_id: selectedPaymentsData[0]?.invoice_id,
+          notification_kind: "receipt",
+          request_id: crypto.randomUUID(),
+          track_replies: true,
           attachments: [
             {
               content: base64Pdf,
@@ -165,10 +171,10 @@ export default function SendReceiptDialog({ open, onOpenChange, payments, invoic
               type: "application/pdf"
             }
           ]
-        }
-      });
-
-      if (error) throw new Error(error.message);
+        } };
+      const { data, error } = await supabase.functions.invoke('send-email', { body: sendIntent.current.payload });
+      if (error || data?.success !== true) throw new Error(data?.error || error?.message || "Receipt delivery could not be confirmed");
+      sendIntent.current = null;
 
       toast.success("Receipt sent with PDF attachment!");
       setStep(1);

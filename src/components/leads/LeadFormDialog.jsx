@@ -19,7 +19,7 @@ export default function LeadFormDialog({ open, onOpenChange, onSave, users = [],
   const initialFormState = {
     first_name: "", surname: "", contact_email: "", contact_phone: "",
     source: "", pipeline_stage: "New", value_estimate: "", priority: "Medium",
-    next_follow_up_date: "", assigned_to: "", site_address: "", description: "", notes: "",
+    next_follow_up_date: "", next_meeting_date: "", next_meeting_time: "", assigned_to: "", site_address: "", description: "", notes: "",
     photos: []
   };
 
@@ -43,7 +43,9 @@ export default function LeadFormDialog({ open, onOpenChange, onSave, users = [],
           value_estimate: lead.value_estimate || "",
           priority: lead.priority || "Medium",
           next_follow_up_date: lead.next_follow_up_date || "",
-          assigned_to: lead.assigned_to || "",
+          next_meeting_date: lead.next_meeting_date || "",
+          next_meeting_time: lead.next_meeting_time || "",
+          assigned_to: users.find(user => user.id === lead.assigned_to || user.full_name === lead.assigned_to || user.email === lead.assigned_to)?.id || lead.assigned_to || "",
           site_address: lead.site_address || "",
           description: lead.description || "",
           notes: lead.notes || "",
@@ -113,6 +115,8 @@ export default function LeadFormDialog({ open, onOpenChange, onSave, users = [],
       if (!payload.next_follow_up_date) {
         payload.next_follow_up_date = null;
       }
+      if (!payload.next_meeting_date) payload.next_meeting_date = null;
+      if (!payload.next_meeting_time) payload.next_meeting_time = null;
 
       await onSave(payload);
       onOpenChange(false);
@@ -224,13 +228,18 @@ export default function LeadFormDialog({ open, onOpenChange, onSave, users = [],
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><Label>Next meeting date</Label><Input type="date" value={form.next_meeting_date} onChange={e => setForm({ ...form, next_meeting_date: e.target.value })} /></div>
+              <div><Label>Meeting time (company local time)</Label><Input type="time" value={form.next_meeting_time} onChange={e => setForm({ ...form, next_meeting_time: e.target.value })} /></div>
+            </div>
+
             <div>
               <Label>Assign Team Member</Label>
               <Select value={form.assigned_to} onValueChange={v => setForm({...form, assigned_to: v})}>
                 <SelectTrigger className="bg-white"><SelectValue placeholder="Select team member" /></SelectTrigger>
                 <SelectContent>
                   {users.map(user => (
-                    <SelectItem key={user.id} value={user.full_name || user.name || "Unknown User"}>
+                    <SelectItem key={user.id} value={user.id}>
                       {user.full_name || user.name}
                     </SelectItem>
                   ))}

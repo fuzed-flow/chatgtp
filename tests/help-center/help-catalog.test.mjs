@@ -20,6 +20,7 @@ const migrations = await Promise.all([
   '20261004071225_help_articles_portal_content.sql',
   '20261004155307_fuzed_flow_contractor_portal_branding.sql',
   '20261004164956_document_email_company_copy_help.sql',
+  '20261004180636_subscriber_notification_workflow_help.sql',
 ].map(name => fs.readFile(local('../../supabase/migrations/' + name), 'utf8')));
 const schema = await fs.readFile(local('./schema.sql'), 'utf8');
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -48,8 +49,10 @@ async function actor(db, who) {
 test('full guide and corrected FAQ migrations insert current source text, preserve IDs, and enforce staff visibility', async () => {
   const db = await catalogDatabase();
   try {
-    assert.equal(guides.length, 86);
-    assert.equal(corrections.length, 22);
+    assert.equal(guides.length, coverage.guide_count);
+    assert.equal(corrections.length, coverage.corrected_faq_count);
+    assert.ok(guides.length >= 93);
+    assert.ok(corrections.length >= 31);
     const before = (await db.query('select id,slug from help_faqs order by slug')).rows;
     await db.query('update help_faqs set embedding=$1::vector where slug=$2', [JSON.stringify(Array(1536).fill(0.1)), 'guide-project-contractor-portal']);
     for (const migration of migrations.slice(2)) await db.exec(migration);
@@ -84,7 +87,7 @@ test('full guide and corrected FAQ migrations insert current source text, preser
       const expected = actual.filter(article => canReadHelp(article, roles[n])).map(article => article.slug).sort();
       assert.deepEqual(visible, expected, roles[n] + ' matches the UI audience rules.');
       if (['employee', 'subcontractor', 'user'].includes(roles[n])) {
-        for (const slug of ['guide-employee-portal', 'guide-expense-claims', 'guide-field-tasks', 'guide-mobile-navigation']) assert.ok(visible.includes(slug), roles[n] + ' can read personal-work guidance.');
+        for (const slug of ['guide-employee-portal', 'guide-expense-claims', 'guide-field-tasks', 'guide-mobile-navigation', 'guide-equipment-reservations', 'equipment-reservations', 'field-material-return']) assert.ok(visible.includes(slug), roles[n] + ' can read personal-work guidance.');
         for (const slug of ['guide-project-workspace', 'guide-hr-approvals', 'guide-quotes-pricing-tax-discount', 'guide-office-daily-logs']) assert.ok(!visible.includes(slug), roles[n] + ' cannot read office-only guide ' + slug);
       }
       if (!['owner', 'admin'].includes(roles[n])) {
@@ -111,9 +114,9 @@ test('AI retrieves useful current sections for real notification, expense, prici
       {query: 'missing lead notifications action-only', slug: 'guide-notifications', content: /## Understand new lead alerts[\s\S]*Action Required/},
       {query: 'Submitted expense claim hidden by HR Pending Only', slug: 'guide-expense-claims', content: /## Troubleshooting[\s\S]*All Statuses/},
       {query: 'quote percentage discount customer totals', slug: 'guide-quotes-pricing-tax-discount', content: /Discount[\s\S]*customer|customer[\s\S]*Discount/i},
-      {query: 'warranty claim intake tracking', slug: 'guide-feature-availability', content: /## Warranty claims[\s\S]*not currently a complete dedicated warranty/},
-      {query: 'document approval electronic signature', slug: 'document-signature-availability', content: /does not currently provide a complete general document[\s\S]*Do not treat a document approval notification as proof/},
-      {query: 'general document signing signature tracking availability', slug: 'guide-feature-availability', content: /## Approval and general document signing[\s\S]*does not currently provide a complete general document/},
+      {query: 'warranty claim intake tracking', slug: 'guide-warranty-claims', content: /New claim[\s\S]*Assigned team member/},
+      {query: 'document approval electronic signature', slug: 'document-signature-availability', content: /Reviews & signatures[\s\S]*electronic consent[\s\S]*does not itself capture/},
+      {query: 'general document signing signature tracking availability', slug: 'guide-feature-availability', content: /## Approval and general document signing[\s\S]*Request review \/ signature/},
       {query: 'Employee Portal phone More menu Expenses', slug: 'guide-employee-portal', content: /## Navigate on a phone[\s\S]*\*\*More\*\*[\s\S]*Expenses/},
       {query: 'contractor portal quote email contact invitation', slug: 'guide-project-contractor-portal', content: /Fuzed Flow[\s\S]*configured business contact email[\s\S]*contact who sent their invitation/},
       {query: 'quote send me a copy company email retry copy', slug: 'guide-quotes-review-send', content: /Send me a copy[\s\S]*Branding & PDFs[\s\S]*Retry copy[\s\S]*without sending another client email/},
@@ -130,6 +133,15 @@ test('AI retrieves useful current sections for real notification, expense, prici
     }
     await actor(db, id(5));
     assert.ok((await db.query("select slug from search_help_articles('Submitted expense claim hidden by HR Pending Only',null,null,4)")).rows.some(article => article.slug === 'guide-expense-claims'), 'Field users receive their personal expense guide.');
+    for (const example of [
+      { query: 'equipment Request checkout Reserved office approval Confirm equipment returned', slug: 'guide-equipment-reservations', content: /Request checkout[\s\S]*remains Reserved[\s\S]*Confirm equipment returned/ },
+      { query: 'Return materials to stock usage history refund once', slug: 'field-material-return', content: /Return materials to stock[\s\S]*Returned to stock[\s\S]*cannot refund that quantity again/ },
+    ]) {
+      const results = (await db.query('select * from search_help_articles($1,null,null,4)', [example.query])).rows;
+      const found = results.find(article => article.slug === example.slug);
+      assert.ok(found, `${example.query}: field AI retrieves ${example.slug}, received ${results.map(article => article.slug).join(', ')}`);
+      assert.match(found.answer, example.content);
+    }
     for (const query of ['quote percentage discount customer totals', 'HR staff bulk approve employee expense claims', 'company branding logo administrator']) {
       const result = (await db.query('select slug from search_help_articles($1,null,null,8)', [query])).rows;
       assert.ok(result.every(article => currentArticles.has(article.slug) && canReadHelp(currentArticles.get(article.slug), 'employee')));

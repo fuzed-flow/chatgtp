@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import LeaveIdentityPicker from "@/components/employee/LeaveIdentityPicker";
 import { format, parseISO, startOfWeek, endOfWeek, addDays, subDays, addWeeks, subWeeks, isSameDay, isWithinInterval } from "date-fns";
 import { formatCurrencyUSD } from "../components/utils/formatCurrency";
 
@@ -66,11 +67,11 @@ export default function HumanResources() {
   const { search: notificationSearch } = useLocation();
   const [activeView, setActiveView] = useState(() => {
     const tab = new URLSearchParams(notificationSearch).get("tab");
-    return ["timesheets", "expenses"].includes(tab) ? tab : "directory";
+    return ["timesheets", "expenses", "timeoff"].includes(tab) ? tab : "directory";
   });
   useEffect(() => {
     const tab = new URLSearchParams(notificationSearch).get("tab");
-    if (["timesheets", "expenses"].includes(tab)) setActiveView(tab);
+    if (["timesheets", "expenses", "timeoff"].includes(tab)) setActiveView(tab);
   }, [notificationSearch]);
 
   // 👇 1. THE GATEKEEPER 👇
@@ -203,18 +204,22 @@ export default function HumanResources() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ table, ids, status }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from(table)
         .update({ status: status, approved_by: profile?.full_name || "Admin" })
-        .in("id", ids);
+        .eq("company_id", companyId)
+        .in("id", ids)
+        .select("id");
       if (error) throw error;
+      if (data?.length !== ids.length) throw new Error("Some selected items changed or are unavailable. Reload the list before trying again.");
     },
     onSuccess: (_, { table, status, ids }) => {
       const qKey = table === "expenses" ? "hr_expenses" : table === "time_off_requests" ? "hr_time_off" : "hr_time_entries";
       qc.invalidateQueries({ queryKey: [qKey] });
       setSelectedEntries([]);
       toast.success(`${ids.length} items marked as ${status}!`);
-    }
+    },
+    onError: error => toast.error(error.message || "Could not update the selected items.")
   });
 
   const updateEntryMutation = useMutation({
@@ -785,6 +790,7 @@ export default function HumanResources() {
                                   <Badge variant="outline" className={`text-[10px] uppercase font-bold text-purple-600 border-purple-200 bg-purple-50`}>
                                     {item.type || "Time Off"}
                                   </Badge>
+                                  {!item.user_id && <LeaveIdentityPicker request={item} />}
                                 </td>
                               </>
                             ) : (

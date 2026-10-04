@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import vm from 'node:vm';
-import {currencyFactor} from '../../supabase/functions/_shared/checkout.js';
+import { currencyFactor } from '../../supabase/functions/_shared/checkout.js';
+import { salesUuid } from '../../supabase/functions/_shared/salesNotifications.js';
 import {
-  SUBSCRIPTION_CURRENCY, SUBSCRIPTION_PRICES,
+  SUBSCRIPTION_CURRENCY, SUBSCRIPTION_PRICES, BASE_USER_LIMITS,
   getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId, getUserLimitFromQuantity,
 } from '../../supabase/functions/_shared/subscriptionPlans.js';
 
@@ -36,6 +37,9 @@ async function loadHandler(path) {
   const env = {
     STRIPE_SECRET_KEY: 'test-secret',
     STRIPE_WEBHOOK_SECRET: 'test-webhook-secret',
+    SUPABASE_URL: 'https://synthetic.supabase.invalid',
+    SUPABASE_ANON_KEY: 'synthetic-anon-key',
+    SUPABASE_SERVICE_ROLE_KEY: 'synthetic-service-key',
     APP_URL: 'https://app.fuzedflow.com',
   };
   class Stripe {
@@ -45,23 +49,49 @@ async function loadHandler(path) {
       checkoutCalls.push(parameters);
       return { url: 'https://checkout.stripe.com/test' };
     } } };
-    webhooks = { constructEventAsync: async (body) => JSON.parse(body) };
+    webhooks = { constructEventAsync: async (body, signature, secret, tolerance, cryptoProvider) => {
+      assert.equal(signature, 'test-signature');
+      assert.equal(secret, env.STRIPE_WEBHOOK_SECRET);
+      assert.equal(tolerance, undefined);
+      assert.equal(typeof cryptoProvider, 'object');
+      return JSON.parse(body);
+    } };
   }
   const client = {
-    auth: { getUser: async () => ({ data: { user: { id: 'user-test' } } }) },
-    from: (table) => ({
-      select: () => ({eq: () => ({single: async () => ({data: table==='profiles'?{company_id:'company-test',role:'admin',is_active:true}:{stripe_customer_id:'cus_test',name:'Fixture Company'},error:null})})}),
-      update: (values) => ({
-        eq: async (column, value) => {
-          companyUpdates.push({ table, values, column, value });
-          return { error: null };
-        },
-      }),
-    }),
+    auth: { getUser: async () => ({ data: { user: { id: 'user-test' } }, error: null }) },
+    from: (table) => {
+      const filters = []; let values;
+      const result = () => {
+        if (values) {
+          const [column, value] = filters.at(-1);
+          companyUpdates.push({ table, values, column, value, filters });
+          return { data: null, error: null };
+        }
+        if (table === 'profiles') return { data: { id: 'user-test', company_id: 'company-test', is_active: true, role: 'admin' }, error: null };
+        if (table === 'companies') return { data: { id: 'company-test', stripe_customer_id: 'cus_test' }, error: null };
+        throw new Error('Unexpected synthetic billing table: ' + table);
+      };
+      const query = {
+        select() { return this; },
+        update(input) { values = input; return this; },
+        eq(column, value) { filters.push([column, value]); return this; },
+        single: async () => result(), maybeSingle: async () => result(),
+        then(resolve, reject) { return Promise.resolve().then(result).then(resolve, reject); },
+      };
+      return query;
+    },
+    rpc: async name => {
+      if (name === 'notification_provider_server_config') return { data: { stripe_connect_webhook_secret: 'synthetic-connect-secret' }, error: null };
+      if (name === 'stripe_payment_context') return { data: null, error: null };
+      if (name === 'record_stripe_payment' || name === 'record_sales_event') return { data: true, error: null };
+      throw new Error('Unexpected synthetic billing RPC: ' + name);
+    },
   };
   const context = vm.createContext({
     Stripe, createClient: () => client,
-    getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId, getUserLimitFromQuantity, currencyFactor, crypto,
+    getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId, getUserLimitFromQuantity, BASE_USER_LIMITS,
+    providerServerConfig: async db => (await db.rpc('notification_provider_server_config')).data,
+    salesUuid, currencyFactor, crypto,
     Deno: { env: { get: (key) => env[key] || '' }, serve: (fn) => { handler = fn; } },
     serve: (fn) => { handler = fn; },
     Request, Response, console,

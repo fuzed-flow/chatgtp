@@ -28,6 +28,7 @@ import CreateQuoteFromTemplateDialog from "../components/shared/CreateQuoteFromT
 import CreateTaskDialog from "../components/tasks/CreateTaskDialog";
 import PhotoGallery from "../components/shared/PhotoGallery";
 import DocumentManager from "../components/shared/DocumentManager";
+import CommunicationPanel from "../components/clients/CommunicationPanel";
 
 // --- CONSTANTS & HELPERS ---
 const STATUSES = ["To Do", "Doing", "Blocked", "Done", "Pending", "Active", "Under Review", "Completed"];
@@ -183,7 +184,7 @@ export default function LeadDetail() {
       
       if (clientError) throw clientError;
 
-      const { error: leadError } = await supabase.from("leads").update({ pipeline_stage: "Won" }).eq("id", leadId);
+      const { error: leadError } = await supabase.from("leads").update({ pipeline_stage: "Won", client_id: clientRef.id }).eq("id", leadId).eq("company_id", companyId);
       if (leadError) throw leadError;
 
       const { data: leadNotes } = await supabase.from("notes").select("*").eq("related_type", "Lead").eq("related_id", leadId);
@@ -366,7 +367,9 @@ export default function LeadDetail() {
       value_estimate: lead.value_estimate || "",
       priority: lead.priority || "Medium",
       next_follow_up_date: lead.next_follow_up_date || "",
-      assigned_to: lead.assigned_to || "",
+      next_meeting_date: lead.next_meeting_date || "",
+      next_meeting_time: lead.next_meeting_time || "",
+      assigned_to: users.find(user => user.id === lead.assigned_to || user.full_name === lead.assigned_to || user.email === lead.assigned_to)?.id || lead.assigned_to || "",
       site_address: lead.site_address || "",
       description: lead.description || "",
       notes: lead.notes || ""
@@ -386,6 +389,8 @@ export default function LeadDetail() {
     }
     
     if (!data.next_follow_up_date) data.next_follow_up_date = null;
+    if (!data.next_meeting_date) data.next_meeting_date = null;
+    if (!data.next_meeting_time) data.next_meeting_time = null;
     updateMutation.mutate({ id: leadId, data });
   };
 
@@ -592,7 +597,7 @@ export default function LeadDetail() {
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Assigned To</p>
-            <p className="text-sm font-medium text-slate-700 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg inline-block">{lead.assigned_to || "Unassigned"}</p>
+            <p className="text-sm font-medium text-slate-700 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg inline-block">{users.find(user => user.id === lead.assigned_to)?.full_name || lead.assigned_to || "Unassigned"}</p>
           </div>
           {lead.site_address && (
             <div className="sm:col-span-2 lg:col-span-1">
@@ -640,6 +645,7 @@ export default function LeadDetail() {
 
       {/* LOWER SECTIONS */}
       <div className="space-y-6">
+        <CommunicationPanel leadId={lead.id} clientEmail={lead.contact_email} clientPhone={lead.contact_phone} clientName={lead.contact_name} />
         
         {/* NOTES SECTION */}
         <Card className="p-0 sm:p-2 shadow-sm border-slate-200/80 bg-white overflow-hidden rounded-xl [&_.py-12]:py-4 [&_.py-16]:py-4 [&_svg]:max-h-8 [&_svg]:max-w-8">
@@ -1100,13 +1106,18 @@ export default function LeadDetail() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><Label>Next meeting date</Label><Input type="date" value={formData.next_meeting_date || ""} onChange={e => setFormData({ ...formData, next_meeting_date: e.target.value })} /></div>
+              <div><Label>Meeting time (company local time)</Label><Input type="time" value={formData.next_meeting_time || ""} onChange={e => setFormData({ ...formData, next_meeting_time: e.target.value })} /></div>
+            </div>
+
             <div>
               <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Assign Team Member</Label>
               <Select value={formData.assigned_to} onValueChange={v => setFormData({...formData, assigned_to: v})}>
                 <SelectTrigger className="h-10 font-medium"><SelectValue placeholder="Select team member" /></SelectTrigger>
                 <SelectContent>
                   {users.map(user => (
-                    <SelectItem key={user.id} value={user.full_name || user.name || "Unknown User"} className="font-medium">
+                    <SelectItem key={user.id} value={user.id} className="font-medium">
                       {user.full_name || user.name}
                     </SelectItem>
                   ))}

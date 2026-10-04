@@ -23,6 +23,7 @@ import AISchedulingAssistant from "../components/projects/AISchedulingAssistant"
 import PermitsTab from "../components/projects/PermitsTab";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { getProjectAllocations } from "@/lib/projectAllocations";
 
 const TASK_STATUSES = ["To Do", "Doing", "Blocked", "Done"];
 
@@ -115,12 +116,10 @@ export default function ProjectDetail() {
   });
 
   const { data: allocations = [] } = useQuery({
-    queryKey: ["project-allocations", projectId],
-    enabled: !!projectId,
+    queryKey: ["project-allocations", projectId, companyId],
+    enabled: !!projectId && !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("resource_allocations").select("*").eq("project_id", projectId);
-      if (error) throw error;
-      return data || [];
+      return getProjectAllocations(companyId, projectId);
     },
   });
 

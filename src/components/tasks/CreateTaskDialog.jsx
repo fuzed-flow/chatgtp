@@ -105,6 +105,7 @@ export default function CreateTaskDialog({
       vendor_id: formData.vendor_id === "none" ? null : formData.vendor_id,
       task_type: formData.task_type === "none" ? null : formData.task_type,
       assigned_to: formData.assigned_to === "none" ? null : formData.assigned_to,
+      due_date: formData.due_date || null,
     };
 
     onSubmit(payload);

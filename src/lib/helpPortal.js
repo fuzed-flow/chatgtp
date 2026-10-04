@@ -1,7 +1,7 @@
 export const HELP_COLLECTIONS = [
   { id: 'getting-started', title: 'Getting started', description: 'Set up your account, invite your team, and find your way around.', areas: ['Account', 'Settings', 'Team'], icon: 'compass' },
   { id: 'sales', title: 'Leads, clients & quotes', description: 'Move an enquiry from first contact to an approved quote.', areas: ['Leads', 'Clients', 'Quotes', 'Templates', 'Pricebook'], icon: 'file' },
-  { id: 'projects', title: 'Projects & planning', description: 'Organize phases, schedules, drawings, and project changes.', areas: ['Projects', 'Project Phases', 'Client Timeline', 'Plans & Elevations', 'Change Orders', 'Resource Library'], icon: 'building' },
+  { id: 'projects', title: 'Projects & planning', description: 'Organize phases, schedules, drawings, and project changes.', areas: ['Projects', 'Project Phases', 'Client Timeline', 'Plans & Elevations', 'Change Orders', 'Resource Library', 'Warranty', 'Documents'], icon: 'building' },
   { id: 'field', title: 'Field work & tasks', description: 'Keep assigned work, daily logs, and time entries up to date.', areas: ['Employee Portal', 'Contractor Portal', 'Tasks', 'Daily Logs', 'Timesheets'], icon: 'hardhat' },
   { id: 'materials', title: 'Materials & purchasing', description: 'Manage inventory, project materials, vendors, and purchase orders.', areas: ['Inventory', 'Project Materials', 'Vendors', 'Purchase Orders'], icon: 'package' },
   { id: 'business', title: 'Business & reporting', description: 'Work with invoices, payments, reports, and staff records.', areas: ['Invoices', 'Payments', 'Reports', 'HR'], icon: 'chart' },
@@ -12,7 +12,7 @@ export const HELP_COLLECTIONS = [
 export const FEATURED_HELP = ['guide-getting-started', 'guide-mobile-navigation', 'guide-troubleshooting'];
 
 export function isPublicHelpRoute(pathname) {
-  return /^\/(?:ClientPortal|ContractorPortal|contractor-portal|PublicQuoteView|PublicInvoiceView|PublicPOView|PublicChangeOrderView)(?:\/|$)/i.test(String(pathname || '').split(/[?#]/, 1)[0]);
+  return /^\/(?:ClientPortal|ContractorPortal|contractor-portal|PublicQuoteView|PublicInvoiceView|PublicPOView|PublicChangeOrderView|DocumentResponse|WarrantyResponse)(?:\/|$)/i.test(String(pathname || '').split(/[?#]/, 1)[0]);
 }
 
 export function helpArticleUrl(slug, browseParams) {

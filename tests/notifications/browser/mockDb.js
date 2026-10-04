@@ -16,8 +16,9 @@ class Query {
   range(start, end) { this.bounds = [start, end]; return this; }
   update(value) { this.updateValue = value; return this; }
   single() { this.one = true; return this; }
+  maybeSingle() { this.one = true; return this; }
   then(resolve, reject) {
-    const result = this.table === 'profiles' ? [profile] : rows;
+    const result = this.table === 'profiles' ? [profile] : this.table.startsWith('notification_') ? [] : rows;
     let matches = result.filter(row => this.filters.every(fn => fn(row)));
     if (this.updateValue) {
       matches.forEach(row => Object.assign(row, this.updateValue));

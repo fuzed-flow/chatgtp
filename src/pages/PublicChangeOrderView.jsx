@@ -2,10 +2,10 @@ import { getPublicProject } from "@/lib/publicProject";
 import React, { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; 
-import { Download, CheckCircle, Building2, Calendar, MapPin, MessageSquare, FileText } from "lucide-react";
+import { Download, CheckCircle, XCircle, Building2, Calendar, MapPin, MessageSquare, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -22,6 +22,10 @@ export default function PublicChangeOrderView() {
   const [changesMessage, setChangesMessage] = useState("");
   const [submittingChanges, setSubmittingChanges] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [isDeclining, setIsDeclining] = useState(false);
+  const decisionInFlight = useRef(false);
   
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [viewerImageUrl, setViewerImageUrl] = useState("");
@@ -223,6 +227,12 @@ export default function PublicChangeOrderView() {
   };
 
   const handleAcceptChangeOrder = async () => {
+    if (["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending Review"].includes(changeOrder.status)) {
+      toast.error(changeOrder.status === "Pending Review" ? "The team is reviewing this document." : "This change order already has a recorded decision.");
+      return;
+    }
+    if (decisionInFlight.current) return;
+    decisionInFlight.current = true;
     setIsApproving(true);
     try {
       // 1. Properly capture the 'error' object from Supabase
@@ -232,7 +242,7 @@ export default function PublicChangeOrderView() {
         tax: dynamicTotalTax, 
         total: dynamicTotal, 
         client_selected_items_json: JSON.stringify(localSelections),
-      }).eq("id", changeOrder.id);
+      }).eq("id", changeOrder.id).eq("company_id", changeOrder.company_id).eq("status", changeOrder.status).select("id").single();
 
       // 2. If Supabase rejects it (400 Bad Request), throw it so we can see why
       if (updateError) {
@@ -259,12 +269,38 @@ export default function PublicChangeOrderView() {
       }
 
       toast.success("Change Order accepted! The team has been notified.");
-      queryClient.invalidateQueries(["public-co", changeOrderId]);
+      queryClient.invalidateQueries({ queryKey: ["public-co", changeOrderId] });
     } catch (error) { 
       // 3. Show the exact database message in the toast for easy debugging
       toast.error(`Failed to accept: ${error.message || "Database error"}`); 
     } finally {
+      decisionInFlight.current = false;
       setIsApproving(false);
+    }
+  };
+
+  const handleDeclineChangeOrder = async () => {
+    if (["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending Review"].includes(changeOrder?.status)) {
+      toast.error(changeOrder.status === "Pending Review" ? "The team is reviewing this document." : "This change order already has a recorded decision.");
+      return;
+    }
+    if (decisionInFlight.current || !changeOrder?.company_id) return;
+    decisionInFlight.current = true;
+    setIsDeclining(true);
+    try {
+      const { data, error } = await supabase.from("change_orders").update({
+        status: "Declined", decline_reason: declineReason.trim().slice(0, 2000) || null,
+      }).eq("id", changeOrder.id).eq("company_id", changeOrder.company_id).eq("status", changeOrder.status).select("id").single();
+      if (error || !data?.id) throw error || new Error("The change order could not be updated.");
+      await queryClient.invalidateQueries({ queryKey: ["public-co", changeOrderId] });
+      setDeclineDialogOpen(false);
+      setDeclineReason("");
+      toast.success("Change order declined.");
+    } catch {
+      toast.error("The change order could not be declined. Refresh to check its current status, then try again.");
+    } finally {
+      decisionInFlight.current = false;
+      setIsDeclining(false);
     }
   };
 
@@ -580,13 +616,17 @@ export default function PublicChangeOrderView() {
             <Download className="h-4 w-4 mr-2 text-slate-500" /> Download PDF
           </Button>
           
-          {changeOrder.status !== "Approved" && changeOrder.status !== "Invoiced" && (
+          {changeOrder.status === "Pending Review" && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">The team is reviewing this document.</p>}
+          {!["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending Review"].includes(changeOrder.status) && (
             <>
-              <Button onClick={handleAcceptChangeOrder} disabled={isApproving} className="shadow-lg font-black h-11 px-8" style={{ backgroundColor: brandColor, color: '#fff' }}>
+              <Button onClick={handleAcceptChangeOrder} disabled={isApproving || isDeclining} className="shadow-lg font-black h-11 px-8" style={{ backgroundColor: brandColor, color: '#fff' }}>
                 {isApproving ? "Processing..." : <><CheckCircle className="h-4 w-4 mr-2" /> Accept Change Order</>}
               </Button>
-              <Button onClick={() => setChangesDialogOpen(true)} variant="outline" className="shadow-sm bg-white font-bold h-11">
+              <Button onClick={() => setChangesDialogOpen(true)} disabled={isApproving || isDeclining} variant="outline" className="shadow-sm bg-white font-bold h-11">
                 <MessageSquare className="h-4 w-4 mr-2 text-slate-500" /> Request Changes
+              </Button>
+              <Button onClick={() => setDeclineDialogOpen(true)} disabled={isApproving || isDeclining} variant="outline" className="shadow-sm bg-white font-bold h-11 text-red-700 border-red-200 hover:bg-red-50">
+                <XCircle className="h-4 w-4 mr-2" /> Decline Change Order
               </Button>
             </>
           )}
@@ -599,8 +639,26 @@ export default function PublicChangeOrderView() {
             <span className="text-emerald-800 font-black text-lg">Change Order Approved!</span>
           </div>
         )}
+        {["Declined", "Rejected"].includes(changeOrder.status) && <div role="status" className="mt-8 mx-auto max-w-md rounded-xl border border-red-200 bg-red-50 p-4 text-center font-semibold text-red-800">This change order has been declined.</div>}
 
         {/* Request Changes Dialog */}
+        <Dialog open={declineDialogOpen && !["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending Review"].includes(changeOrder.status)} onOpenChange={open => { if (!decisionInFlight.current) setDeclineDialogOpen(open); }}>
+          <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg bg-white">
+            <DialogHeader>
+              <DialogTitle>Decline this change order?</DialogTitle>
+              <DialogDescription>This records that you do not want to proceed with this change order. Your contractor will receive your decision.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <label htmlFor="co-decline-reason" className="block text-sm font-medium text-slate-700">Reason (optional)</label>
+              <Textarea id="co-decline-reason" value={declineReason} onChange={e => setDeclineReason(e.target.value)} maxLength={2000} disabled={isDeclining} placeholder="Let your contractor know why you are declining..." className="min-h-[100px]" />
+              <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                <Button onClick={() => setDeclineDialogOpen(false)} variant="outline" disabled={isDeclining} className="h-11 flex-1">Cancel</Button>
+                <Button onClick={handleDeclineChangeOrder} disabled={isDeclining} className="h-11 flex-1 bg-red-600 text-white hover:bg-red-700">{isDeclining ? "Declining..." : "Confirm Decline"}</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={changesDialogOpen} onOpenChange={setChangesDialogOpen}>
           <DialogContent>
             <DialogHeader>

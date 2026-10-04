@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Trash2, Edit, Users, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { allocationPayload, getProjectAllocations } from "@/lib/projectAllocations";
 
 export default function ResourceAllocationView({ projectId, tasks = [], allUsers = [] }) {
   const { profile } = useAuth();
@@ -31,15 +32,10 @@ export default function ResourceAllocationView({ projectId, tasks = [], allUsers
 
   // --- 1. FETCH ALLOCATIONS ---
   const { data: allocations = [], isLoading } = useQuery({
-    queryKey: ["project-allocations", projectId],
+    queryKey: ["project-allocations", projectId, companyId],
     enabled: !!projectId && !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("project_allocations")
-        .select("*")
-        .eq("project_id", projectId);
-      if (error) throw error;
-      return data || [];
+      return getProjectAllocations(companyId, projectId);
     }
   });
 
@@ -49,12 +45,7 @@ export default function ResourceAllocationView({ projectId, tasks = [], allUsers
       const payload = {
         company_id: companyId,
         project_id: projectId,
-        task_id: data.task_id === "none" ? null : data.task_id,
-        user_id: data.user_id,
-        allocated_hours: Number(data.allocated_hours) || 0,
-        utilization_percentage: Number(data.utilization_percentage) || 100,
-        allocation_start_date: data.allocation_start_date || null,
-        allocation_end_date: data.allocation_end_date || null
+        ...allocationPayload(data, "project_allocations"),
       };
       const { error } = await supabase.from("project_allocations").insert([payload]);
       if (error) throw error;
@@ -70,16 +61,9 @@ export default function ResourceAllocationView({ projectId, tasks = [], allUsers
 
   // --- 3. UPDATE MUTATION ---
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
-      const payload = {
-        task_id: data.task_id === "none" ? null : data.task_id,
-        user_id: data.user_id,
-        allocated_hours: Number(data.allocated_hours) || 0,
-        utilization_percentage: Number(data.utilization_percentage) || 100,
-        allocation_start_date: data.allocation_start_date || null,
-        allocation_end_date: data.allocation_end_date || null
-      };
-      const { error } = await supabase.from("project_allocations").update(payload).eq("id", id);
+    mutationFn: async ({ id, data, sourceTable }) => {
+      const payload = allocationPayload(data, sourceTable);
+      const { error } = await supabase.from(sourceTable).update(payload).eq("company_id", companyId).eq("project_id", projectId).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -93,8 +77,8 @@ export default function ResourceAllocationView({ projectId, tasks = [], allUsers
 
   // --- 4. DELETE MUTATION ---
   const deleteMutation = useMutation({
-    mutationFn: async (id) => {
-      const { error } = await supabase.from("project_allocations").delete().eq("id", id);
+    mutationFn: async allocation => {
+      const { error } = await supabase.from(allocation.source_table).delete().eq("company_id", companyId).eq("project_id", projectId).eq("id", allocation.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -110,8 +94,10 @@ export default function ResourceAllocationView({ projectId, tasks = [], allUsers
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (formData.allocation_start_date && formData.allocation_end_date && formData.allocation_end_date < formData.allocation_start_date) { toast.error("Allocation end date must be on or after its start date."); return; }
+    if (Number(formData.allocated_hours) < 0) { toast.error("Allocated hours cannot be negative."); return; }
     if (editingAlloc) {
-      await updateMutation.mutateAsync({ id: editingAlloc.id, data: formData });
+      await updateMutation.mutateAsync({ id: editingAlloc.id, data: formData, sourceTable: editingAlloc.source_table });
     } else {
       await createMutation.mutateAsync(formData);
     }
@@ -231,7 +217,7 @@ export default function ResourceAllocationView({ projectId, tasks = [], allUsers
                 <Button size="icon" variant="ghost" onClick={() => handleEdit(alloc)} className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50">
                   <Edit className="h-4 w-4" />
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => { if(window.confirm("Remove allocation?")) deleteMutation.mutate(alloc.id); }} className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50">
+                <Button size="icon" variant="ghost" onClick={() => { if(window.confirm("Remove allocation?")) deleteMutation.mutate(alloc); }} className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -273,7 +259,7 @@ export default function ResourceAllocationView({ projectId, tasks = [], allUsers
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Estimated Hours</Label>
+                <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Hours for this allocation period</Label>
                 <Input type="number" step="0.5" className="font-bold bg-white" value={formData.allocated_hours} onChange={e => setFormData({...formData, allocated_hours: e.target.value})} placeholder="e.g. 40" />
               </div>
               <div>

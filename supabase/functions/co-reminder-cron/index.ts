@@ -1,7 +1,8 @@
+import { stableRequestId } from "../_shared/salesNotifications.js";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-const APP_URL = Deno.env.get("APP_URL") || "https://fuzedflow.com";
+const APP_URL = Deno.env.get("APP_URL") || "https://app.fuzedflow.com";
 
 serve(async (req) => {
   try {
@@ -26,7 +27,7 @@ serve(async (req) => {
         client_id, 
         company_id,
         companies ( id, name, settings ),
-        clients ( name, email, phone )
+        clients ( name, email, phone ), projects ( client_id, clients ( name, email, phone ) )
       `)
       .in("status", ["Sent", "Viewed", "Pending"]);
 
@@ -45,7 +46,8 @@ serve(async (req) => {
       console.log(`\n--- Checking Change Order #${co.change_order_number} ---`);
       
       const company = co.companies;
-      const client = co.clients;
+      const project = Array.isArray(co.projects) ? co.projects[0] : co.projects;
+      const client = project?.clients || co.clients;
       const automations = company?.settings?.automations;
 
       // SAFETY CHECKS
@@ -117,6 +119,7 @@ serve(async (req) => {
         };
 
         const notifications = [];
+        let deliveriesSucceeded = true;
 
         // Queue Email via your unified Notification Engine
         if (client.email) {
@@ -129,12 +132,14 @@ serve(async (req) => {
                 subject: subject, 
                 html_body: htmlBody, 
                 client_id: co.client_id,
-                company_id: company.id
+                company_id: company.id, document_type: "change_order", document_id: co.id, notification_kind: "followup", track_replies: true,
+                request_id: await stableRequestId(`co:${co.id}:followup:${newStage}:email`)
               })
-            }).then(res => {
-              if (res.ok) emailsTriggered++;
-              else res.text().then(t => console.error("Email failed:", t));
-            })
+            }).then(async res => {
+              const result = await res.json();
+              if (res.ok && result.success === true) emailsTriggered++;
+              else deliveriesSucceeded = false;
+            }).catch(() => { deliveriesSucceeded = false; })
           );
         }
 
@@ -148,20 +153,23 @@ serve(async (req) => {
                 phone_number: client.phone,
                 message_body: smsBody,
                 client_id: co.client_id,
-                company_id: company.id
+                company_id: company.id, document_type: "change_order", document_id: co.id, notification_kind: "followup",
+                request_id: await stableRequestId(`co:${co.id}:followup:${newStage}:sms`)
               })
-            }).then(res => {
-              if (res.ok) smsTriggered++;
-              else res.text().then(t => console.error("SMS failed:", t));
-            })
+            }).then(async res => {
+              const result = await res.json();
+              if (res.ok && result.success === true) smsTriggered++;
+              else deliveriesSucceeded = false;
+            }).catch(() => { deliveriesSucceeded = false; })
           );
         }
 
         // Wait for sending to finish
         await Promise.all(notifications);
+        if (!deliveriesSucceeded) continue;
         
         // Advance the automation stage
-        await supabaseAdmin.from("change_orders").update({ automation_stage: newStage }).eq("id", co.id);
+        await supabaseAdmin.from("change_orders").update({ automation_stage: newStage }).eq("id", co.id).eq("company_id", co.company_id).eq("status", co.status);
         console.log(`🎉 SUCCESS: Notifications sent and CO moved to stage ${newStage}.`);
       }
     }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; // NEW: Supabase!
 import { useAuth } from "@/lib/AuthContext"; // NEW: Auth Hook!
@@ -13,15 +13,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { communicationSendPayload, communicationText } from "@/lib/clientCommunications";
 
-export default function CommunicationPanel({ clientId, clientEmail, clientPhone, clientName }) {
+export default function CommunicationPanel({ clientId, leadId, clientEmail, clientPhone, clientName }) {
   const { profile } = useAuth();
   const companyId = profile?.company_id;
+  const partyId = leadId || clientId;
+  const partyColumn = leadId ? "lead_id" : "client_id";
+  const party = { client_id: clientId || null, lead_id: leadId || null };
 
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [logDialogOpen, setLogDialogOpen] = useState(false);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [replyId, setReplyId] = useState(null);
+  const sendIntent = useRef(null);
   
   const [emailForm, setEmailForm] = useState({ subject: "", message: "" });
   const [logForm, setLogForm] = useState({ type: "Phone Call", subject: "", message: "" });
@@ -29,15 +35,24 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
   
   const queryClient = useQueryClient();
 
+  const { data: replyStatus } = useQuery({
+    queryKey: ['communication-reply-status', companyId], enabled: !!companyId, staleTime: 60000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('communication_reply_status');
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // 1. FETCH COMMUNICATIONS FROM SUPABASE
-  const { data: communications = [] } = useQuery({
-    queryKey: ["client-communications", clientId, companyId],
-    enabled: !!clientId && !!companyId,
+  const { data: communications = [], isError: communicationsFailed } = useQuery({
+    queryKey: ["client-communications", partyId, companyId],
+    enabled: !!partyId && !!companyId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_communications")
         .select("*")
-        .eq("client_id", clientId)
+        .eq(partyColumn, partyId)
         .eq("company_id", companyId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -47,13 +62,13 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
 
   // 2. FETCH REMINDERS FROM SUPABASE
   const { data: reminders = [] } = useQuery({
-    queryKey: ["client-reminders", clientId, companyId],
-    enabled: !!clientId && !!companyId,
+    queryKey: ["client-reminders", partyId, companyId],
+    enabled: !!partyId && !!companyId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_reminders")
         .select("*")
-        .eq("client_id", clientId)
+        .eq(partyColumn, partyId)
         .eq("company_id", companyId)
         .order("due_date", { ascending: true }); // Earliest due dates first!
       if (error) throw error;
@@ -68,11 +83,12 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["client-communications", clientId, companyId] });
+      queryClient.invalidateQueries({ queryKey: ["client-communications", partyId, companyId] });
       setLogDialogOpen(false);
       setLogForm({ type: "Phone Call", subject: "", message: "" });
       toast.success("Communication logged");
-    }
+    },
+    onError: error => toast.error(error.message || "Communication could not be logged")
   });
 
   const createReminderMutation = useMutation({
@@ -81,19 +97,30 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["client-reminders", clientId, companyId] });
+      queryClient.invalidateQueries({ queryKey: ["client-reminders", partyId, companyId] });
       setReminderDialogOpen(false);
       setReminderForm({ title: "", description: "", due_date: "", priority: "Medium" });
       toast.success("Reminder created");
-    }
+    },
+    onError: error => toast.error(error.message || "Reminder could not be saved")
   });
 
   const updateReminderMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const { error } = await supabase.from("client_reminders").update(data).eq("id", id);
+      const { error } = await supabase.from("client_reminders").update(data).eq("id", id).eq("company_id", companyId);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["client-reminders", clientId, companyId] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["client-reminders", partyId, companyId] }),
+    onError: error => toast.error(error.message || "Reminder could not be updated")
+  });
+
+  const markAnsweredMutation = useMutation({
+    mutationFn: async id => {
+      const { error } = await supabase.from("client_communications").update({ answered_at: new Date().toISOString(), answered_delivery_id: null }).eq("id", id).eq("company_id", companyId).eq(partyColumn, partyId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["client-communications", partyId, companyId] }),
+    onError: error => toast.error(error.message || "Reply could not be marked handled")
   });
 
   // 4. SEND EMAIL VIA SUPABASE EDGE FUNCTIONS
@@ -105,49 +132,27 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
 
     setSending(true);
     try {
-      // NOTE: This invokes a Supabase Edge Function! You'll need to deploy a 'send-client-email' function via Supabase CLI eventually.
-      const { data, error } = await supabase.functions.invoke('send-client-email', {
-        body: {
-          client_id: clientId,
-          subject: emailForm.subject,
-          message: emailForm.message,
-          to_email: clientEmail
-        }
+      const signature = JSON.stringify([partyId, clientEmail, emailForm.subject, emailForm.message, replyId]);
+      if (sendIntent.current?.signature !== signature) sendIntent.current = { signature, requestId: crypto.randomUUID() };
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: communicationSendPayload({ clientId, leadId, recipient: clientEmail, subject: emailForm.subject,
+          message: emailForm.message, requestId: sendIntent.current.requestId, replyId })
       });
 
       if (error) throw error;
+      if (data?.success !== true) throw new Error(data?.error || "Email delivery could not be confirmed");
+      sendIntent.current = null;
 
       toast.success(`Email sent successfully!`);
       setEmailDialogOpen(false);
       setEmailForm({ subject: "", message: "" });
+      setReplyId(null);
       
-      // Auto-log it into the communications list!
-      logCommunicationMutation.mutate({
-        client_id: clientId,
-        type: "Email",
-        subject: emailForm.subject,
-        message: emailForm.message,
-        direction: "Outbound",
-        status: "Sent",
-        sent_by: profile?.full_name || "System"
-      });
+      queryClient.invalidateQueries({ queryKey: ["client-communications", partyId, companyId] });
 
     } catch (error) {
       console.error("Email Error:", error);
-      // Fallback for development if the Edge Function isn't deployed yet
-      toast.info("Edge Function not deployed yet. Logging communication locally instead.");
-      
-      logCommunicationMutation.mutate({
-        client_id: clientId,
-        type: "Email",
-        subject: emailForm.subject,
-        message: emailForm.message,
-        direction: "Outbound",
-        status: "Sent",
-        sent_by: profile?.full_name || "Unknown"
-      });
-      setEmailDialogOpen(false);
-      setEmailForm({ subject: "", message: "" });
+      toast.error(error.message || "Email could not be sent. Your draft is still here.");
     } finally {
       setSending(false);
     }
@@ -160,7 +165,7 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
     }
 
     logCommunicationMutation.mutate({
-      client_id: clientId,
+      ...party,
       type: logForm.type,
       subject: logForm.subject,
       message: logForm.message,
@@ -177,7 +182,7 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
     }
 
     createReminderMutation.mutate({
-      client_id: clientId,
+      ...party,
       title: reminderForm.title,
       description: reminderForm.description,
       due_date: reminderForm.due_date,
@@ -198,7 +203,7 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
     <div className="space-y-6">
       {/* Action Buttons */}
       <div className="flex gap-2 flex-wrap">
-        <Button onClick={() => setEmailDialogOpen(true)} disabled={!clientEmail} className="gap-2 bg-gradient-to-br from-amber-500 to-amber-600 text-slate-900 shadow-sm">
+        <Button onClick={() => { setReplyId(null); setEmailDialogOpen(true); }} disabled={!clientEmail} className="gap-2 bg-gradient-to-br from-amber-500 to-amber-600 text-slate-900 shadow-sm">
           <Mail className="h-4 w-4" />
           Send Email
         </Button>
@@ -211,6 +216,11 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
           Add Reminder
         </Button>
       </div>
+
+      <p className="text-xs text-slate-500 leading-relaxed">
+        {replyStatus?.email === true ? 'Email replies to tracked messages appear in this history.' : 'Automatic email reply capture is unavailable. Replies use your configured company email address.'}
+        {replyStatus?.sms === true && ' SMS replies to tracked messages also appear here.'}
+      </p>
 
       {/* Reminders */}
       {reminders.length > 0 && (
@@ -251,7 +261,9 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
       <Card className="p-4 border-slate-200/80 shadow-sm">
         <h3 className="font-semibold mb-3 text-slate-900">Communication History</h3>
         <div className="space-y-3">
-          {communications.length === 0 ? (
+          {communicationsFailed ? (
+            <p role="alert" className="text-sm text-red-700">Communication history could not be loaded. <button className="underline font-semibold" onClick={() => queryClient.invalidateQueries({ queryKey: ["client-communications", partyId, companyId] })}>Retry</button></p>
+          ) : communications.length === 0 ? (
             <p className="text-sm text-slate-500 text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-200">No communications yet</p>
           ) : (
             communications.map(comm => {
@@ -264,17 +276,16 @@ export default function CommunicationPanel({ clientId, clientEmail, clientPhone,
                         <Icon className="h-4 w-4 text-slate-500" />
                         <span className="font-semibold text-sm text-slate-900">{comm.subject || comm.type}</span>
                         <Badge variant="outline" className="text-xs bg-white">{comm.type}</Badge>
-                        {comm.status === "Failed" && <Badge className="text-xs bg-red-100 text-red-800 border-red-200">Failed</Badge>}
+                        {["failed", "bounced", "undelivered", "complained"].includes(comm.status?.toLowerCase()) && <Badge className="text-xs bg-red-100 text-red-800 border-red-200">Delivery failed</Badge>}
+                        {comm.direction?.toLowerCase() === "inbound" && !comm.answered_at && <Badge className="bg-amber-100 text-amber-900">Needs reply</Badge>}
                       </div>
                       {comm.message && (
-                        <div 
-                          className="text-sm text-slate-700 mt-2 whitespace-pre-wrap overflow-hidden" 
-                          dangerouslySetInnerHTML={{ __html: comm.message }} 
-                        />
+                        <div className="text-sm text-slate-700 mt-2 whitespace-pre-wrap break-words overflow-hidden">{communicationText(comm.message)}</div>
                       )}
                       <p className="text-xs text-slate-500 mt-3 font-medium">
                         {comm.direction} • {comm.sent_by} • {comm.created_at ? format(new Date(comm.created_at), "MMM d, yyyy h:mm a") : "—"}
                       </p>
+                      {comm.direction?.toLowerCase() === "inbound" && !comm.answered_at && <div className="flex flex-wrap gap-2 mt-2"><Button size="sm" className="min-h-10 bg-amber-500 hover:bg-amber-600 text-slate-900" disabled={!clientEmail || sending} onClick={() => { setReplyId(comm.id); setEmailForm({ subject: /^Re:/i.test(comm.subject || "") ? comm.subject : `Re: ${comm.subject || "Your message"}`, message: "" }); setEmailDialogOpen(true); }}>Reply by email</Button><Button size="sm" variant="outline" className="min-h-10 hover:bg-amber-50" disabled={markAnsweredMutation.isPending} onClick={() => markAnsweredMutation.mutate(comm.id)}>Mark handled</Button></div>}
                     </div>
                   </div>
                 </div>

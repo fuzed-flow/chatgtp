@@ -1,3 +1,4 @@
+import { stableRequestId } from "../_shared/salesNotifications.js";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -8,6 +9,8 @@ const APP_URL = configuredAppUrl && !/^https?:\/\/(?:app\.)?pro-trades\.(?:com|c
 
 serve(async (req) => {
   try {
+    const serviceAuth = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceAuth || req.headers.get("Authorization") !== `Bearer ${serviceAuth}`) return new Response("Authentication required", { status: 401 });
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -24,10 +27,10 @@ serve(async (req) => {
         status,
         created_at,
         automation_stage, 
-        client_id, 
+        client_id, lead_id,
         company_id,
         companies ( id, name, settings ),
-        clients ( name, email, phone )
+        clients ( name, email, phone ), leads ( contact_name, contact_email, contact_phone )
       `)
       .in("status", ["Sent", "Viewed"]);
 
@@ -45,7 +48,7 @@ serve(async (req) => {
       console.log(`\n--- Checking Quote #${quote.quote_number} ---`);
       
       const company = quote.companies;
-      const client = quote.clients;
+      const client = quote.clients || (quote.leads ? { name: quote.leads.contact_name, email: quote.leads.contact_email, phone: quote.leads.contact_phone } : null);
       const automations = company?.settings?.automations;
 
       // SAFETY CHECKS
@@ -106,7 +109,8 @@ serve(async (req) => {
           html_body: htmlBody, 
           html: htmlBody,
           client_id: quote.client_id,
-          company_id: company.id
+          company_id: company.id, document_type: "quote", document_id: quote.id, notification_kind: "followup", track_replies: true,
+          request_id: await stableRequestId(`quote:${quote.id}:followup:${newStage}:email`)
         };
 
         console.log(`Sending payload to send-email...`);
@@ -125,11 +129,12 @@ serve(async (req) => {
           body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
+        const result = await response.json();
+        if (!response.ok || result.success !== true) {
+          const errorText = "Customer reminder delivery was not confirmed";
           console.error(`❌ ERROR: send-email rejected the request. HTTP ${response.status}. Reason: ${errorText}`);
         } else {
-          await supabaseAdmin.from("quotes").update({ automation_stage: newStage }).eq("id", quote.id);
+          await supabaseAdmin.from("quotes").update({ automation_stage: newStage }).eq("id", quote.id).eq("company_id", quote.company_id).eq("status", quote.status);
           console.log(`🎉 SUCCESS: Email sent and quote moved to stage ${newStage}.`);
           emailsTriggered++;
         }

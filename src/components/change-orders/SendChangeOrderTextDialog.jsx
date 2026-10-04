@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,12 +12,13 @@ import { toast } from "sonner";
 import { createPageUrl } from "../../utils";
 
 export default function SendChangeOrderTextDialog({ open, onOpenChange, changeOrderId, coName, clientName, clientPhone, onSuccess }) {
-  const { settings } = useAuth();
+  const { settings, profile } = useAuth();
   
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [portalLink, setPortalLink] = useState("");
   const [saving, setSaving] = useState(false);
+  const sendIntent = useRef(null);
   const [coData, setCoData] = useState(null);
 
   useEffect(() => {
@@ -58,24 +59,19 @@ export default function SendChangeOrderTextDialog({ open, onOpenChange, changeOr
     const finalSmsPayload = `${message}\n\n${portalLink}`;
 
     try {
-      // ⚡ EXTRACT CLIENT ID SAFELY
-      let clientId = null;
-      if (coData?.projects) {
-        clientId = Array.isArray(coData.projects) ? coData.projects[0]?.client_id : coData.projects?.client_id;
+      const signature = JSON.stringify([changeOrderId, phone.trim(), finalSmsPayload]);
+      if (sendIntent.current?.signature !== signature) sendIntent.current = { signature, requestId: crypto.randomUUID(), accepted: false };
+      if (!sendIntent.current.accepted) {
+        const { data, error: fnError } = await supabase.functions.invoke('send-sms', {
+          body: { phone_number: phone.trim(), message_body: finalSmsPayload, document_type: "change_order", document_id: changeOrderId, request_id: sendIntent.current.requestId }
+        });
+        if (fnError || data?.success !== true) throw new Error(data?.error || fnError?.message || "SMS acceptance could not be confirmed");
+        sendIntent.current.accepted = true;
       }
-
-      await supabase.from("change_orders").update({ status: "Sent" }).eq("id", changeOrderId);
-      
-      // ⚡ TRIGGER SUPABASE EDGE FUNCTION
-      const { data, error: fnError } = await supabase.functions.invoke('send-sms', { 
-        body: { 
-          phone_number: phone.trim(), 
-          message_body: finalSmsPayload,
-          client_id: clientId || null
-        } 
-      });
-
-      if (fnError) throw new Error(fnError.message || "Failed to trigger SMS function");
+      // Provider acceptance precedes the status change; retries never send another accepted SMS.
+      const { error: statusError } = await supabase.from("change_orders").update({ status: "Sent" }).eq("id", changeOrderId).eq("company_id", profile.company_id).eq("status", "Draft");
+      if (statusError) throw new Error("SMS was sent, but document status could not be saved. Retry to update the status.");
+      sendIntent.current = null;
 
       toast.success(`Change Order texted to ${phone}!`, { id: loadingToast });
       onSuccess?.();
