@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; 
 import { useAuth } from "@/lib/AuthContext"; 
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Save, Image, Send, CheckCircle, Copy, UserPlus, Eye, Mail, Download, FolderKanban, Menu, Smartphone, Zap } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Plus, Save, Send, CheckCircle, Eye, Mail, FolderKanban, Menu, Smartphone, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PhaseCard from "../components/quotes/PhaseCard";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 // ⚡ Updated to use the correct Change Order Email Dialog
 import SendChangeOrderEmailDialog from "../components/change-orders/SendChangeOrderEmailDialog";
 import SendChangeOrderTextDialog from "../components/change-orders/SendChangeOrderTextDialog";
+import { useDocumentChanges, useDocumentState } from "@/hooks/useDocumentChanges";
+import UnsavedChangesGuard from "@/components/shared/UnsavedChangesGuard";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -28,66 +30,8 @@ const safeNum = (val) => {
 export default function ChangeOrderBuilder() {
   const navigate = useNavigate();
 
-  // ⚡ 1. STABLE UNSAVED CHANGES TRACKER
-  const [isDirty, setIsDirty] = useState(false);
-
-  // A. Mark dirty on typing or dropdown selections
-  useEffect(() => {
-    const markDirty = () => setIsDirty(true);
-    
-    const handleInteract = (e) => {
-      if (e.target?.closest?.('[role="option"], [role="checkbox"], [role="switch"]')) {
-        setIsDirty(true);
-      }
-    };
-
-    window.addEventListener("input", markDirty, { capture: true });
-    document.addEventListener("click", handleInteract, { capture: true });
-    
-    return () => {
-      window.removeEventListener("input", markDirty, { capture: true });
-      document.removeEventListener("click", handleInteract, { capture: true });
-    };
-  }, []);
-
-  // B. Prevent Closing the Browser Tab or Refreshing
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isDirty]);
-
-  // C. Intercept Sidebar Links ONLY
-  useEffect(() => {
-    const handleGlobalNavigation = (e) => {
-      if (!isDirty) return;
-      
-      const link = e.target.closest("a");
-      // If it's a link and NOT opening in a new tab
-      if (link && link.target !== "_blank") {
-        if (!window.confirm("⚠️ WARNING: You have unsaved changes. Are you sure you want to exit? You will lose your data.")) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }
-    };
-    
-    document.addEventListener("click", handleGlobalNavigation, { capture: true });
-    return () => document.removeEventListener("click", handleGlobalNavigation, { capture: true });
-  }, [isDirty]);
-
-  // D. Safe navigation for manual Buttons (Back/Cancel)
-  const handleSafeNavigate = (pathOrDelta) => {
-    if (isDirty && !window.confirm("⚠️ WARNING: You have unsaved changes. Are you sure you want to exit? You will lose your data.")) {
-      return;
-    }
-    navigate(pathOrDelta);
-  };
+  const { isDirty, markDirty, markSaved, getRevision, hasUnsavedChanges } = useDocumentChanges();
+  const handleSafeNavigate = (pathOrDelta) => navigate(pathOrDelta);
 
   const { profile, settings } = useAuth();
   const companyId = profile?.company_id;
@@ -97,23 +41,26 @@ export default function ChangeOrderBuilder() {
   const projectId = params.get("project_id");
   const queryClient = useQueryClient();
 
-  const [form, setForm] = useState({
+  const [form, setForm, hydrateForm] = useDocumentState({
     title: "", project_id: projectId || "", status: "Draft", 
     issue_date: format(new Date(), "yyyy-MM-dd"), notes: "", 
     client_message: "Please review the proposed changes to the project scope and cost below.", 
     terms: "These changes will be incorporated into the main project upon approval.",
     overall_scope: "", show_overall_scope: true,
     margin: 0, margin_adjustment_type: "none", change_order_number: ""
-  });
+  }, markDirty);
   
-  const [localTitle, setLocalTitle] = useState("");
-  const [localOverallScope, setLocalOverallScope] = useState("");
-  const [localClientMessage, setLocalClientMessage] = useState("Please review the proposed changes to the project scope and cost below.");
-  const [localTerms, setLocalTerms] = useState("These changes will be incorporated into the main project upon approval.");
-  const [localNotes, setLocalNotes] = useState("");
+  const [localTitle, setLocalTitle, hydrateLocalTitle] = useDocumentState("", markDirty);
+  const [localOverallScope, setLocalOverallScope, hydrateLocalOverallScope] = useDocumentState("", markDirty);
+  const [localClientMessage, setLocalClientMessage, hydrateLocalClientMessage] = useDocumentState("Please review the proposed changes to the project scope and cost below.", markDirty);
+  const [localTerms, setLocalTerms, hydrateLocalTerms] = useDocumentState("These changes will be incorporated into the main project upon approval.", markDirty);
+  const [localNotes, , hydrateLocalNotes] = useDocumentState("", markDirty);
 
-  const [phases, setPhases] = useState([]);
+  const [phases, setPhases, hydratePhases] = useDocumentState([], markDirty);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const pendingCounterUpdate = useRef(null);
+  const hasLoadedDocument = useRef(null);
   const hasLoadedPhases = useRef(false);
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -154,19 +101,31 @@ export default function ChangeOrderBuilder() {
     queryFn: async () => { const { data } = await supabase.from("products").select("*").eq("company_id", companyId); return data || []; } 
   });
   
-  const { data: existingCO } = useQuery({
-    queryKey: ["change-order", coId], enabled: !!coId,
-    queryFn: async () => { const { data } = await supabase.from("change_orders").select("*").eq("id", coId).single(); return data; },
+  const { data: existingCO, isFetched: documentFetched, isError: documentError, refetch: refetchDocument } = useQuery({
+    queryKey: ["change-order", coId, companyId], enabled: !!coId && !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("change_orders").select("*").eq("id", coId).eq("company_id", companyId).single();
+      if (error) throw error;
+      return data;
+    },
   });
   
-  const { data: existingPhases = [], isFetched: phasesFetched } = useQuery({
-    queryKey: ["change-order-phases", coId], enabled: !!coId,
-    queryFn: async () => { const { data } = await supabase.from("change_order_phases").select("*").eq("change_order_id", coId).order("sort_order", { ascending: true }); return data || []; },
+  const { data: existingPhases = [], isFetched: phasesFetched, isError: phasesError, refetch: refetchPhases } = useQuery({
+    queryKey: ["change-order-phases", coId, companyId], enabled: !!coId && !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("change_order_phases").select("*").eq("change_order_id", coId).eq("company_id", companyId).order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
   });
   
-  const { data: existingItems = [], isFetched: itemsFetched } = useQuery({
-    queryKey: ["change-order-items", coId], enabled: !!coId,
-    queryFn: async () => { const { data } = await supabase.from("change_order_line_items").select("*").eq("change_order_id", coId).order("display_order", { ascending: true }); return data || []; },
+  const { data: existingItems = [], isFetched: itemsFetched, isError: itemsError, refetch: refetchItems } = useQuery({
+    queryKey: ["change-order-items", coId, companyId], enabled: !!coId && !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("change_order_line_items").select("*").eq("change_order_id", coId).eq("company_id", companyId).order("display_order", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
   });
 
   useEffect(() => {
@@ -186,14 +145,15 @@ export default function ChangeOrderBuilder() {
   }, [form.project_id, projects]);
 
   useEffect(() => {
-    if (existingCO) {
-      setLocalTitle(existingCO.title || "");
-      setLocalOverallScope(existingCO.overall_scope || "");
-      setLocalClientMessage(existingCO.client_message || "");
-      setLocalTerms(existingCO.terms || "");
-      setLocalNotes(existingCO.notes || "");
+    if (existingCO && hasLoadedDocument.current !== coId) {
+      hasLoadedDocument.current = coId;
+      hydrateLocalTitle(existingCO.title || "");
+      hydrateLocalOverallScope(existingCO.overall_scope || "");
+      hydrateLocalClientMessage(existingCO.client_message || "");
+      hydrateLocalTerms(existingCO.terms || "");
+      hydrateLocalNotes(existingCO.notes || "");
       
-      setForm({
+      hydrateForm({
         title: existingCO.title || "", project_id: existingCO.project_id || "", 
         status: existingCO.status || "Draft", issue_date: existingCO.issue_date || format(new Date(), "yyyy-MM-dd"), 
         notes: existingCO.notes || "", client_message: existingCO.client_message || "", terms: existingCO.terms || "", 
@@ -202,18 +162,25 @@ export default function ChangeOrderBuilder() {
         change_order_number: existingCO.change_order_number || ""
       });
     }
-  }, [existingCO]);
+  }, [existingCO, coId, hydrateForm, hydrateLocalTitle, hydrateLocalOverallScope, hydrateLocalClientMessage, hydrateLocalTerms, hydrateLocalNotes]);
 
   useEffect(() => {
-    if (phasesFetched && itemsFetched && existingPhases.length > 0 && !hasLoadedPhases.current) {
+    if (phasesFetched && itemsFetched && !phasesError && !itemsError && !hasLoadedPhases.current) {
       hasLoadedPhases.current = true;
       const phasesWithItems = existingPhases.map(phase => ({
         ...phase,
         items: existingItems.filter(item => item.phase_id === phase.id).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
       }));
-      setPhases(phasesWithItems);
+      hydratePhases(phasesWithItems);
     }
-  }, [existingPhases, existingItems, phasesFetched, itemsFetched]);
+  }, [existingPhases, existingItems, phasesFetched, itemsFetched, phasesError, itemsError, hydratePhases]);
+
+  const documentLoadFailed = Boolean(coId && (documentError || phasesError || itemsError));
+  const documentLoading = Boolean(coId && (
+    documentLoadFailed ||
+    !documentFetched || !phasesFetched || !itemsFetched ||
+    hasLoadedDocument.current !== coId || !hasLoadedPhases.current
+  ));
 
   const addPhase = () => {
     setPhases([...phases, {
@@ -350,7 +317,8 @@ export default function ChangeOrderBuilder() {
     setUploadingPhoto(true);
     try {
       const fileName = `${companyId}/change_orders/${coId || 'new'}/items/${Date.now()}_${file.name}`;
-      await supabase.storage.from('quotes').upload(fileName, file);
+      const { error } = await supabase.storage.from('quotes').upload(fileName, file);
+      if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('quotes').getPublicUrl(fileName);
       
       const updatedPhases = [...phases];
@@ -424,11 +392,19 @@ export default function ChangeOrderBuilder() {
   const grandTotal = effectiveSubtotal + grandTax;
 
   const handleSave = async (newStatus = null, skipToast = false) => {
-    const activeTitle = localTitle || form.title;
-    if (!activeTitle || !activeTitle.trim()) { alert("⚠️ Please enter a Title for this Change Order."); return null; }
-    if (!form.project_id) { alert("⚠️ You must link this Change Order to a Project."); return null; }
-    if (!companyId) { alert("⚠️ Session Error: Please refresh the page."); return null; }
+    if (savingRef.current) return null;
+    if (documentLoading) {
+      if (documentLoadFailed) toast.error("The change order could not be loaded. Please retry before saving.");
+      else toast.info("Please wait for the change order to finish loading before saving.");
+      return null;
+    }
+    const saveRevision = getRevision();
+    const activeTitle = localTitle;
+    if (!activeTitle || !activeTitle.trim()) { toast.error("Please enter a title for this change order."); return null; }
+    if (!form.project_id) { toast.error("Please link this change order to a project."); return null; }
+    if (!companyId) { toast.error("Your session could not be verified. Please refresh the page."); return null; }
 
+    savingRef.current = true;
     setSaving(true);
     if(!skipToast) toast.loading("Saving Change Order...");
     
@@ -436,7 +412,6 @@ export default function ChangeOrderBuilder() {
 
     try {
       const latestForm = { ...form, title: activeTitle, overall_scope: localOverallScope, client_message: localClientMessage, terms: localTerms, notes: localNotes };
-      setForm(latestForm);
       
       let coNumber = latestForm.change_order_number;
       let shouldIncrementCounter = false;
@@ -473,20 +448,33 @@ export default function ChangeOrderBuilder() {
         const { data: newCO, error: coError } = await supabase.from("change_orders").insert([coData]).select().single();
         if (coError) throw new Error(`Change Orders Table: ${coError.message}`);
         savedId = newCO.id;
+        hasLoadedDocument.current = savedId;
+        hasLoadedPhases.current = true;
+        setCoId(savedId);
+        hydrateForm(prev => ({ ...prev, change_order_number: coNumber }));
+        window.history.replaceState(window.history.state, "", `/ChangeOrderBuilder?id=${savedId}`);
         
         if (shouldIncrementCounter) {
           const currentCounter = company?.next_change_order_number ? Number(company.next_change_order_number) : 101;
-          await supabase.from("companies").update({ next_change_order_number: currentCounter + 1 }).eq("id", companyId);
+          pendingCounterUpdate.current = currentCounter + 1;
         }
 
       } else {
-        const { error: coUpdateError } = await supabase.from("change_orders").update(coData).eq("id", coId);
+        const { error: coUpdateError } = await supabase.from("change_orders").update(coData).eq("id", coId).eq("company_id", companyId).select("id").single();
         if (coUpdateError) throw new Error(`Change Orders Update: ${coUpdateError.message}`);
       }
 
+      if (pendingCounterUpdate.current !== null) {
+        const { error: counterError } = await supabase.from("companies").update({ next_change_order_number: pendingCounterUpdate.current }).eq("id", companyId).select("id").single();
+        if (counterError) throw new Error(`Change Order Number: ${counterError.message}`);
+        pendingCounterUpdate.current = null;
+      }
+
       if (coId) {
-        await supabase.from("change_order_phases").delete().eq("change_order_id", savedId);
-        await supabase.from("change_order_line_items").delete().eq("change_order_id", savedId);
+        const { error: deleteItemsError } = await supabase.from("change_order_line_items").delete().eq("change_order_id", savedId).eq("company_id", companyId);
+        if (deleteItemsError) throw new Error(`Remove Line Items: ${deleteItemsError.message}`);
+        const { error: deletePhasesError } = await supabase.from("change_order_phases").delete().eq("change_order_id", savedId).eq("company_id", companyId);
+        if (deletePhasesError) throw new Error(`Remove Phases: ${deletePhasesError.message}`);
       }
 
       for (const phase of phases) {
@@ -518,18 +506,19 @@ export default function ChangeOrderBuilder() {
       await queryClient.invalidateQueries({ queryKey: ["change_orders"] });
 
       setCoId(savedId);
-      window.history.replaceState(null, "", `/ChangeOrderBuilder?id=${savedId}`);
+      window.history.replaceState(window.history.state, "", `/ChangeOrderBuilder?id=${savedId}`);
+      hydrateForm(prev => ({ ...prev, status: finalStatus, change_order_number: coNumber }));
       
       toast.dismiss(); 
-      setIsDirty(false); // ⚡ Clears the warning safely!
+      markSaved(saveRevision);
       if (!skipToast) { toast.success("Change Order saved successfully"); }
       return savedId;
     } catch (error) {
       toast.dismiss();
-      alert(`Database Error:\n\n${error.message || "Unknown error"}\n\nPlease take a screenshot of this error.`);
+      toast.error(`Change order was not saved: ${error.message || "Unknown error"}`);
       return null;
     } finally {
-      setForm(prev => ({ ...prev, status: finalStatus }));
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -695,7 +684,27 @@ export default function ChangeOrderBuilder() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 pb-24">
-      <div className="max-w-4xl mx-auto">
+      <UnsavedChangesGuard
+        isDirty={isDirty}
+        hasUnsavedChanges={hasUnsavedChanges}
+        saving={saving || uploadingPhoto}
+        documentName="change order"
+        onSave={async () => {
+          const revision = getRevision();
+          const savedId = await handleSave(null, true);
+          return Boolean(savedId) && getRevision() === revision;
+        }}
+      />
+      {documentLoadFailed ? (
+        <div role="alert" className="mx-auto mb-4 max-w-4xl rounded-lg border border-red-200 bg-white p-4">
+          <p className="mb-3 text-sm text-red-700">The change order could not be loaded. Retry before editing or saving.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => { refetchDocument(); refetchPhases(); refetchItems(); }}>Retry</Button>
+            <Button variant="outline" onClick={() => handleSafeNavigate("/ChangeOrders")}>Return to change orders</Button>
+          </div>
+        </div>
+      ) : documentLoading && <p role="status" className="mx-auto mb-4 max-w-4xl text-sm text-slate-600">Loading change order…</p>}
+      <div className="max-w-4xl mx-auto" inert={documentLoading ? "" : undefined} aria-busy={documentLoading}>
         
         <button 
           onClick={() => handleSafeNavigate(-1)} 

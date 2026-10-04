@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/components/ui/use-toast";
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { Fragment } from 'react';
+import { createBrowserRouter, RouterProvider, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 
@@ -38,9 +39,14 @@ const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 
-const LayoutWrapper = ({ children, currentPageName }) => Layout ? 
-  <Layout currentPageName={currentPageName}>{children}</Layout> 
-  : <>{children}</>;
+const LayoutWrapper = ({ children, currentPageName }) => {
+  const location = useLocation();
+  const documentKey = ['QuoteBuilder', 'ChangeOrderBuilder', 'InvoiceBuilder'].includes(currentPageName)
+    ? `${location.pathname}${location.search}`
+    : currentPageName;
+  const content = <Fragment key={documentKey}>{children}</Fragment>;
+  return Layout ? <Layout currentPageName={currentPageName}>{content}</Layout> : content;
+};
 
 const AuthenticatedApp = () => {
   const { loading, user } = useAuth();
@@ -147,10 +153,9 @@ const AuthenticatedApp = () => {
   );
 };
 
-function App() {
+function AppRoutes() {
   return (
-    <QueryClientProvider client={queryClientInstance}>
-      <Router>
+    <>
         <NavigationTracker />
         
         <Routes>
@@ -182,7 +187,18 @@ function App() {
           />
         </Routes>
 
-      </Router>
+    </>
+  );
+}
+
+// Data-router context enables navigation blocking while keeping the existing
+// public/protected route tree and AuthProvider boundary intact.
+const router = createBrowserRouter([{ path: '*', element: <AppRoutes /> }]);
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClientInstance}>
+      <RouterProvider router={router} />
       <Toaster />
     </QueryClientProvider>
   )

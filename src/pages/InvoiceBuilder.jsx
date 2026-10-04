@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { createPageUrl } from "../utils";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { 
-  ArrowLeft, Save, Send, DollarSign, Eye, Printer, 
-  ChevronDown, CheckCircle, FileText, ClipboardList, Plus, AlertTriangle, Lock, Tag, Mail, Smartphone, Settings, Trash2
+  ArrowLeft, Save, DollarSign, Eye, Printer,
+  ChevronDown, CheckCircle, FileText, ClipboardList, Plus, Lock, Tag, Mail, Smartphone, Settings, Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,8 @@ import RecordPaymentDialog from "../components/invoices/RecordPaymentDialog";
 import { generateInvoicePDF } from "../components/pdf/PDFGenerator";
 import PhaseCard from "../components/quotes/PhaseCard";
 import { usePhaseFunctions } from "../components/quotes/usePhaseManagement";
+import { useDocumentChanges, useDocumentState } from "@/hooks/useDocumentChanges";
+import UnsavedChangesGuard from "@/components/shared/UnsavedChangesGuard";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -46,56 +48,10 @@ export default function InvoiceBuilder() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // ⚡ 1. UNSAVED CHANGES TRACKER
-  const [isDirty, setIsDirty] = useState(false);
+  const { isDirty, markDirty, markSaved, getRevision, hasUnsavedChanges } = useDocumentChanges();
 
-  // A. Detect typing or changes
-  useEffect(() => {
-    const markDirty = () => setIsDirty(true);
-    window.addEventListener("input", markDirty);
-    window.addEventListener("change", markDirty);
-    return () => {
-      window.removeEventListener("input", markDirty);
-      window.removeEventListener("change", markDirty);
-    };
-  }, []);
-
-  // B. Prevent closing the browser tab or hitting Refresh
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isDirty]);
-
-  // C. ⚡ NEW: Intercept React Router Sidebar Links
-  useEffect(() => {
-    const handleGlobalClick = (e) => {
-      const link = e.target.closest("a");
-      // If they clicked a link, the form is dirty, and it's not a "new tab" link
-      if (link && isDirty && link.target !== "_blank") {
-        if (!window.confirm("⚠️ WARNING: You have unsaved changes. Are you sure you want to exit? You will lose your data.")) {
-          e.preventDefault();
-          e.stopPropagation(); // Stops React Router from executing the navigation!
-        }
-      }
-    };
-    
-    // { capture: true } is the magic here. It catches the click BEFORE React gets it.
-    document.addEventListener("click", handleGlobalClick, { capture: true });
-    return () => document.removeEventListener("click", handleGlobalClick, { capture: true });
-  }, [isDirty]);
-
-  // D. Safe navigation for manual Buttons (Back/Cancel)
   const handleSafeNavigate = (e, path) => {
     e.preventDefault();
-    if (isDirty && !window.confirm("⚠️ WARNING: You have unsaved changes. Are you sure you want to exit? You will lose your data.")) {
-      return;
-    }
     navigate(path);
   };
   
@@ -108,22 +64,28 @@ export default function InvoiceBuilder() {
   else if (defaultTermVal === "net_30") defaultDueDate = addDays(defaultDueDate, 30);
   else if (defaultTermVal === "net_60") defaultDueDate = addDays(defaultDueDate, 60);
 
-  const [form, setForm] = useState({
+  const [form, setForm, hydrateForm] = useDocumentState({
     client_id: "none", project_id: null, quote_id: "none",
     status: "Draft", issue_date: format(new Date(), "yyyy-MM-dd"),
     due_terms: defaultTermVal, due_date: format(defaultDueDate, "yyyy-MM-dd"), 
     notes: "", show_notes: true, internal_notes: "",
     site_address: "", billing_address: "",
     discount_amount: 0, discount_type: "fixed"
-  });
+  }, markDirty);
   
-  const [phases, setPhases] = useState([]);
+  const [phases, setPhases, hydratePhases] = useDocumentState([], markDirty);
   const hasLoadedPhases = useRef(false);
+  const hydratedInvoiceId = useRef(null);
+  const hasLoadedManualItems = useRef(false);
+  const hasLoadedSchedule = useRef(false);
   const [importedQuoteId, setImportedQuoteId] = useState(null);
 
-  const [paymentScheduleItems, setPaymentScheduleItems] = useState([]);
-  const [manualItems, setManualItems] = useState([]); 
+  const [paymentScheduleItems, setPaymentScheduleItems, hydratePaymentScheduleItems] = useDocumentState([], markDirty);
+  const [manualItems, setManualItems, hydrateManualItems] = useDocumentState([], markDirty);
   const [saving, setSaving] = useState(false);
+  const saveInProgress = useRef(false);
+  const allocatedInvoiceNumber = useRef(null);
+  const pendingCounterUpdate = useRef(null);
   
   const [milestoneDialog, setMilestoneDialog] = useState(false);
   const [milestoneForm, setMilestoneForm] = useState({ payment_name: "", due_event: "", amount: "", amount_type: "fixed", percentage: 0 });
@@ -143,35 +105,42 @@ export default function InvoiceBuilder() {
   const { data: quotes = [] } = useQuery({ queryKey: ["quotes", companyId], enabled: !!companyId, queryFn: async () => { const { data } = await supabase.from("quotes").select("*").eq("company_id", companyId); return data || []; } });
   const { data: products = [] } = useQuery({ queryKey: ["products", companyId], enabled: !!companyId, queryFn: async () => { const { data } = await supabase.from("products").select("*").eq("company_id", companyId); return data || []; } });
 
-  const { data: existingInvoice } = useQuery({ queryKey: ["invoice", invoiceId], enabled: !!invoiceId, queryFn: async () => { const { data } = await supabase.from("invoices").select("*").eq("id", invoiceId).single(); return data; } });
+  const { data: existingInvoice, isFetched: invoiceFetched, isError: invoiceQueryError } = useQuery({ queryKey: ["invoice", invoiceId, companyId], enabled: !!companyId && !!invoiceId, queryFn: async () => { const { data, error } = await supabase.from("invoices").select("*").eq("id", invoiceId).eq("company_id", companyId).single(); if (error) throw error; return data; } });
   
-  const { data: existingScheduleItems = [], isFetched: scheduleFetched } = useQuery({ queryKey: ["invoice-schedule-items", invoiceId], enabled: !!invoiceId, queryFn: async () => { const { data } = await supabase.from("invoice_payment_schedules").select("*").eq("invoice_id", invoiceId).order("sort_order", { ascending: true }); return data || []; } });
+  const { data: existingScheduleItems = [], isFetched: scheduleFetched, isError: scheduleQueryError } = useQuery({ queryKey: ["invoice-schedule-items", invoiceId, companyId], enabled: !!companyId && !!invoiceId, queryFn: async () => { const { data, error } = await supabase.from("invoice_payment_schedules").select("*").eq("invoice_id", invoiceId).eq("company_id", companyId).order("sort_order", { ascending: true }); if (error) throw error; return data || []; } });
   
-  const { data: quotePaymentScheduleItems = [] } = useQuery({ queryKey: ["quote-payment-schedule", form.quote_id], enabled: !!form.quote_id && form.quote_id !== "none" && (!invoiceId || form.quote_id !== importedQuoteId), queryFn: async () => { const { data } = await supabase.from("quote_payment_schedules").select("*").eq("quote_id", form.quote_id).order("sort_order", { ascending: true }); return data || []; } });
-  const { data: linkedQuote } = useQuery({ queryKey: ["quote", form.quote_id], enabled: !!form.quote_id && form.quote_id !== "none", queryFn: async () => { const { data } = await supabase.from("quotes").select("*").eq("id", form.quote_id).single(); return data; } });
+  const { data: quotePaymentScheduleItems = [], isFetched: quoteScheduleFetched, isError: quoteScheduleQueryError } = useQuery({ queryKey: ["quote-payment-schedule", form.quote_id, companyId], enabled: !!companyId && !!form.quote_id && form.quote_id !== "none" && (!invoiceId || form.quote_id !== importedQuoteId), queryFn: async () => { const { data, error } = await supabase.from("quote_payment_schedules").select("*").eq("quote_id", form.quote_id).eq("company_id", companyId).order("sort_order", { ascending: true }); if (error) throw error; return data || []; } });
+  const { data: linkedQuote, isFetched: linkedQuoteFetched, isError: linkedQuoteQueryError } = useQuery({ queryKey: ["quote", form.quote_id, companyId], enabled: !!companyId && !!form.quote_id && form.quote_id !== "none", queryFn: async () => { const { data, error } = await supabase.from("quotes").select("*").eq("id", form.quote_id).eq("company_id", companyId).single(); if (error) throw error; return data; } });
   
-  const { data: quotePhases = [], isFetched: quotePhasesFetched } = useQuery({ queryKey: ["quote_phases", form.quote_id], enabled: !!form.quote_id && form.quote_id !== "none", queryFn: async () => { const { data } = await supabase.from("quote_phases").select("*").eq("quote_id", form.quote_id).order("sort_order"); return data || []; } });
-  const { data: quoteItems = [], isFetched: quoteItemsFetched } = useQuery({ queryKey: ["quote_line_items", form.quote_id], enabled: !!form.quote_id && form.quote_id !== "none", queryFn: async () => { const { data } = await supabase.from("quote_line_items").select("*").eq("quote_id", form.quote_id).order("display_order"); return data || []; } });
+  const { data: quotePhases = [], isFetched: quotePhasesFetched, isError: quotePhasesQueryError } = useQuery({ queryKey: ["quote_phases", form.quote_id, companyId], enabled: !!companyId && !!form.quote_id && form.quote_id !== "none", queryFn: async () => { const { data, error } = await supabase.from("quote_phases").select("*").eq("quote_id", form.quote_id).eq("company_id", companyId).order("sort_order"); if (error) throw error; return data || []; } });
+  const { data: quoteItems = [], isFetched: quoteItemsFetched, isError: quoteItemsQueryError } = useQuery({ queryKey: ["quote_line_items", form.quote_id, companyId], enabled: !!companyId && !!form.quote_id && form.quote_id !== "none", queryFn: async () => { const { data, error } = await supabase.from("quote_line_items").select("*").eq("quote_id", form.quote_id).eq("company_id", companyId).order("display_order"); if (error) throw error; return data || []; } });
 
-  const { data: existingPhases = [], isFetched: invPhasesFetched, isFetching: invPhasesFetching } = useQuery({ 
-    queryKey: ["invoice_phases", invoiceId], enabled: !!invoiceId, 
-    queryFn: async () => { const { data } = await supabase.from("invoice_phases").select("*").eq("invoice_id", invoiceId); return data?.sort((a,b) => (a.sort_order||0) - (b.sort_order||0)) || []; } 
+  const { data: existingPhases = [], isFetched: invPhasesFetched, isFetching: invPhasesFetching, isError: invPhasesQueryError } = useQuery({ 
+    queryKey: ["invoice_phases", invoiceId, companyId], enabled: !!companyId && !!invoiceId,
+    queryFn: async () => { const { data, error } = await supabase.from("invoice_phases").select("*").eq("invoice_id", invoiceId).eq("company_id", companyId); if (error) throw error; return data?.sort((a,b) => (a.sort_order||0) - (b.sort_order||0)) || []; }
   });
-  const { data: existingPhaseItems = [], isFetched: invItemsFetched, isFetching: invItemsFetching } = useQuery({ 
-    queryKey: ["invoice_phase_items", invoiceId], enabled: !!invoiceId, 
-    queryFn: async () => { const { data } = await supabase.from("invoice_line_items").select("*").eq("invoice_id", invoiceId).not("phase_id", "is", null).order("created_at", { ascending: true }); return data || []; } 
+  const { data: existingPhaseItems = [], isFetched: invItemsFetched, isFetching: invItemsFetching, isError: invItemsQueryError } = useQuery({ 
+    queryKey: ["invoice_phase_items", invoiceId, companyId], enabled: !!companyId && !!invoiceId,
+    queryFn: async () => { const { data, error } = await supabase.from("invoice_line_items").select("*").eq("invoice_id", invoiceId).eq("company_id", companyId).not("phase_id", "is", null).order("created_at", { ascending: true }); if (error) throw error; return data || []; }
   });
-  const { data: existingManualItems = [] } = useQuery({ 
-    queryKey: ["invoice_manual_items", invoiceId], enabled: !!invoiceId, 
-    queryFn: async () => { const { data } = await supabase.from("invoice_line_items").select("*").eq("invoice_id", invoiceId).is("phase_id", null).order("created_at", { ascending: true }); return data || []; } 
+  const { data: existingManualItems = [], isFetched: manualItemsFetched, isError: manualItemsQueryError } = useQuery({ 
+    queryKey: ["invoice_manual_items", invoiceId, companyId], enabled: !!companyId && !!invoiceId,
+    queryFn: async () => { const { data, error } = await supabase.from("invoice_line_items").select("*").eq("invoice_id", invoiceId).eq("company_id", companyId).is("phase_id", null).order("created_at", { ascending: true }); if (error) throw error; return data || []; }
   });
   
-  const { data: payments = [] } = useQuery({ queryKey: ["invoice-payments-builder", invoiceId], enabled: !!invoiceId, queryFn: async () => { const { data } = await supabase.from("payments").select("*").eq("invoice_id", invoiceId).order("created_at", { ascending: false }); return data || []; } });
+  const { data: payments = [] } = useQuery({ queryKey: ["invoice-payments-builder", invoiceId, companyId], enabled: !!companyId && !!invoiceId, queryFn: async () => { const { data } = await supabase.from("payments").select("*").eq("invoice_id", invoiceId).eq("company_id", companyId).order("created_at", { ascending: false }); return data || []; } });
+
+  const invoiceLoadError = Boolean(invoiceId && (invoiceQueryError || scheduleQueryError ||
+    invPhasesQueryError || invItemsQueryError || manualItemsQueryError));
+  const quoteImportRequired = Boolean(form.quote_id && form.quote_id !== "none" && form.quote_id !== importedQuoteId);
+  const quoteImportError = Boolean(quoteImportRequired && (linkedQuoteQueryError ||
+    quoteScheduleQueryError || quotePhasesQueryError || quoteItemsQueryError));
 
   // --- USE EFFECTS ---
   useEffect(() => {
-    if (existingInvoice) {
-      setForm({
+    if (existingInvoice && !invoiceQueryError && hydratedInvoiceId.current !== existingInvoice.id) {
+      hydratedInvoiceId.current = existingInvoice.id;
+      hydrateForm({
         client_id: existingInvoice.client_id || "none", project_id: existingInvoice.project_id || null,
         quote_id: existingInvoice.quote_id || "none", status: existingInvoice.status || "Draft",
         issue_date: existingInvoice.issue_date || format(new Date(), "yyyy-MM-dd"), 
@@ -187,32 +156,32 @@ export default function InvoiceBuilder() {
       });
       setImportedQuoteId(existingInvoice.quote_id || "none");
     }
-  }, [existingInvoice]);
+  }, [existingInvoice, invoiceQueryError]);
 
   useEffect(() => {
-    if (invPhasesFetched && invItemsFetched && !invPhasesFetching && !invItemsFetching && existingPhases.length > 0 && !hasLoadedPhases.current) {
+    if (invPhasesFetched && invItemsFetched && !invPhasesQueryError && !invItemsQueryError && !invPhasesFetching && !invItemsFetching && !hasLoadedPhases.current) {
       hasLoadedPhases.current = true;
       const phasesWithItems = existingPhases.map(phase => ({
         ...phase,
         items: existingPhaseItems.filter(item => item.phase_id === phase.id).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
       }));
-      setPhases(phasesWithItems);
+      hydratePhases(phasesWithItems);
     }
-  }, [existingPhases, existingPhaseItems, invPhasesFetched, invItemsFetched, invPhasesFetching, invItemsFetching]);
+  }, [existingPhases, existingPhaseItems, invPhasesFetched, invItemsFetched, invPhasesFetching, invItemsFetching, invPhasesQueryError, invItemsQueryError]);
 
   useEffect(() => {
-    if (existingManualItems.length > 0 && manualItems.length === 0) {
-      setManualItems(existingManualItems.map(item => ({ 
+    if (manualItemsFetched && !manualItemsQueryError && !hasLoadedManualItems.current) {
+      hasLoadedManualItems.current = true;
+      hydrateManualItems(existingManualItems.map(item => ({ 
         id: item.id, 
         name: item.name, 
         amount: item.amount || item.unit_price || item.line_total || 0 
       })));
     }
-  }, [existingManualItems]);
+  }, [existingManualItems, manualItemsFetched, manualItemsQueryError]);
 
   useEffect(() => {
-    if (form.quote_id && form.quote_id !== "none" && form.quote_id !== importedQuoteId && quotePhasesFetched && quoteItemsFetched) {
-      if (quotePhases.length > 0) {
+    if (form.quote_id && form.quote_id !== "none" && form.quote_id !== importedQuoteId && quotePhasesFetched && quoteItemsFetched && quoteScheduleFetched && linkedQuoteFetched && !quoteImportError) {
         const phasesWithItems = quotePhases.map(phase => ({
           id: `temp-phase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           phase_name: phase.phase_name,
@@ -233,29 +202,28 @@ export default function InvoiceBuilder() {
              supplier: item.supplier || null
           }))
         }));
-        setPhases(phasesWithItems);
+        hydratePhases(phasesWithItems);
         setImportedQuoteId(form.quote_id);
-        setPaymentScheduleItems([]);
+        hydratePaymentScheduleItems([]);
         toast.success("Scope of Work imported from quote.");
-      }
     } 
     else if (form.quote_id === "none" && importedQuoteId && importedQuoteId !== "none") {
-      setPhases([]);
+      hydratePhases([]);
       setImportedQuoteId("none");
-      setPaymentScheduleItems([]);
+      hydratePaymentScheduleItems([]);
       toast.info("Quote unlinked. Scope of Work cleared.");
     }
-  }, [form.quote_id, importedQuoteId, quotePhasesFetched, quoteItemsFetched, quotePhases, quoteItems]);
+  }, [form.quote_id, importedQuoteId, quotePhasesFetched, quoteItemsFetched, quoteScheduleFetched, linkedQuoteFetched, quoteImportError, quotePhases, quoteItems]);
 
   useEffect(() => {
-    if (!invoiceId && linkedQuote && linkedQuote.discount_amount > 0) {
-      setForm(prev => ({
+    if (!invoiceId && linkedQuote && !linkedQuoteQueryError && linkedQuote.discount_amount > 0) {
+      hydrateForm(prev => ({
         ...prev, 
         discount_amount: linkedQuote.discount_amount,
         discount_type: linkedQuote.discount_type || "fixed"
       }));
     }
-  }, [linkedQuote, invoiceId]);
+  }, [linkedQuote, invoiceId, linkedQuoteQueryError]);
 
   // --- PHASE & GRID HANDLERS ---
   const { duplicatePhase, reorderLineItems, reorderPhases } = usePhaseFunctions(phases, setPhases);
@@ -363,15 +331,21 @@ export default function InvoiceBuilder() {
 
   // 1. Setup default milestones (Only multi-tranche if imported from a quote)
   useEffect(() => {
+    if (invoiceLoadError || quoteImportError) return;
     if (invoiceId && (!scheduleFetched || !invPhasesFetched || !invItemsFetched)) return;
+    if (invoiceId && !hasLoadedSchedule.current) {
+      hasLoadedSchedule.current = true;
+      if (existingScheduleItems.length > 0) {
+        hydratePaymentScheduleItems(existingScheduleItems);
+        return;
+      }
+    }
+    if (form.quote_id !== "none" && form.quote_id !== importedQuoteId && !quoteScheduleFetched) return;
     if (currentTotal <= 0) return;
 
     if (paymentScheduleItems.length === 0) {
-      if (invoiceId && existingScheduleItems.length > 0) {
-        setPaymentScheduleItems(existingScheduleItems);
-      } else {
         if (quotePaymentScheduleItems.length > 0) {
-          setPaymentScheduleItems(quotePaymentScheduleItems.map(item => ({
+          hydratePaymentScheduleItems(quotePaymentScheduleItems.map(item => ({
             payment_name: item.payment_name,
             amount: item.amount_type === "percentage" ? (currentTotal * safeNum(item.percentage) / 100) : safeNum(item.amount),
             amount_type: item.amount_type || "fixed", 
@@ -380,13 +354,12 @@ export default function InvoiceBuilder() {
           })));
         } else {
           // Standard invoice: Single 100% payment block
-          setPaymentScheduleItems([
+          hydratePaymentScheduleItems([
             { payment_name: "Full Payment", amount: currentTotal, amount_type: "fixed", percentage: 0, due_event: "Upon Receipt", status: "Pending", amount_paid: 0 }
           ]);
         }
-      }
     }
-  }, [scheduleFetched, invPhasesFetched, invItemsFetched, existingScheduleItems, quotePaymentScheduleItems, invoiceId, paymentScheduleItems.length]);
+  }, [scheduleFetched, invPhasesFetched, invItemsFetched, existingScheduleItems, quotePaymentScheduleItems, invoiceId, paymentScheduleItems.length, currentTotal, form.quote_id, importedQuoteId, quoteScheduleFetched, invoiceLoadError, quoteImportError]);
 
   // 2. Silent Auto-Balancing: Automatically force the last unpaid milestone to match the remaining total
   useEffect(() => {
@@ -408,7 +381,7 @@ export default function InvoiceBuilder() {
 
     // If there is a penny mismatch, quietly correct the final tranches
     if (Math.abs(expectedLastAmount - currentLastAmount) > 0.01) {
-       setPaymentScheduleItems(prev => {
+       hydratePaymentScheduleItems(prev => {
           const updated = [...prev];
           updated[nextUnpaidIdx] = {
              ...updated[nextUnpaidIdx],
@@ -429,11 +402,42 @@ export default function InvoiceBuilder() {
     setForm({...form, due_terms: term, due_date: format(date, "yyyy-MM-dd")});
   };
 
+  const isDocumentLoading = Boolean(invoiceId && (
+    !invoiceFetched || hydratedInvoiceId.current !== invoiceId ||
+    !hasLoadedPhases.current || !hasLoadedManualItems.current ||
+    !scheduleFetched || !hasLoadedSchedule.current || invoiceLoadError
+  ));
+  const isQuoteImportPending = Boolean(quoteImportRequired && (!quotePhasesFetched ||
+    !quoteItemsFetched || !quoteScheduleFetched || !linkedQuoteFetched || quoteImportError));
+
+  const retryDocumentLoad = () => {
+    if (invoiceId) {
+      ["invoice", "invoice-schedule-items", "invoice_phases", "invoice_phase_items", "invoice_manual_items"]
+        .forEach(key => queryClient.invalidateQueries({ queryKey: [key, invoiceId] }));
+    }
+    if (quoteImportRequired) {
+      ["quote", "quote-payment-schedule", "quote_phases", "quote_line_items"]
+        .forEach(key => queryClient.invalidateQueries({ queryKey: [key, form.quote_id] }));
+    }
+  };
+
   const handleSave = async (newStatus = null, silent = false) => {
+    if (saveInProgress.current) return null;
+    if (invoiceLoadError || quoteImportError) {
+      toast.error("Invoice details could not be loaded. Retry loading before saving.");
+      return null;
+    }
+    if (isDocumentLoading || isQuoteImportPending) {
+      toast.info("Invoice details are still loading. Please try again shortly.");
+      return null;
+    }
+    if (!companyId) { toast.error("Your company is still loading. Please try again shortly."); return null; }
     if (!form.client_id || form.client_id === "none") { toast.error("Client is required"); return null; }
+    const saveRevision = getRevision();
+    saveInProgress.current = true;
     setSaving(true);
     
-    let invNum = existingInvoice?.invoice_number;
+    let invNum = existingInvoice?.invoice_number || allocatedInvoiceNumber.current;
     let shouldIncrementCounter = false;
 
     if (!invNum) {
@@ -443,13 +447,6 @@ export default function InvoiceBuilder() {
       shouldIncrementCounter = true;
     }
     
-    // ... existing save logic ...
-      
-      toast.dismiss(); 
-      setIsDirty(false); // ⚡ ADD THIS LINE HERE so the warning goes away!
-      if (!skipToast) { toast.success("Saved successfully!"); }
-      return savedId;
-
     const invoiceData = {
       company_id: companyId, client_id: form.client_id, project_id: form.project_id || null, quote_id: form.quote_id === "none" ? null : form.quote_id,
       site_address: form.site_address || "", billing_address: form.billing_address || "",
@@ -464,22 +461,38 @@ export default function InvoiceBuilder() {
       let savedId = invoiceId;
       
       if (invoiceId) {
-        const { error } = await supabase.from("invoices").update(invoiceData).eq("id", invoiceId);
+        const { error } = await supabase.from("invoices").update(invoiceData).eq("id", invoiceId).eq("company_id", companyId).select("id").single();
         if (error) throw error;
       } else {
         const { data: created, error } = await supabase.from("invoices").insert([invoiceData]).select().single();
         if (error) throw error;
+        if (!created?.id) throw new Error("The saved invoice could not be confirmed.");
         savedId = created.id;
+        allocatedInvoiceNumber.current = invNum;
+        hydratedInvoiceId.current = savedId;
+        hasLoadedPhases.current = true;
+        hasLoadedManualItems.current = true;
+        hasLoadedSchedule.current = true;
+        setInvoiceId(savedId);
+        window.history.replaceState(window.history.state, "", createPageUrl(`InvoiceBuilder?id=${savedId}`));
 
         if (shouldIncrementCounter) {
           const currentCounter = company?.next_invoice_number ? Number(company.next_invoice_number) : 1001;
-          await supabase.from("companies").update({ next_invoice_number: currentCounter + 1 }).eq("id", companyId);
-          queryClient.invalidateQueries({ queryKey: ["company"] });
+          pendingCounterUpdate.current = currentCounter + 1;
         }
       }
 
-      await supabase.from("invoice_phases").delete().eq("invoice_id", savedId);
-      await supabase.from("invoice_line_items").delete().eq("invoice_id", savedId);
+      if (pendingCounterUpdate.current !== null) {
+        const { error: counterError } = await supabase.from("companies").update({ next_invoice_number: pendingCounterUpdate.current }).eq("id", companyId).select("id").single();
+        if (counterError) throw counterError;
+        pendingCounterUpdate.current = null;
+        queryClient.invalidateQueries({ queryKey: ["company"] });
+      }
+
+      const { error: itemsDeleteError } = await supabase.from("invoice_line_items").delete().eq("invoice_id", savedId).eq("company_id", companyId);
+      if (itemsDeleteError) throw itemsDeleteError;
+      const { error: phasesDeleteError } = await supabase.from("invoice_phases").delete().eq("invoice_id", savedId).eq("company_id", companyId);
+      if (phasesDeleteError) throw phasesDeleteError;
       
       for (const phase of phases) {
         if (!isPhaseActive(phase)) continue;
@@ -513,7 +526,8 @@ export default function InvoiceBuilder() {
         if (mErr) throw mErr;
       }
 
-      await supabase.from("invoice_payment_schedules").delete().eq("invoice_id", savedId);
+      const { error: schedulesDeleteError } = await supabase.from("invoice_payment_schedules").delete().eq("invoice_id", savedId).eq("company_id", companyId);
+      if (schedulesDeleteError) throw schedulesDeleteError;
       if (paymentScheduleItems.length > 0) {
         const schedulesToInsert = paymentScheduleItems.map((item, idx) => {
           const calculatedAmount = item.amount_type === "percentage" ? (currentTotal * safeNum(item.percentage) / 100) : safeNum(item.amount);
@@ -524,15 +538,13 @@ export default function InvoiceBuilder() {
             amount_type: item.amount_type || "fixed", percentage: item.percentage || 0
           };
         });
-        await supabase.from("invoice_payment_schedules").insert(schedulesToInsert);
+        const { error: schedulesInsertError } = await supabase.from("invoice_payment_schedules").insert(schedulesToInsert);
+        if (schedulesInsertError) throw schedulesInsertError;
       }
 
-      if (!invoiceId) {
-        hasLoadedPhases.current = false;
-        setInvoiceId(savedId);
-        window.history.replaceState(null, "", createPageUrl(`InvoiceBuilder?id=${savedId}`));
-      }
-
+      if (getRevision() === saveRevision) hydrateForm(prev => ({ ...prev, status: invoiceData.status }));
+      markSaved(saveRevision);
+      queryClient.invalidateQueries({ queryKey: ["invoice", savedId] });
       queryClient.invalidateQueries({ queryKey: ["invoice_phases", savedId] });
       queryClient.invalidateQueries({ queryKey: ["invoice_phase_items", savedId] });
       queryClient.invalidateQueries({ queryKey: ["invoice_manual_items", savedId] }); 
@@ -542,11 +554,16 @@ export default function InvoiceBuilder() {
       return savedId;
       
     } catch (error) { 
-      alert(`Database Save Error: ${error.message}`);
-      toast.error("Failed to save invoice."); 
+      toast.error(`Failed to save invoice. ${error.message || "Please try again."}`);
       return null; 
     } 
-    finally { setSaving(false); }
+    finally { saveInProgress.current = false; setSaving(false); }
+  };
+
+  const saveBeforeExit = async () => {
+    const revision = getRevision();
+    const savedId = await handleSave();
+    return Boolean(savedId && getRevision() === revision);
   };
 
   const addMilestoneScheduleItem = () => {
@@ -589,19 +606,24 @@ export default function InvoiceBuilder() {
 
   const handleAction = async (action) => {
     switch (action) {
-      case "preview":
-        await handleSave(null, true);
-        window.open(`/InvoiceView?id=${invoiceId}`, "_blank");
+      case "preview": {
+        const savedId = await handleSave(null, true);
+        if (!savedId) return;
+        window.open(`/InvoiceView?id=${savedId}`, "_blank");
         break;
+      }
         
-      case "payment":
-        await handleSave(null, true); 
+      case "payment": {
+        const savedId = await handleSave(null, true);
+        if (!savedId) return;
         setLedgerDialog(true);
         break;
+      }
         
-      case "print":
+      case "print": {
         toast.loading("Preparing PDF...", { id: "pdf-gen" });
-        await handleSave(null, true); 
+        const savedId = await handleSave(null, true);
+        if (!savedId) { toast.dismiss("pdf-gen"); return; }
         
         const pdfInvoice = {
           ...existingInvoice,
@@ -641,6 +663,7 @@ export default function InvoiceBuilder() {
         toast.dismiss("pdf-gen");
         toast.success("PDF downloaded!");
         break;
+      }
         
       default:
         break;
@@ -653,7 +676,15 @@ export default function InvoiceBuilder() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20">
+      <UnsavedChangesGuard isDirty={isDirty} hasUnsavedChanges={hasUnsavedChanges} saving={saving} onSave={saveBeforeExit} documentName="invoice" />
       <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+        {(invoiceLoadError || quoteImportError) ? (
+          <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p>Invoice details could not be loaded. Retry before saving to keep your existing items safe.</p>
+            <Button variant="outline" size="sm" onClick={retryDocumentLoad}>Retry loading</Button>
+          </div>
+        ) : isDocumentLoading && <p role="status" className="text-sm text-slate-500">Loading invoice details...</p>}
+        <fieldset disabled={saving || isDocumentLoading} className="contents" aria-busy={saving || isDocumentLoading}>
         
         <div className="mb-2">
           <button onClick={(e) => handleSafeNavigate(e, -1)}
@@ -700,12 +731,16 @@ export default function InvoiceBuilder() {
               {saving ? "Saving..." : <><Save className="h-4 w-4 mr-2" /> Save Invoice</>}
             </Button>
 
+            <Button variant="outline" className="bg-white w-full sm:w-auto" onClick={(e) => handleSafeNavigate(e, "/Invoices")}>
+              Cancel
+            </Button>
+
             {invoiceId && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="bg-white w-full sm:w-auto" onClick={(e) => handleSafeNavigate(e, "/Invoices")}>
-  Cancel
-</Button>
+                  <Button variant="outline" size="sm" className="bg-white w-full sm:w-auto">
+                    Actions <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Share</div>
@@ -1118,6 +1153,7 @@ export default function InvoiceBuilder() {
           }} 
         />
 
+        </fieldset>
       </div>
     </div>
   );

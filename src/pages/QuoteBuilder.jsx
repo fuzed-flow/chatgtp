@@ -22,6 +22,8 @@ import { formatCurrencyUSD } from "../components/utils/formatCurrency";
 import AddressAutocomplete from "../components/shared/AddressAutocomplete";
 import SendQuoteEmailDialog from "../components/quotes/SendQuoteEmailDialog";
 import SendQuoteTextDialog from "../components/quotes/SendQuoteTextDialog";
+import { useDocumentChanges, useDocumentState } from "@/hooks/useDocumentChanges";
+import UnsavedChangesGuard from "@/components/shared/UnsavedChangesGuard";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -31,92 +33,9 @@ const safeNum = (val) => {
 export default function QuoteBuilder() {
   const navigate = useNavigate();
 
-  // ⚡ 1. STABLE UNSAVED CHANGES TRACKER
-  const [isDirty, setIsDirty] = useState(false);
+  const { isDirty, markDirty, markSaved, getRevision, hasUnsavedChanges } = useDocumentChanges();
 
-  // A. Mark dirty on typing or dropdown selections
-  useEffect(() => {
-    const markDirty = () => setIsDirty(true);
-    
-    const handleInteract = (e) => {
-      if (e.target?.closest?.('[role="option"], [role="checkbox"], [role="switch"]')) {
-        setIsDirty(true);
-      }
-    };
-
-    window.addEventListener("input", markDirty, { capture: true });
-    document.addEventListener("click", handleInteract, { capture: true });
-    
-    return () => {
-      window.removeEventListener("input", markDirty, { capture: true });
-      document.removeEventListener("click", handleInteract, { capture: true });
-    };
-  }, []);
-
-  // B. Prevent Closing the Browser Tab, Refreshing, AND Browser Back Button
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
-      }
-    };
-
-    const handlePopState = (e) => {
-      if (isDirty) {
-        if (!window.confirm("⚠️ WARNING: You have unsaved changes. Are you sure you want to exit? You will lose your data.")) {
-          // If they click Cancel, push the URL back into the history stack to trap them safely on the page
-          window.history.pushState(null, "", window.location.href);
-        } else {
-          // If they click OK, clear the warning and let them leave
-          setIsDirty(false);
-          window.history.back();
-        }
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, [isDirty]);
-
-  // Trap the browser back button ONLY once when the form first becomes dirty
-  useEffect(() => {
-    if (isDirty) {
-      window.history.pushState(null, "", window.location.href);
-    }
-  }, [isDirty]);
-
-  // C. Intercept Sidebar Links ONLY
-  useEffect(() => {
-    const handleGlobalNavigation = (e) => {
-      if (!isDirty) return;
-      
-      const link = e.target.closest("a");
-      // If it's a link and NOT opening in a new tab
-      if (link && link.target !== "_blank") {
-        if (!window.confirm("⚠️ WARNING: You have unsaved changes. Are you sure you want to exit? You will lose your data.")) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }
-    };
-    
-    document.addEventListener("click", handleGlobalNavigation, { capture: true });
-    return () => document.removeEventListener("click", handleGlobalNavigation, { capture: true });
-  }, [isDirty]);
-
-  // D. Safe navigation for manual Buttons (Back/Cancel)
-  const handleSafeNavigate = (pathOrDelta) => {
-    if (isDirty && !window.confirm("⚠️ WARNING: You have unsaved changes. Are you sure you want to exit? You will lose your data.")) {
-      return;
-    }
-    navigate(pathOrDelta);
-  };
+  const handleSafeNavigate = (pathOrDelta) => navigate(pathOrDelta);
 
   // 1. PULL IN CUSTOM SETTINGS
   const { profile, settings } = useAuth();
@@ -130,7 +49,7 @@ export default function QuoteBuilder() {
   const isTemplate = params.get("is_template") === "true";
   const queryClient = useQueryClient();
 
-  const [form, setForm] = useState({
+  const [form, setForm, hydrateForm] = useDocumentState({
     title: "", client_id: clientId || "", lead_id: leadId || "",
     status: "Draft", issue_date: format(new Date(), "yyyy-MM-dd"),
     expiry_date: "", notes: "", 
@@ -140,18 +59,23 @@ export default function QuoteBuilder() {
     show_overall_scope: true, 
     deposit_amount: 0, discount_amount: 0, discount_type: "fixed", discount_percentage: 0, show_discount_amount: false, has_payment_schedule: false, hero_image_url: "", end_photos: [], documents: [],
     margin: 0, margin_adjustment_type: "none", site_address: "", quote_number: "", is_archived: false
-  });
+  }, markDirty);
   
-  const [localTitle, setLocalTitle] = useState("");
-  const [localOverallScope, setLocalOverallScope] = useState(settings?.quote_intro || "");
-  const [localClientMessage, setLocalClientMessage] = useState(settings?.quote_client_message || "");
-  const [localTerms, setLocalTerms] = useState(settings?.default_terms || "");
-  const [localNotes, setLocalNotes] = useState("");
+  const [localTitle, setLocalTitle, hydrateLocalTitle] = useDocumentState("", markDirty);
+  const [localOverallScope, setLocalOverallScope, hydrateLocalOverallScope] = useDocumentState(settings?.quote_intro || "", markDirty);
+  const [localClientMessage, setLocalClientMessage, hydrateLocalClientMessage] = useDocumentState(settings?.quote_client_message || "", markDirty);
+  const [localTerms, setLocalTerms, hydrateLocalTerms] = useDocumentState(settings?.default_terms || "", markDirty);
+  const [localNotes, setLocalNotes, hydrateLocalNotes] = useDocumentState("", markDirty);
 
-  const [phases, setPhases] = useState([]);
-  const [paymentScheduleItems, setPaymentScheduleItems] = useState([]);
+  const [phases, setPhases, hydratePhases] = useDocumentState([], markDirty);
+  const [paymentScheduleItems, setPaymentScheduleItems, hydratePaymentScheduleItems] = useDocumentState([], markDirty);
   const [saving, setSaving] = useState(false);
   const hasLoadedPhases = useRef(false);
+  const hydratedQuoteId = useRef(null);
+  const hydratedTemplateId = useRef(null);
+  const hasLoadedSchedule = useRef(false);
+  const saveInFlight = useRef(false);
+  const pendingCounterUpdate = useRef(null);
   
   // 2. TRACK MANUAL DEPOSIT EDITS
   const [manualDeposit, setManualDeposit] = useState(false);
@@ -174,13 +98,13 @@ export default function QuoteBuilder() {
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [converting, setConverting] = useState(false);
   
-  const [pdfSettings, setPdfSettings] = useState({
+  const [pdfSettings, , hydratePdfSettings] = useDocumentState({
     template: "professional", primary_color: "#0f172a", accent_color: "#f59e0b", header_background_color: "#0f172a",
     header_text_color: "#ffffff", footer_text: "", footer_color: "#64748b", show_logo: true, show_company_info: true,
     show_payment_terms: true, font_family: "sans-serif", font_size_base: 11, page_layout: "single-column",
     page_margins: { top: 0.75, bottom: 0.75, left: 0.75, right: 0.75 }, line_spacing: 1.5, show_line_item_images: false,
     highlight_totals: true, item_border_style: "light"
-  });
+  }, markDirty);
 
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [resourceSearch, setResourceSearch] = useState("");
@@ -212,9 +136,9 @@ export default function QuoteBuilder() {
     queryKey: ["phase-templates", companyId], enabled: !!companyId,
     queryFn: async () => { const { data } = await supabase.from("phase_templates").select("*").eq("company_id", companyId).eq("is_active", true); return data || []; } 
   });
-  const { data: quoteTemplates = [] } = useQuery({ 
+  const { data: quoteTemplates = [], isFetched: quoteTemplatesFetched, error: quoteTemplatesLoadError } = useQuery({ 
     queryKey: ["quote-templates-list", companyId], enabled: !!companyId,
-    queryFn: async () => { const { data } = await supabase.from("quotes").select("*").eq("company_id", companyId).eq("is_template", true); return data || []; } 
+    queryFn: async () => { const { data, error } = await supabase.from("quotes").select("*").eq("company_id", companyId).eq("is_template", true); if (error) throw error; return data || []; } 
   });
   const { data: companyResources = [], isLoading: loadingResources } = useQuery({ 
     queryKey: ["company_resources", companyId], enabled: !!companyId,
@@ -223,33 +147,33 @@ export default function QuoteBuilder() {
       if (error) throw error; return data || [];
     } 
   });
-  const { data: existingQuote } = useQuery({
-    queryKey: ["quote", quoteId], enabled: !!quoteId,
-    queryFn: async () => { const { data } = await supabase.from("quotes").select("*").eq("id", quoteId).single(); return data; },
+  const { data: existingQuote, error: quoteLoadError } = useQuery({
+    queryKey: ["quote", quoteId], enabled: !!quoteId && !!companyId,
+    queryFn: async () => { const { data, error } = await supabase.from("quotes").select("*").eq("id", quoteId).eq("company_id", companyId).single(); if (error) throw error; return data; },
   });
-  const { data: existingPhases = [], isFetched: phasesFetched } = useQuery({
-    queryKey: ["quote-phases", quoteId], enabled: !!quoteId,
-    queryFn: async () => { const { data } = await supabase.from("quote_phases").select("*").eq("quote_id", quoteId).order("sort_order", { ascending: true }); return data || []; },
+  const { data: existingPhases = [], isFetched: phasesFetched, error: phasesLoadError } = useQuery({
+    queryKey: ["quote-phases", quoteId], enabled: !!quoteId && !!companyId,
+    queryFn: async () => { const { data, error } = await supabase.from("quote_phases").select("*").eq("quote_id", quoteId).eq("company_id", companyId).order("sort_order", { ascending: true }); if (error) throw error; return data || []; },
   });
-  const { data: existingItems = [], isFetched: itemsFetched } = useQuery({
-    queryKey: ["quote-items", quoteId], enabled: !!quoteId,
-    queryFn: async () => { const { data } = await supabase.from("quote_line_items").select("*").eq("quote_id", quoteId).order("display_order", { ascending: true }); return data || []; },
+  const { data: existingItems = [], isFetched: itemsFetched, error: itemsLoadError } = useQuery({
+    queryKey: ["quote-items", quoteId], enabled: !!quoteId && !!companyId,
+    queryFn: async () => { const { data, error } = await supabase.from("quote_line_items").select("*").eq("quote_id", quoteId).eq("company_id", companyId).order("display_order", { ascending: true }); if (error) throw error; return data || []; },
   });
-  const { data: existingScheduleItems = [] } = useQuery({
-    queryKey: ["quote-schedule-items", quoteId], enabled: !!quoteId,
-    queryFn: async () => { const { data } = await supabase.from("quote_payment_schedules").select("*").eq("quote_id", quoteId).order("sort_order", { ascending: true }); return data || []; },
+  const { data: existingScheduleItems = [], isFetched: scheduleFetched, error: scheduleLoadError } = useQuery({
+    queryKey: ["quote-schedule-items", quoteId], enabled: !!quoteId && !!companyId,
+    queryFn: async () => { const { data, error } = await supabase.from("quote_payment_schedules").select("*").eq("quote_id", quoteId).eq("company_id", companyId).order("sort_order", { ascending: true }); if (error) throw error; return data || []; },
   });
-  const { data: templatePhases = [], isFetched: templatePhasesFetched } = useQuery({
-    queryKey: ["template-phases", templateId], enabled: !!templateId && !quoteId,
-    queryFn: async () => { const { data } = await supabase.from("quote_phases").select("*").eq("quote_id", templateId).order("sort_order", { ascending: true }); return data || []; },
+  const { data: templatePhases = [], isFetched: templatePhasesFetched, error: templatePhasesLoadError } = useQuery({
+    queryKey: ["template-phases", templateId], enabled: !!templateId && !quoteId && !!companyId,
+    queryFn: async () => { const { data, error } = await supabase.from("quote_phases").select("*").eq("quote_id", templateId).eq("company_id", companyId).order("sort_order", { ascending: true }); if (error) throw error; return data || []; },
   });
-  const { data: templateItems = [], isFetched: templateItemsFetched } = useQuery({
-    queryKey: ["template-items", templateId], enabled: !!templateId && !quoteId,
-    queryFn: async () => { const { data } = await supabase.from("quote_line_items").select("*").eq("quote_id", templateId).order("display_order", { ascending: true }); return data || []; },
+  const { data: templateItems = [], isFetched: templateItemsFetched, error: templateItemsLoadError } = useQuery({
+    queryKey: ["template-items", templateId], enabled: !!templateId && !quoteId && !!companyId,
+    queryFn: async () => { const { data, error } = await supabase.from("quote_line_items").select("*").eq("quote_id", templateId).eq("company_id", companyId).order("display_order", { ascending: true }); if (error) throw error; return data || []; },
   });
-  const { data: templateScheduleItems = [] } = useQuery({
-    queryKey: ["template-schedule-items", templateId], enabled: !!templateId && !quoteId,
-    queryFn: async () => { const { data } = await supabase.from("quote_payment_schedules").select("*").eq("quote_id", templateId).order("sort_order", { ascending: true }); return data || []; },
+  const { data: templateScheduleItems = [], isFetched: templateScheduleFetched, error: templateScheduleLoadError } = useQuery({
+    queryKey: ["template-schedule-items", templateId], enabled: !!templateId && !quoteId && !!companyId,
+    queryFn: async () => { const { data, error } = await supabase.from("quote_payment_schedules").select("*").eq("quote_id", templateId).eq("company_id", companyId).order("sort_order", { ascending: true }); if (error) throw error; return data || []; },
   });
   const { data: clientAttachments = [] } = useQuery({
     queryKey: ["client-attachments", form.client_id], enabled: !!form.client_id,
@@ -342,14 +266,15 @@ export default function QuoteBuilder() {
   };
 
   useEffect(() => {
-    if (existingQuote) {
-      setLocalTitle(existingQuote.title || "");
-      setLocalOverallScope(existingQuote.overall_scope || "");
-      setLocalClientMessage(existingQuote.client_message || "");
-      setLocalTerms(existingQuote.terms || "");
-      setLocalNotes(existingQuote.notes || "");
+    if (existingQuote && hydratedQuoteId.current !== existingQuote.id) {
+      hydratedQuoteId.current = existingQuote.id;
+      hydrateLocalTitle(existingQuote.title || "");
+      hydrateLocalOverallScope(existingQuote.overall_scope || "");
+      hydrateLocalClientMessage(existingQuote.client_message || "");
+      hydrateLocalTerms(existingQuote.terms || "");
+      hydrateLocalNotes(existingQuote.notes || "");
       setManualDeposit(true); // Don't auto-override an existing quote's deposit
-      setForm({
+      hydrateForm({
         title: existingQuote.title || "", client_id: existingQuote.client_id || "", lead_id: existingQuote.lead_id || "", 
         status: existingQuote.status || (isTemplate ? "Template" : "Draft"),
         issue_date: existingQuote.issue_date || format(new Date(), "yyyy-MM-dd"), 
@@ -359,6 +284,7 @@ export default function QuoteBuilder() {
         deposit_amount: existingQuote.deposit_amount || 0, discount_amount: existingQuote.discount_amount || 0,
         discount_type: existingQuote.discount_type || "fixed", discount_percentage: existingQuote.discount_percentage || 0,
         has_payment_schedule: existingQuote.has_payment_schedule || false,
+        show_discount_amount: Boolean(existingQuote.show_discount_amount),
         hero_image_url: existingQuote.hero_image_url || "", end_photos: existingQuote.end_photos || [], documents: existingQuote.documents || [],
         
         // 👇 ADD IT AT THE END OF THIS LIST 👇
@@ -367,14 +293,15 @@ export default function QuoteBuilder() {
         is_archived: Boolean(existingQuote.is_archived) 
       });
       if (existingQuote.pdf_customization_settings_json) {
-        try { setPdfSettings(JSON.parse(existingQuote.pdf_customization_settings_json)); } catch (e) {}
+        try { hydratePdfSettings(JSON.parse(existingQuote.pdf_customization_settings_json)); } catch (e) {}
       }
-    } else if (templateId && !existingQuote) {
+    } else if (templateId && !quoteId && hydratedTemplateId.current !== templateId) {
       const template = quoteTemplates.find(t => t.id === templateId);
       if (template) {
-        setLocalTitle(template.title || ""); setLocalOverallScope(template.overall_scope || "");
-        setLocalClientMessage(template.client_message || ""); setLocalTerms(template.terms || "");
-        setForm(prev => ({
+        hydratedTemplateId.current = templateId;
+        hydrateLocalTitle(template.title || ""); hydrateLocalOverallScope(template.overall_scope || "");
+        hydrateLocalClientMessage(template.client_message || ""); hydrateLocalTerms(template.terms || "");
+        hydrateForm(prev => ({
           ...prev, title: template.title || "", issue_date: format(new Date(), "yyyy-MM-dd"),
           overall_scope: template.overall_scope || "", client_message: template.client_message || "", terms: template.terms || "",
           show_overall_scope: template.show_overall_scope !== false, deposit_amount: template.deposit_amount || 0,
@@ -384,19 +311,22 @@ export default function QuoteBuilder() {
           margin: template.margin ?? 0, margin_adjustment_type: template.margin_adjustment_type || "none"
         }));
         if (template.pdf_customization_settings_json) {
-          try { setPdfSettings(JSON.parse(template.pdf_customization_settings_json)); } catch (e) {}
+          try { hydratePdfSettings(JSON.parse(template.pdf_customization_settings_json)); } catch (e) {}
         }
       }
     }
   }, [existingQuote, templateId, quoteTemplates]);
 
   useEffect(() => {
-    if (existingScheduleItems.length > 0) setPaymentScheduleItems(existingScheduleItems);
-  }, [existingScheduleItems]);
+    if (quoteId && scheduleFetched && !scheduleLoadError && !hasLoadedSchedule.current) {
+      hasLoadedSchedule.current = true;
+      hydratePaymentScheduleItems(existingScheduleItems);
+    }
+  }, [quoteId, existingScheduleItems, scheduleFetched, scheduleLoadError]);
 
   useEffect(() => {
     if (!quoteId && (form.client_id || form.lead_id)) {
-      setForm(prev => {
+      hydrateForm(prev => {
         // If an address is already typed in, DO NOT overwrite it
         if (prev.site_address) return prev;
         
@@ -420,18 +350,18 @@ export default function QuoteBuilder() {
   }, [quoteId, form.client_id, form.lead_id, clients, leads]);
 
   useEffect(() => {
-    if (phasesFetched && itemsFetched && existingPhases.length > 0 && !hasLoadedPhases.current) {
+    if (quoteId && phasesFetched && itemsFetched && !phasesLoadError && !itemsLoadError && !hasLoadedPhases.current) {
       hasLoadedPhases.current = true;
       const phasesWithItems = existingPhases.map(phase => ({
         ...phase,
         items: existingItems.filter(item => item.phase_id === phase.id).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
       }));
-      setPhases(phasesWithItems);
+      hydratePhases(phasesWithItems);
     }
-  }, [existingPhases, existingItems, phasesFetched, itemsFetched]);
+  }, [quoteId, existingPhases, existingItems, phasesFetched, itemsFetched, phasesLoadError, itemsLoadError]);
 
   useEffect(() => {
-    if (templateId && !quoteId && templatePhasesFetched && templateItemsFetched && templatePhases.length > 0 && !hasLoadedPhases.current) {
+    if (templateId && !quoteId && templatePhasesFetched && templateItemsFetched && !templatePhasesLoadError && !templateItemsLoadError && !hasLoadedPhases.current) {
       hasLoadedPhases.current = true;
       const phasesWithItems = templatePhases.map(phase => ({
         id: `temp-phase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -446,15 +376,16 @@ export default function QuoteBuilder() {
           default_selected: item.default_selected === true, is_material: item.is_material === true, supplier: item.supplier || null
         }))
       }));
-      setPhases(phasesWithItems);
+      hydratePhases(phasesWithItems);
     }
-  }, [templateId, quoteId, templatePhases, templateItems, templatePhasesFetched, templateItemsFetched]);
+  }, [templateId, quoteId, templatePhases, templateItems, templatePhasesFetched, templateItemsFetched, templatePhasesLoadError, templateItemsLoadError]);
 
   useEffect(() => {
-    if (templateId && !quoteId && templateScheduleItems.length > 0) {
-      setPaymentScheduleItems(templateScheduleItems.map(item => ({ ...item, id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` })));
+    if (templateId && !quoteId && templateScheduleFetched && !templateScheduleLoadError && !hasLoadedSchedule.current) {
+      hasLoadedSchedule.current = true;
+      hydratePaymentScheduleItems(templateScheduleItems.map(item => ({ ...item, id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` })));
     }
-  }, [templateId, quoteId, templateScheduleItems]);
+  }, [templateId, quoteId, templateScheduleItems, templateScheduleFetched, templateScheduleLoadError]);
 
   const addPhase = () => {
     setPhases([...phases, {
@@ -597,6 +528,7 @@ export default function QuoteBuilder() {
   };
 
   const handlePhotoUpload = async (phaseIdx, files) => {
+    markDirty();
     setUploadingPhoto(true);
     try {
       // Ensure files is iterable (it might be a FileList object)
@@ -622,6 +554,7 @@ export default function QuoteBuilder() {
   };
 
   const handleEndPhotoUpload = async (file) => {
+    markDirty();
     setUploadingPhoto(true);
     try {
       const fileName = `${companyId}/${quoteId || 'new'}/hero/${Date.now()}_${file.name}`;
@@ -641,12 +574,14 @@ export default function QuoteBuilder() {
   };
 
   const handleMultiplePhotosUpload = async (files) => {
+    markDirty();
     setUploadingPhoto(true);
     try {
       const urls = [];
       for (const file of Array.from(files)) {
         const fileName = `${companyId}/${quoteId || 'new'}/gallery/${Date.now()}_${file.name}`;
-        await supabase.storage.from('quotes').upload(fileName, file);
+        const { error } = await supabase.storage.from('quotes').upload(fileName, file);
+        if (error) throw error;
         const { data: { publicUrl } } = supabase.storage.from('quotes').getPublicUrl(fileName);
         urls.push(publicUrl);
       }
@@ -657,10 +592,12 @@ export default function QuoteBuilder() {
   };
 
   const handleDocumentUpload = async (file) => {
+    markDirty();
     setUploadingPhoto(true);
     try {
       const fileName = `${companyId}/${quoteId || 'new'}/documents/${Date.now()}_${file.name}`;
-      await supabase.storage.from('quotes').upload(fileName, file);
+      const { error } = await supabase.storage.from('quotes').upload(fileName, file);
+      if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('quotes').getPublicUrl(fileName);
       setForm({ ...form, documents: [...form.documents, { file_url: publicUrl, file_name: file.name }] });
       toast.success("Document uploaded");
@@ -675,10 +612,12 @@ export default function QuoteBuilder() {
   };
 
   const handleLineItemPhotoUpload = async (phaseIdx, itemIdx, file) => {
+    markDirty();
     setUploadingPhoto(true);
     try {
       const fileName = `${companyId}/${quoteId || 'new'}/items/${Date.now()}_${file.name}`;
-      await supabase.storage.from('quotes').upload(fileName, file);
+      const { error } = await supabase.storage.from('quotes').upload(fileName, file);
+      if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('quotes').getPublicUrl(fileName);
       
       const updatedPhases = [...phases];
@@ -761,7 +700,7 @@ export default function QuoteBuilder() {
     if (!manualDeposit && grandTotal > 0 && !existingQuote) {
        const defaultDepPct = settings?.default_deposit ?? 0;
        const autoDeposit = parseFloat((grandTotal * (defaultDepPct / 100)).toFixed(2));
-       setForm(prev => ({ ...prev, deposit_amount: autoDeposit }));
+       hydrateForm(prev => ({ ...prev, deposit_amount: autoDeposit }));
     }
   }, [grandTotal, manualDeposit, settings?.default_deposit, existingQuote]);
 
@@ -800,18 +739,27 @@ export default function QuoteBuilder() {
       const newArchivedState = !form.is_archived;
       const { error } = await supabase.from("quotes").update({ is_archived: newArchivedState }).eq("id", quoteId);
       if (error) throw error;
-      setForm(prev => ({ ...prev, is_archived: newArchivedState }));
+      hydrateForm(prev => ({ ...prev, is_archived: newArchivedState }));
       toast.success(newArchivedState ? "Quote archived successfully" : "Quote unarchived successfully");
     } catch (err) {
       toast.error("Failed to update archive status");
     }
   };
 
-  const handleSave = async (newStatus = null, forceSaveAsTemplate = false, skipToast = false) => {
-    const activeTitle = localTitle || form.title;
-    if (!activeTitle || !activeTitle.trim()) { alert("⚠️ Please enter a Title for this quote at the top of the page before saving."); return null; }
-    if (!companyId) { alert("⚠️ Session Error: Your Company ID is missing. Please refresh the page to reload your profile."); return null; }
+  const isDocumentLoading = Boolean(
+    (quoteId && (hydratedQuoteId.current !== quoteId || !hasLoadedPhases.current || !hasLoadedSchedule.current)) ||
+    (templateId && !quoteId && (hydratedTemplateId.current !== templateId || !hasLoadedPhases.current || !hasLoadedSchedule.current))
+  );
 
+  const handleSave = async (newStatus = null, forceSaveAsTemplate = false, skipToast = false, stayInBuilder = false) => {
+    if (saveInFlight.current) return null;
+    if (isDocumentLoading) { toast.error("Please wait for the quote to finish loading before saving."); return null; }
+    const activeTitle = localTitle;
+    if (!activeTitle || !activeTitle.trim()) { toast.error("Enter a title for this quote before saving."); return null; }
+    if (!companyId) { toast.error("Your company profile is unavailable. Refresh the page and try again."); return null; }
+
+    const saveRevision = getRevision();
+    saveInFlight.current = true;
     setSaving(true);
     if(!skipToast) toast.loading("Saving quote...");
     
@@ -819,7 +767,6 @@ export default function QuoteBuilder() {
 
     try {
       const latestForm = { ...form, title: activeTitle, overall_scope: localOverallScope, client_message: localClientMessage, terms: localTerms, notes: localNotes };
-      setForm(latestForm);
       finalStatus = newStatus !== null ? newStatus : latestForm.status;
       
       let quoteNumber = latestForm.quote_number;
@@ -878,23 +825,39 @@ export default function QuoteBuilder() {
       if (!quoteId || forceSaveAsTemplate) {
         const { data: newQuote, error: quoteError } = await supabase.from("quotes").insert([quoteData]).select().single();
         if (quoteError) throw new Error(`Quotes Table: ${quoteError.message}`);
+        if (!newQuote?.id) throw new Error("The quote could not be saved. Please try again.");
         savedQuoteId = newQuote.id;
-        
+
+        // Keep a newly created ID even if a later child write fails, so retry updates this quote.
+        if (!forceSaveAsTemplate) {
+          hydratedQuoteId.current = savedQuoteId;
+          hasLoadedPhases.current = true;
+          hasLoadedSchedule.current = true;
+          setQuoteId(savedQuoteId);
+          hydrateForm(prev => ({ ...prev, quote_number: quoteNumber }));
+        }
         if (shouldIncrementCounter) {
           const currentCounter = company?.next_quote_number ? Number(company.next_quote_number) : 1001;
-          const { error: companyUpdateErr } = await supabase.from("companies").update({ next_quote_number: currentCounter + 1 }).eq("id", companyId);
-          if (companyUpdateErr) throw new Error(`Companies Counter Sync Error: ${companyUpdateErr.message}`);
+          pendingCounterUpdate.current = currentCounter + 1;
         }
-
       } else {
-        const { error: quoteUpdateError } = await supabase.from("quotes").update(quoteData).eq("id", quoteId);
+        const { error: quoteUpdateError } = await supabase.from("quotes").update(quoteData).eq("id", quoteId).eq("company_id", companyId).select("id").single();
         if (quoteUpdateError) throw new Error(`Quotes Update: ${quoteUpdateError.message}`);
       }
 
+      if (pendingCounterUpdate.current !== null) {
+        const { error: companyUpdateErr } = await supabase.from("companies").update({ next_quote_number: pendingCounterUpdate.current }).eq("id", companyId).select("id").single();
+        if (companyUpdateErr) throw new Error(`Companies Counter Sync Error: ${companyUpdateErr.message}`);
+        pendingCounterUpdate.current = null;
+      }
+
       if (quoteId && !forceSaveAsTemplate) {
-        await supabase.from("quote_phases").delete().eq("quote_id", savedQuoteId);
-        await supabase.from("quote_line_items").delete().eq("quote_id", savedQuoteId);
-        await supabase.from("quote_payment_schedules").delete().eq("quote_id", savedQuoteId);
+        const { error: deleteItemsError } = await supabase.from("quote_line_items").delete().eq("quote_id", savedQuoteId).eq("company_id", companyId);
+        if (deleteItemsError) throw new Error(`Line Items Delete: ${deleteItemsError.message}`);
+        const { error: deletePhasesError } = await supabase.from("quote_phases").delete().eq("quote_id", savedQuoteId).eq("company_id", companyId);
+        if (deletePhasesError) throw new Error(`Phases Delete: ${deletePhasesError.message}`);
+        const { error: deleteScheduleError } = await supabase.from("quote_payment_schedules").delete().eq("quote_id", savedQuoteId).eq("company_id", companyId);
+        if (deleteScheduleError) throw new Error(`Payment Schedule Delete: ${deleteScheduleError.message}`);
       }
 
       for (const phase of phases) {
@@ -936,26 +899,31 @@ export default function QuoteBuilder() {
       await queryClient.invalidateQueries({ queryKey: ["quote-phases", savedQuoteId] });
       await queryClient.invalidateQueries({ queryKey: ["quote-items", savedQuoteId] });
 
-      if (!quoteId && !forceSaveAsTemplate) {
-        setQuoteId(savedQuoteId);
-        window.history.replaceState(null, "", `/QuoteBuilder?id=${savedQuoteId}`);
+      toast.dismiss();
+      if (forceSaveAsTemplate) {
+        toast.success("Success! Quote saved into your Templates library.");
+        return savedQuoteId;
       }
-      
-      toast.dismiss(); 
-      setIsDirty(false); // ⚡ Properly placed at the very end!
-      
-      if (forceSaveAsTemplate) { toast.success("Success! Quote saved into your Templates library."); return savedQuoteId; }
-      if (!skipToast) { toast.success((isTemplate || existingQuote?.is_template) ? "Template saved successfully" : "Quote saved successfully"); }
-      if (isTemplate || existingQuote?.is_template) { navigate("/Templates"); return savedQuoteId; }
 
+      if (getRevision() === saveRevision) {
+        hydrateForm(prev => ({ ...prev, status: finalStatus, quote_number: quoteNumber }));
+      }
+      const savedCurrentRevision = markSaved(saveRevision);
+      if (!quoteId && !stayInBuilder) {
+        window.history.replaceState(window.history.state, "", `/QuoteBuilder?id=${savedQuoteId}`);
+      }
+      if (!skipToast) { toast.success((isTemplate || existingQuote?.is_template) ? "Template saved successfully" : "Quote saved successfully"); }
+      if ((isTemplate || existingQuote?.is_template) && !stayInBuilder && savedCurrentRevision) {
+        navigate("/Templates");
+      }
       return savedQuoteId;
     } catch (error) {
       toast.dismiss();
-      console.error("🚨 MASTER SAVE FAILED:", error);
-      alert(`Database Error:\n\n${error.message || "Unknown error"}\n\nPlease take a screenshot of this error.`);
+      console.error("Quote save failed:", error);
+      toast.error(`Quote was not fully saved: ${error.message || "Please try again."}`);
       return null;
     } finally {
-      setForm(prev => ({ ...prev, status: finalStatus }));
+      saveInFlight.current = false;
       setSaving(false);
     }
   };
@@ -1318,14 +1286,38 @@ export default function QuoteBuilder() {
     );
   };
 
+  const missingTemplate = templateId && !quoteId && quoteTemplatesFetched && !quoteTemplates.some(template => template.id === templateId);
+  const initialLoadError = quoteLoadError || phasesLoadError || itemsLoadError || scheduleLoadError ||
+    (templateId && !quoteId && (quoteTemplatesLoadError || templatePhasesLoadError || templateItemsLoadError || templateScheduleLoadError || missingTemplate));
+  if ((quoteId || templateId) && (isDocumentLoading || initialLoadError) && !saveInFlight.current && !isDirty) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-6" role="status">
+        <p className="text-slate-700">{initialLoadError ? "This quote could not be loaded. Please refresh the page and try again." : "Loading quote..."}</p>
+        <Button variant="outline" className="mt-4" onClick={() => navigate("/Quotes")}>Back to quotes</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
+      <UnsavedChangesGuard
+        isDirty={isDirty}
+        hasUnsavedChanges={hasUnsavedChanges}
+        saving={saving || uploadingPhoto || converting}
+        documentName="quote"
+        onSave={async () => {
+          const revision = getRevision();
+          const savedId = await handleSave(null, false, false, true);
+          return Boolean(savedId) && getRevision() === revision;
+        }}
+      />
+      <fieldset disabled={saving || uploadingPhoto || converting} className="min-w-0 border-0 p-0 m-0">
       <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-6">
         <div className="flex-1 min-w-0">
           
           {/* ⚡ THE RESTORED BACK BUTTON */}
           <button 
-            onClick={(e) => handleSafeNavigate(-1)}
+            onClick={() => handleSafeNavigate(-1)}
             className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 mb-4 font-medium transition-colors bg-transparent border-none p-0 cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" /> Back
@@ -1816,7 +1808,7 @@ export default function QuoteBuilder() {
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm mt-6">
             <Link to={isTemplate || existingQuote?.is_template ? "/Templates" : "/Quotes"} className="w-full sm:w-auto">
-              <Button variant="outline" size="sm" className="bg-white w-full sm:w-auto" onClick={(e) => handleSafeNavigate(e, "/Quotes")}>
+              <Button variant="outline" size="sm" className="bg-white w-full sm:w-auto">
   Cancel
 </Button>
             </Link>
@@ -2192,6 +2184,7 @@ export default function QuoteBuilder() {
         clientName={clients.find(c => c.id === form.client_id)?.name}
         clientEmail={clients.find(c => c.id === form.client_id)?.email}
         onSuccess={() => {
+          hydrateForm(prev => ({ ...prev, status: "Sent" }));
           queryClient.invalidateQueries({ queryKey: ["quote", quoteId] });
           queryClient.invalidateQueries({ queryKey: ["quotes"] });
         }} 
@@ -2206,10 +2199,12 @@ export default function QuoteBuilder() {
         clientName={clients.find(c => c.id === form.client_id)?.name}
         clientPhone={clients.find(c => c.id === form.client_id)?.phone}
         onSuccess={() => {
+          hydrateForm(prev => ({ ...prev, status: "Sent" }));
           queryClient.invalidateQueries({ queryKey: ["quote", quoteId] });
           queryClient.invalidateQueries({ queryKey: ["quotes"] });
         }} 
       />
+      </fieldset>
     </div>
   );
 }

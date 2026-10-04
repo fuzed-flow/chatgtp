@@ -101,14 +101,14 @@ export default function LineItemRow({
       
       updateField("material_cost", mat);
       setLocalMatCost(String(mat));
-      setTimeout(() => { updateField("labor_cost", lab); setLocalLabCost(String(lab)); }, 10);
-      setTimeout(() => { updateField("unit_cost", tot); setLocalTotalCost(String(tot)); }, 20);
+      updateField("labor_cost", lab);
+      setLocalLabCost(String(lab));
+      updateField("unit_cost", tot);
+      setLocalTotalCost(String(tot));
       
       const pPrice = product.price || item.unit_price || 0;
-      setTimeout(() => {
-        updateField("unit_price", pPrice);
-        setLocalPrice(String(pPrice));
-      }, 30);
+      updateField("unit_price", pPrice);
+      setLocalPrice(String(pPrice));
       
       if (tot > 0 && pPrice > 0) {
         setLocalMargin((((pPrice - tot) / pPrice) * 100).toFixed(1));
@@ -147,7 +147,7 @@ export default function LineItemRow({
     const newTotal = Number((newVal + otherVal).toFixed(2));
     
     setLocalTotalCost(String(newTotal));
-    setTimeout(() => updateField("unit_cost", newTotal), 10);
+    updateField("unit_cost", newTotal);
 
     const oldTotal = Number(localTotalCost) || 0;
     const oldPrice = Number(localPrice) || 0;
@@ -161,14 +161,14 @@ export default function LineItemRow({
       const newPrice = Number((newTotal / (1 - marginPct)).toFixed(2));
       setLocalPrice(String(newPrice));
       setLocalMargin((marginPct * 100).toFixed(1));
-      setTimeout(() => updateField("unit_price", newPrice), 20);
+      updateField("unit_price", newPrice);
     }
   };
 
   const handleTotalCostChange = (val) => {
     const newTotal = Number(val) || 0;
     setLocalTotalCost(val);
-    setTimeout(() => updateField("unit_cost", newTotal), 10);
+    updateField("unit_cost", newTotal);
     
     const oldTotal = Number(localTotalCost) || 0;
     const oldPrice = Number(localPrice) || 0;
@@ -182,13 +182,13 @@ export default function LineItemRow({
       const newPrice = Number((newTotal / (1 - marginPct)).toFixed(2));
       setLocalPrice(String(newPrice));
       setLocalMargin((marginPct * 100).toFixed(1));
-      setTimeout(() => updateField("unit_price", newPrice), 30);
+      updateField("unit_price", newPrice);
     }
 
     setLocalMatCost("0");
     setLocalLabCost("0");
-    setTimeout(() => updateField("material_cost", 0), 10);
-    setTimeout(() => updateField("labor_cost", 0), 20);
+    updateField("material_cost", 0);
+    updateField("labor_cost", 0);
   };
 
   // Auto-expand textarea helper for mobile
@@ -434,7 +434,7 @@ export default function LineItemRow({
                 <div className="w-px h-4 bg-slate-200"></div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Supplier:</span>
-                  <input type="text" placeholder="Supplier Name..." value={localSupplier} onChange={e => setLocalSupplier(e.target.value)} onBlur={e => updateField("supplier", e.target.value)} className="h-7 text-[11px] font-bold border border-slate-300 rounded bg-amber-50/40 px-2 outline-none focus:border-amber-500 w-[140px]" />
+                  <input type="text" placeholder="Supplier Name..." value={localSupplier} onChange={e => { setLocalSupplier(e.target.value); updateField("supplier", e.target.value); }} className="h-7 text-[11px] font-bold border border-slate-300 rounded bg-amber-50/40 px-2 outline-none focus:border-amber-500 w-[140px]" />
                 </div>
               </>
             )}
