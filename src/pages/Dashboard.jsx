@@ -1,3 +1,4 @@
+import { getPlanIdFromPrice, getUsdPriceId } from "@/lib/subscriptionPlans";
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -35,12 +36,6 @@ const safeParseDate = (dateString) => {
   return isValid(parsed) ? parsed : null;
 };
 
-const getPlanIdFromPrice = (priceId) => {
-  if (priceId === 'price_1UAK7EIfI96QPT6lL73xZqir' || priceId === 'price_1UAK7EIfI96QPT6lJNF9XNlx') return 'starter';
-  if (priceId === 'price_1UAK7lIfI96QPT6lb0wHONs9' || priceId === 'price_1UAK8xIfI96QPT6lprie68A1') return 'professional';
-  if (priceId === 'price_1UAKBOIfI96QPT6lOL13LhkJ' || priceId === 'price_1UAKBOIfI96QPT6lhwHxB4T3') return 'business'; 
-  return 'starter'; 
-};
 
 export default function Dashboard() {
   const navigate = useNavigate(); 
@@ -84,7 +79,7 @@ export default function Dashboard() {
       }
 
       const isGoogleSignupAttempt = localStorage.getItem('google_signup_attempt');
-      const pendingPriceId = localStorage.getItem('pending_stripe_checkout');
+      const pendingPriceId = getUsdPriceId(localStorage.getItem('pending_stripe_checkout'));
 
       if (isGoogleSignupAttempt) {
         const { data: { session } } = await supabase.auth.getSession();

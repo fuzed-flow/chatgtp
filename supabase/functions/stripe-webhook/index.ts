@@ -1,3 +1,4 @@
+import { getPlanIdFromPrice } from "../_shared/subscriptionPlans.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import Stripe from "npm:stripe@^14.0.0";
 
@@ -231,10 +232,7 @@ Deno.serve(async (req) => {
       const priceId = subscription.items.data[0].price.id;
       const quantity = subscription.items.data[0].quantity || 1; 
 
-      let newPlanId = "starter"; 
-      if (priceId === 'price_1UAK7EIfI96QPT6lL73xZqir' || priceId === 'price_1UAK7EIfI96QPT6lJNF9XNlx') return 'starter';
-  if (priceId === 'price_1UAK7lIfI96QPT6lb0wHONs9' || priceId === 'price_1UAK8xIfI96QPT6lprie68A1') return 'professional';
-  if (priceId === 'price_1UAKBOIfI96QPT6lOL13LhkJ' || priceId === 'price_1UAKBOIfI96QPT6lhwHxB4T3') return 'business';
+      const newPlanId = getPlanIdFromPrice(priceId);
 
       const baseLimits: Record<string, number> = { starter: 1, professional: 3, business: 10 };
       const newMaxUsers = Math.max(quantity, baseLimits[newPlanId] || 1);

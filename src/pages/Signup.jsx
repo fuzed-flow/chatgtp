@@ -1,3 +1,4 @@
+import { getPlanIdFromPrice, getUsdPriceId, SUBSCRIPTION_PRICES } from "@/lib/subscriptionPlans";
 import React, { useState, useEffect } from "react"; 
 import { supabase } from "@/api/supabaseClient"; 
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
@@ -9,12 +10,6 @@ import { Card } from "@/components/ui/card";
 import { Building2, User, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
-const getPlanIdFromPrice = (priceId) => {
-  if (priceId === 'price_1UAK7EIfI96QPT6lL73xZqir' || priceId === 'price_1UAK7EIfI96QPT6lJNF9XNlx') return 'starter';
-  if (priceId === 'price_1UAK7lIfI96QPT6lb0wHONs9' || priceId === 'price_1UAK8xIfI96QPT6lprie68A1') return 'professional';
-  if (priceId === 'price_1UAKBOIfI96QPT6lOL13LhkJ' || priceId === 'price_1UAKBOIfI96QPT6lhwHxB4T3') return 'business'; 
-  return 'starter'; 
-};
 
 export default function SignUp() {
   const { user } = useAuth(); 
@@ -25,7 +20,7 @@ export default function SignUp() {
   const invitedEmail = searchParams.get("email"); 
   const isInvitedUser = !!invitedEmail;
   
-  const priceId = searchParams.get("plan") || "price_1UAK7EIfI96QPT6lL73xZqir";
+  const priceId = getUsdPriceId(searchParams.get("plan")) || SUBSCRIPTION_PRICES.starter.monthly;
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -48,7 +43,7 @@ export default function SignUp() {
       const currentUrlPlan = searchParams.get("plan");
       
       if (currentUrlPlan && !isInvitedUser) {
-        localStorage.setItem('pending_stripe_checkout', currentUrlPlan);
+        localStorage.setItem('pending_stripe_checkout', getUsdPriceId(currentUrlPlan) || priceId);
       }
       
       navigate("/dashboard"); 
@@ -66,7 +61,7 @@ export default function SignUp() {
     });
 
     return () => subscription.unsubscribe();
-  }, [user, navigate, searchParams, isInvitedUser]);
+  }, [user, navigate, searchParams, isInvitedUser, priceId]);
 
   const handleSignUp = async (e) => {
     e.preventDefault();

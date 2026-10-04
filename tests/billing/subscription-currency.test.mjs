@@ -1,0 +1,135 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { stripTypeScriptTypes } from 'node:module';
+import vm from 'node:vm';
+import {
+  SUBSCRIPTION_CURRENCY, SUBSCRIPTION_PRICES,
+  getPlanIdFromPrice, getUsdPriceId,
+} from '../../supabase/functions/_shared/subscriptionPlans.js';
+
+test('new and legacy links select the same plan and billing period in USD', () => {
+  assert.equal(SUBSCRIPTION_CURRENCY, 'USD');
+  for (const [planId, prices] of Object.entries(SUBSCRIPTION_PRICES)) {
+    for (const cycle of ['monthly', 'annual']) {
+      assert.equal(getPlanIdFromPrice(prices[cycle]), planId);
+      assert.equal(getPlanIdFromPrice(prices.legacy[cycle]), planId);
+      assert.equal(getUsdPriceId(prices[cycle]), prices[cycle]);
+      assert.equal(getUsdPriceId(prices.legacy[cycle]), prices[cycle]);
+    }
+  }
+  assert.equal(getUsdPriceId('price_unknown'), null);
+  assert.equal(getUsdPriceId(null), null);
+});
+
+async function loadHandler(path) {
+  let handler;
+  const checkoutCalls = [];
+  const companyUpdates = [];
+  const source = await readFile(new URL(path, import.meta.url), 'utf8');
+  const withoutImports = source.replace(/^import .*\n/gm, '');
+  const script = stripTypeScriptTypes(withoutImports, { mode: 'strip' });
+  const env = {
+    STRIPE_SECRET_KEY: 'test-secret',
+    STRIPE_WEBHOOK_SECRET: 'test-webhook-secret',
+    APP_URL: 'https://app.fuzedflow.com',
+  };
+  class Stripe {
+    static createFetchHttpClient() { return {}; }
+    static createSubtleCryptoProvider() { return {}; }
+    checkout = { sessions: { create: async (parameters) => {
+      checkoutCalls.push(parameters);
+      return { url: 'https://checkout.stripe.com/test' };
+    } } };
+    webhooks = { constructEventAsync: async (body) => JSON.parse(body) };
+  }
+  const client = {
+    auth: { getUser: async () => ({ data: { user: { id: 'user-test' } } }) },
+    from: (table) => ({
+      update: (values) => ({
+        eq: async (column, value) => {
+          companyUpdates.push({ table, values, column, value });
+          return { error: null };
+        },
+      }),
+    }),
+  };
+  const context = vm.createContext({
+    Stripe, createClient: () => client,
+    getPlanIdFromPrice, getUsdPriceId,
+    Deno: { env: { get: (key) => env[key] || '' }, serve: (fn) => { handler = fn; } },
+    serve: (fn) => { handler = fn; },
+    Request, Response, console,
+  });
+  new vm.Script(script, { filename: path }).runInContext(context);
+  assert.equal(typeof handler, 'function');
+  return { handler, checkoutCalls, companyUpdates };
+}
+
+test('checkout maps all six CAD links to USD while preserving trial and quantities', async () => {
+  const { handler, checkoutCalls } = await loadHandler('../../supabase/functions/create-checkout/index.ts');
+  for (const [planId, prices] of Object.entries(SUBSCRIPTION_PRICES)) {
+    for (const cycle of ['monthly', 'annual']) {
+      const response = await handler(new Request('https://example.com/create-checkout', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          price_id: prices.legacy[cycle],
+          plan_id: 'incorrect-client-value',
+          company_id: 'company-test',
+        }),
+      }));
+      assert.equal(response.status, 200);
+      const parameters = checkoutCalls.at(-1);
+      assert.equal(parameters.line_items[0].price, prices[cycle]);
+      assert.equal(parameters.line_items[0].quantity, 1);
+      assert.equal(parameters.mode, 'subscription');
+      assert.equal(parameters.subscription_data.trial_period_days, 14);
+      assert.equal(parameters.subscription_data.metadata.plan_id, planId);
+      assert.equal(parameters.metadata.plan_id, planId);
+      assert.equal(parameters.client_reference_id, 'company-test');
+      assert.equal(parameters.automatic_tax, undefined);
+    }
+  }
+});
+
+test('checkout rejects an unknown price before creating a session', async () => {
+  const { handler, checkoutCalls } = await loadHandler('../../supabase/functions/create-checkout/index.ts');
+  const response = await handler(new Request('https://example.com/create-checkout', {
+    method: 'POST',
+    body: JSON.stringify({ price_id: 'price_unknown', company_id: 'company-test' }),
+  }));
+  assert.equal(response.status, 400);
+  assert.equal(checkoutCalls.length, 0);
+});
+
+test('subscription updates retain entitlements for all CAD and USD price variants', async () => {
+  const { handler, companyUpdates } = await loadHandler('../../supabase/functions/stripe-webhook/index.ts');
+  const includedUsers = { starter: 1, professional: 3, business: 10 };
+  for (const [planId, prices] of Object.entries(SUBSCRIPTION_PRICES)) {
+    for (const priceId of [prices.monthly, prices.annual, prices.legacy.monthly, prices.legacy.annual]) {
+      const event = {
+        type: 'customer.subscription.updated',
+        data: { object: {
+          customer: 'cus_test',
+          status: 'trialing',
+          items: { data: [{ price: { id: priceId }, quantity: 1 }] },
+        } },
+      };
+      const response = await handler(new Request('https://example.com/stripe-webhook', {
+        method: 'POST',
+        headers: { 'Stripe-Signature': 'test-signature' },
+        body: JSON.stringify(event),
+      }));
+      assert.equal(response.status, 200);
+      const update = companyUpdates.at(-1);
+      assert.equal(update.table, 'companies');
+      assert.equal(update.values.plan_id, planId);
+      assert.equal(update.values.subscription_status, 'Active');
+      assert.equal(update.values.max_users, includedUsers[planId]);
+      assert.equal(update.column, 'stripe_customer_id');
+      assert.equal(update.value, 'cus_test');
+    }
+  }
+  assert.equal(companyUpdates.length, 12);
+});
