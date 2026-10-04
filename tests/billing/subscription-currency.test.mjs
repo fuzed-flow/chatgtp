@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import vm from 'node:vm';
 import {
   SUBSCRIPTION_CURRENCY, SUBSCRIPTION_PRICES,
-  getPlanIdFromPrice, getUsdPriceId,
+  getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId,
 } from '../../supabase/functions/_shared/subscriptionPlans.js';
 
 test('new and legacy links select the same plan and billing period in USD', () => {
@@ -16,10 +16,13 @@ test('new and legacy links select the same plan and billing period in USD', () =
       assert.equal(getPlanIdFromPrice(prices.legacy[cycle]), planId);
       assert.equal(getUsdPriceId(prices[cycle]), prices[cycle]);
       assert.equal(getUsdPriceId(prices.legacy[cycle]), prices[cycle]);
+      assert.equal(getBillingCycleFromPrice(prices[cycle]), cycle);
+      assert.equal(getBillingCycleFromPrice(prices.legacy[cycle]), cycle);
     }
   }
   assert.equal(getUsdPriceId('price_unknown'), null);
   assert.equal(getUsdPriceId(null), null);
+  assert.equal(getBillingCycleFromPrice('price_unknown'), null);
 });
 
 async function loadHandler(path) {
@@ -56,7 +59,7 @@ async function loadHandler(path) {
   };
   const context = vm.createContext({
     Stripe, createClient: () => client,
-    getPlanIdFromPrice, getUsdPriceId,
+    getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId,
     Deno: { env: { get: (key) => env[key] || '' }, serve: (fn) => { handler = fn; } },
     serve: (fn) => { handler = fn; },
     Request, Response, console,
@@ -84,6 +87,8 @@ test('checkout maps all six CAD links to USD while preserving trial and quantiti
       assert.equal(parameters.line_items[0].price, prices[cycle]);
       assert.equal(parameters.line_items[0].quantity, 1);
       assert.equal(parameters.mode, 'subscription');
+      assert.equal(parameters.allow_promotion_codes, cycle === 'monthly');
+      assert.equal(parameters.payment_method_types, undefined);
       assert.equal(parameters.subscription_data.trial_period_days, 14);
       assert.equal(parameters.subscription_data.metadata.plan_id, planId);
       assert.equal(parameters.metadata.plan_id, planId);
