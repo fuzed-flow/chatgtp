@@ -1,4 +1,4 @@
-import { getPlanIdFromPrice, getUsdPriceId } from "../_shared/subscriptionPlans.js";
+import { getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId } from "../_shared/subscriptionPlans.js";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import Stripe from 'npm:stripe@^14.0.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -50,7 +50,8 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      allow_promotion_codes: true,
+      // A free-month coupon must not waive an entire annual invoice.
+      allow_promotion_codes: getBillingCycleFromPrice(usdPriceId) === 'monthly',
       subscription_data: {
         trial_period_days: 14, 
         metadata: {

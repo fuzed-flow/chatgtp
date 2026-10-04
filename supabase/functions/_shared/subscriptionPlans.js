@@ -43,3 +43,6 @@ export const getPlanIdFromPrice = (priceId) =>
 
 export const getUsdPriceId = (priceId) =>
   priceDetails.get(priceId)?.usdPriceId || null;
+
+export const getBillingCycleFromPrice = (priceId) =>
+  priceDetails.get(priceId)?.billingCycle || null;
