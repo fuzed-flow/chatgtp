@@ -1,0 +1,3149 @@
+[
+  {
+    "slug": "create-fuzedflow-account",
+    "feature_area": "Account",
+    "audience": "contractor",
+    "question": "How do I create a FuzedFlow account?",
+    "answer_short": "Create your company account from the FuzedFlow sign-up page using email and password or Google sign-in.",
+    "answer_long": "New company accounts can be created with email/password or Google sign-in. New sign-ups start a 14-day free trial. If you were invited to an existing company, use the invitation flow instead of creating another company.",
+    "route": "/signup",
+    "search_terms": [
+      "signup",
+      "account",
+      "free trial",
+      "google"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-0"
+  },
+  {
+    "slug": "free-trial-length",
+    "feature_area": "Account",
+    "audience": "contractor",
+    "question": "How long is the FuzedFlow free trial?",
+    "answer_short": "New company accounts start with a 14-day free trial.",
+    "answer_long": "New company accounts start with a 14-day free trial.",
+    "route": "/signup",
+    "search_terms": [
+      "trial",
+      "14 day",
+      "free trial"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-1"
+  },
+  {
+    "slug": "google-sign-in",
+    "feature_area": "Account",
+    "audience": "all",
+    "question": "Can I sign in or sign up with Google?",
+    "answer_short": "Yes. FuzedFlow supports Google authentication as well as email and password.",
+    "answer_long": "Yes. FuzedFlow supports Google authentication as well as email and password.",
+    "route": "/signup",
+    "search_terms": [
+      "google",
+      "oauth",
+      "login",
+      "sign in"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-2"
+  },
+  {
+    "slug": "one-email-one-company",
+    "feature_area": "Account",
+    "audience": "all",
+    "question": "Can the same email belong to more than one FuzedFlow company?",
+    "answer_short": "No. The current account flow allows one FuzedFlow company per email address.",
+    "answer_long": "If an invited email already belongs to another FuzedFlow company, FuzedFlow asks the administrator to invite a different email address.",
+    "route": "/signup",
+    "search_terms": [
+      "email",
+      "company",
+      "invite",
+      "already exists"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-3"
+  },
+  {
+    "slug": "change-order-client-message",
+    "feature_area": "Change Orders",
+    "audience": "contractor",
+    "question": "Can I add a client message and terms to a change order?",
+    "answer_short": "Yes. Change orders support client-facing messaging and terms.",
+    "answer_long": "Yes. Change orders support client-facing messaging and terms.",
+    "route": "/ChangeOrders",
+    "search_terms": [
+      "change order",
+      "client message",
+      "terms"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-4"
+  },
+  {
+    "slug": "change-order-search",
+    "feature_area": "Change Orders",
+    "audience": "contractor",
+    "question": "Can I search change orders?",
+    "answer_short": "Yes. Change orders can be searched by title, change-order number or client and filtered by status.",
+    "answer_long": "Yes. Change orders can be searched by title, change-order number or client and filtered by status.",
+    "route": "/ChangeOrders",
+    "search_terms": [
+      "change order",
+      "search",
+      "filter"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-5"
+  },
+  {
+    "slug": "change-order-statuses",
+    "feature_area": "Change Orders",
+    "audience": "contractor",
+    "question": "What statuses are available for change orders?",
+    "answer_short": "Change orders support Draft, Sent, Approved, and Declined statuses.",
+    "answer_long": "Change orders can have **Draft, Sent, Approved, and Declined** states. Review status separately from the document’s financial totals.\n\nSending a change order and getting client approval are separate steps. Confirm the scope, price, and terms before sending it.",
+    "requires_admin": false,
+    "search_terms": [
+      "change order",
+      "status",
+      "draft",
+      "sent",
+      "approved"
+    ],
+    "route": "/ChangeOrders",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-6"
+  },
+  {
+    "slug": "change-order-totals",
+    "feature_area": "Change Orders",
+    "audience": "contractor",
+    "question": "Can I see pending and approved change-order totals?",
+    "answer_short": "Yes. The change-order area shows Pending Approval and Approved totals.",
+    "answer_long": "Yes. The change-order area shows Pending Approval and Approved totals.",
+    "route": "/ChangeOrders",
+    "search_terms": [
+      "change order",
+      "pending approval",
+      "approved total"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-7"
+  },
+  {
+    "slug": "send-change-order",
+    "feature_area": "Change Orders",
+    "audience": "contractor",
+    "question": "Can I send a change order to a client for approval?",
+    "answer_short": "Yes. Change orders can be sent to the client and moved through the approval workflow.",
+    "answer_long": "Yes. Change orders can be sent to the client and moved through the approval workflow.",
+    "route": "/ChangeOrders",
+    "search_terms": [
+      "change order",
+      "send",
+      "approval"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-8"
+  },
+  {
+    "slug": "client-portal-content",
+    "feature_area": "Client Portal",
+    "audience": "client",
+    "question": "What can a client access through the Client Portal?",
+    "answer_short": "The Client Portal provides access to client-facing documents such as quotes, change orders and invoices when the portal is enabled.",
+    "answer_long": "Clients can use their shared portal link to access client-facing documents such as quotes, change orders, and invoices when the portal is enabled.\n\nCompany staff control which project phases, updates, and files are client-visible. Review client-visible information before sharing access; internal records are managed separately.",
+    "requires_admin": false,
+    "search_terms": [
+      "client portal",
+      "quotes",
+      "change orders",
+      "invoices"
+    ],
+    "route": "/Clients",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-9"
+  },
+  {
+    "slug": "client-portal-disable",
+    "feature_area": "Client Portal",
+    "audience": "admin",
+    "question": "Can I disable the Client Portal?",
+    "answer_short": "Yes. Company settings include a control for enabling or disabling the Client Portal.",
+    "answer_long": "Yes. Company settings include a control for enabling or disabling the Client Portal.",
+    "route": "/Clients",
+    "search_terms": [
+      "client portal",
+      "disable",
+      "settings"
+    ],
+    "requires_admin": true,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-10"
+  },
+  {
+    "slug": "client-portal-welcome",
+    "feature_area": "Client Portal",
+    "audience": "admin",
+    "question": "Can I customize the Client Portal welcome message?",
+    "answer_short": "Yes. The Client Portal settings include a custom welcome message.",
+    "answer_long": "Yes. The Client Portal settings include a custom welcome message.",
+    "route": "/Clients",
+    "search_terms": [
+      "client portal",
+      "welcome message",
+      "settings"
+    ],
+    "requires_admin": true,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-11"
+  },
+  {
+    "slug": "client-timeline-content",
+    "feature_area": "Client Timeline",
+    "audience": "contractor",
+    "question": "What appears in the Client Timeline Feed?",
+    "answer_short": "The Client Timeline combines client-visible manual updates, milestones, project phases and client-visible issues into one chronological feed.",
+    "answer_long": "The Client Timeline combines client-visible manual updates, milestones, project phases and client-visible issues into one chronological feed.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "client timeline",
+      "milestones",
+      "phases",
+      "issues",
+      "updates"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-12"
+  },
+  {
+    "slug": "client-timeline-private-info",
+    "feature_area": "Client Timeline",
+    "audience": "contractor",
+    "question": "Can clients see internal notes or micro-costs in the Client Timeline?",
+    "answer_short": "No. The Client Timeline is designed to show client-visible project information while keeping internal notes and micro-costs hidden.",
+    "answer_long": "No. The Client Timeline is designed to show client-visible project information while keeping internal notes and micro-costs hidden.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "client timeline",
+      "internal notes",
+      "costs",
+      "privacy"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-13"
+  },
+  {
+    "slug": "post-client-update",
+    "feature_area": "Client Timeline",
+    "audience": "contractor",
+    "question": "Can I post a manual project update for the client?",
+    "answer_short": "Yes. Use Post Update to add a dated client update with a title, details, category and client-visibility setting.",
+    "answer_long": "Yes. Use Post Update to add a dated client update with a title, details, category and client-visibility setting.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "post update",
+      "client update",
+      "timeline"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-14"
+  },
+  {
+    "slug": "client-file-uploads",
+    "feature_area": "Clients",
+    "audience": "contractor",
+    "question": "Can I upload files to a client record?",
+    "answer_short": "Yes. FuzedFlow supports client attachments including site photos/information and subcontractor quotes.",
+    "answer_long": "Yes. FuzedFlow supports client attachments including site photos/information and subcontractor quotes.",
+    "route": "/Clients",
+    "search_terms": [
+      "client",
+      "files",
+      "attachments",
+      "site photos",
+      "subcontractor quote"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-15"
+  },
+  {
+    "slug": "client-site-photos",
+    "feature_area": "Clients",
+    "audience": "contractor",
+    "question": "Where can I keep site photos before a project starts?",
+    "answer_short": "Site photos and project information can be uploaded to the client's record and stored as client attachments.",
+    "answer_long": "Site photos and project information can be uploaded to the client's record and stored as client attachments.",
+    "route": "/Clients",
+    "search_terms": [
+      "site photos",
+      "client",
+      "attachments"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-16"
+  },
+  {
+    "slug": "client-tasks",
+    "feature_area": "Clients",
+    "audience": "contractor",
+    "question": "Can I create tasks for a client?",
+    "answer_short": "Yes. Client records can include tasks with status, priority, due date, estimated hours, project link and assignee.",
+    "answer_long": "Yes. Client records can include tasks with status, priority, due date, estimated hours, project link and assignee.",
+    "route": "/Clients",
+    "search_terms": [
+      "client",
+      "task",
+      "priority",
+      "due date"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-17"
+  },
+  {
+    "slug": "contractor-portal-no-account",
+    "feature_area": "Contractor Portal",
+    "audience": "subcontractor",
+    "question": "Do subcontractors need a FuzedFlow account to view the Contractor Portal?",
+    "answer_short": "No. The project has a public Contractor Portal link that can be shared with bidding subcontractors or temporary workers without requiring an account.",
+    "answer_long": "No. The project has a public Contractor Portal link that can be shared with bidding subcontractors or temporary workers without requiring an account.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "contractor portal",
+      "subcontractor",
+      "public link",
+      "no account"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-18"
+  },
+  {
+    "slug": "contractor-portal-remove-file",
+    "feature_area": "Contractor Portal",
+    "audience": "contractor",
+    "question": "Can I remove a file from the Contractor Portal?",
+    "answer_short": "Yes. Files can be removed from the portal's visible file list.",
+    "answer_long": "Yes. Files can be removed from the portal's visible file list.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "contractor portal",
+      "remove document",
+      "delete"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-19"
+  },
+  {
+    "slug": "contractor-portal-scope",
+    "feature_area": "Contractor Portal",
+    "audience": "contractor",
+    "question": "Can I control the scope of work shown to contractors?",
+    "answer_short": "Yes. The Contractor Portal tab includes a Scope of Work editor for project instructions and expectations.",
+    "answer_long": "Yes. The Contractor Portal tab includes a Scope of Work editor for project instructions and expectations.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "contractor portal",
+      "scope of work",
+      "subcontractor"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-20"
+  },
+  {
+    "slug": "contractor-portal-share-existing",
+    "feature_area": "Contractor Portal",
+    "audience": "contractor",
+    "question": "Can I share an existing project document with subcontractors?",
+    "answer_short": "Yes. You can select existing project documents or plans and add them to the Contractor Portal without uploading the file again.",
+    "answer_long": "1. Open the project’s **Contractor Portal** tab.\n2. Choose the existing project documents or plans that contractors should see.\n3. Review the visible file list and scope before sharing the portal link.\n\nThe public portal does not require a FuzedFlow account. Share only documents intended for the contractors receiving the link.",
+    "requires_admin": false,
+    "search_terms": [
+      "contractor portal",
+      "existing files",
+      "plans",
+      "documents"
+    ],
+    "route": "/PMProjects",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-21"
+  },
+  {
+    "slug": "contractor-portal-upload",
+    "feature_area": "Contractor Portal",
+    "audience": "contractor",
+    "question": "Can I upload files directly to the Contractor Portal?",
+    "answer_short": "Yes. You can upload new files directly to the portal and optionally add a description.",
+    "answer_long": "Yes. You can upload new files directly to the portal and optionally add a description.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "contractor portal",
+      "upload",
+      "file",
+      "description"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-22"
+  },
+  {
+    "slug": "daily-log-edit-delete",
+    "feature_area": "Daily Logs",
+    "audience": "contractor",
+    "question": "Can project Daily Logs be edited or deleted?",
+    "answer_short": "Yes. The Project Management Daily Logs tab includes update and delete actions for existing entries.",
+    "answer_long": "Yes. The Project Management Daily Logs tab includes update and delete actions for existing entries.",
+    "route": "/DailyLogs",
+    "search_terms": [
+      "daily log",
+      "edit",
+      "delete"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-23"
+  },
+  {
+    "slug": "daily-log-fields",
+    "feature_area": "Daily Logs",
+    "audience": "employee",
+    "question": "What information belongs in a Daily Log?",
+    "answer_short": "Daily Logs are designed to capture the date, weather, crew on site, work summary, blockers, safety concerns, materials used and photos.",
+    "answer_long": "Use a daily log to record the date, weather, crew, work completed, blockers, safety concerns, materials, and photos.\n\nFor a project, open **PM Projects → your project → Project Notes**. Field users can use **Employee Portal → Project Notes** when enabled.\n\nWrite clear factual updates and check the linked project before saving. The main **Daily Logs** page also has **Submit New Log** for creating a field log.",
+    "requires_admin": false,
+    "search_terms": [
+      "daily log",
+      "site diary",
+      "weather",
+      "crew",
+      "blockers",
+      "safety"
+    ],
+    "route": "/DailyLogs",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-24"
+  },
+  {
+    "slug": "daily-log-weather",
+    "feature_area": "Daily Logs",
+    "audience": "employee",
+    "question": "What weather options are available in a Daily Log?",
+    "answer_short": "The PM Daily Log component includes Sunny, Cloudy, Rainy, Snowy, Windy, Hot and Cold.",
+    "answer_long": "The PM Daily Log component includes Sunny, Cloudy, Rainy, Snowy, Windy, Hot and Cold.",
+    "route": "/DailyLogs",
+    "search_terms": [
+      "daily log",
+      "weather",
+      "sunny",
+      "snowy"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-25"
+  },
+  {
+    "slug": "employee-portal-features",
+    "feature_area": "Employee Portal",
+    "audience": "employee",
+    "question": "What can employees access in the Employee Portal?",
+    "answer_short": "The Employee Portal provides your time, expenses, assigned projects, schedule, tasks, logs, inventory, and profile, subject to company settings.",
+    "answer_long": "Open **Employee Portal** for your field tools. Available sections depend on your company’s plan and enabled features.\n\n- **Clock In**, **My Time Sheets**, **My Pay**, **My Time Off**, and **My Expenses**.\n- **My Projects**, **My Schedule**, **Project Notes**, **My Tasks**, and **Inventory**.\n- **Profile** for your own details.\n\nUse the portal’s menu to choose a section on mobile. If a section is missing, ask your company administrator to check your access and enabled features.",
+    "requires_admin": false,
+    "search_terms": [
+      "employee portal",
+      "clock in",
+      "timesheet",
+      "vacation",
+      "expenses"
+    ],
+    "route": "/EmployeePortal",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-26"
+  },
+  {
+    "slug": "hr-approvals",
+    "feature_area": "HR",
+    "audience": "admin",
+    "question": "What can administrators approve in the HR area?",
+    "answer_short": "Administrators can review timesheets, time-off requests and expenses, including pending approvals and timesheet adjustments.",
+    "answer_long": "Owners and admins review submitted **timesheets, time-off requests, and expenses** in **Human Resources**.\n\n1. Open the relevant approval section.\n2. Review the employee, dates, hours or amount, and supporting details.\n3. Approve or reject the request as appropriate.\n\nSubmitted, approved, and rejected records can generate role-based in-app notifications.",
+    "requires_admin": true,
+    "search_terms": [
+      "hr",
+      "timesheet",
+      "time off",
+      "expenses",
+      "approval"
+    ],
+    "route": "/HumanResources",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-27"
+  },
+  {
+    "slug": "inventory-csv",
+    "feature_area": "Inventory",
+    "audience": "contractor",
+    "question": "Does Inventory support CSV functionality?",
+    "answer_short": "Yes. The Inventory page includes CSV-related functionality.",
+    "answer_long": "Yes. The Inventory page includes CSV-related functionality.",
+    "route": "/Inventory",
+    "search_terms": [
+      "inventory",
+      "csv",
+      "import",
+      "export"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-28"
+  },
+  {
+    "slug": "inventory-tracking",
+    "feature_area": "Inventory",
+    "audience": "contractor",
+    "question": "What can FuzedFlow track in Inventory?",
+    "answer_short": "The Inventory area tracks items, quantities, locations, statuses and units and includes inventory movement/history functionality.",
+    "answer_long": "The Inventory area tracks items, quantities, locations, statuses and units and includes inventory movement/history functionality.",
+    "route": "/Inventory",
+    "search_terms": [
+      "inventory",
+      "quantity",
+      "location",
+      "status",
+      "movement"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-29"
+  },
+  {
+    "slug": "delete-paid-milestone",
+    "feature_area": "Invoices",
+    "audience": "contractor",
+    "question": "Can I delete a payment milestone after it has been paid?",
+    "answer_short": "No. Paid milestones are protected from deletion in the payment-schedule editor.",
+    "answer_long": "No. Paid milestones are protected from deletion in the payment-schedule editor.",
+    "route": "/Invoices",
+    "search_terms": [
+      "paid milestone",
+      "delete",
+      "payment schedule"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-30"
+  },
+  {
+    "slug": "invoice-email-template",
+    "feature_area": "Invoices",
+    "audience": "admin",
+    "question": "Can I customize the invoice email?",
+    "answer_short": "Yes. The invoice email can use company templates and supports variables such as client name, invoice number and invoice title.",
+    "answer_long": "Yes. The invoice email can use company templates and supports variables such as client name, invoice number and invoice title.",
+    "route": "/Invoices",
+    "search_terms": [
+      "invoice email",
+      "template",
+      "client name",
+      "invoice number"
+    ],
+    "requires_admin": true,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-31"
+  },
+  {
+    "slug": "invoice-sms-link",
+    "feature_area": "Invoices",
+    "audience": "contractor",
+    "question": "Can I accidentally delete the payment link while editing the invoice text message?",
+    "answer_short": "The secure invoice link is displayed separately from the editable message and is appended to the outgoing SMS.",
+    "answer_long": "The secure invoice link is displayed separately from the editable message and is appended to the outgoing SMS.",
+    "route": "/Invoices",
+    "search_terms": [
+      "invoice",
+      "sms",
+      "secure link",
+      "payment link"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-32"
+  },
+  {
+    "slug": "invoice-statuses",
+    "feature_area": "Invoices",
+    "audience": "contractor",
+    "question": "What invoice statuses does FuzedFlow use?",
+    "answer_short": "Invoice workflows use Draft, Sent, Partial, Paid and Overdue statuses.",
+    "answer_long": "Invoice workflows use Draft, Sent, Partial, Paid and Overdue statuses.",
+    "route": "/Invoices",
+    "search_terms": [
+      "invoice",
+      "status",
+      "partial",
+      "paid",
+      "overdue"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-33"
+  },
+  {
+    "slug": "payment-milestone-trigger",
+    "feature_area": "Invoices",
+    "audience": "contractor",
+    "question": "Can a payment milestone include a trigger or requirement?",
+    "answer_short": "Yes. Each milestone can include a requirement such as 'Upon contract signing', 'After drywall inspection' or another custom trigger.",
+    "answer_long": "Yes. Each milestone can include a requirement such as 'Upon contract signing', 'After drywall inspection' or another custom trigger.",
+    "route": "/Invoices",
+    "search_terms": [
+      "milestone",
+      "trigger",
+      "requirement",
+      "payment"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-34"
+  },
+  {
+    "slug": "payment-schedule",
+    "feature_area": "Invoices",
+    "audience": "contractor",
+    "question": "Can I create a payment schedule for an invoice?",
+    "answer_short": "Yes. Invoice payment schedules are built from named payment milestones with dollar amounts and trigger/requirement descriptions.",
+    "answer_long": "Yes. Invoice payment schedules are built from named payment milestones with dollar amounts and trigger/requirement descriptions.",
+    "route": "/Invoices",
+    "search_terms": [
+      "invoice",
+      "payment schedule",
+      "milestone",
+      "deposit"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-35"
+  },
+  {
+    "slug": "payment-schedule-balance",
+    "feature_area": "Invoices",
+    "audience": "contractor",
+    "question": "Why can't I confirm an invoice payment schedule?",
+    "answer_short": "The payment milestones must add up to the invoice contract total before the schedule can be confirmed.",
+    "answer_long": "The sum of the payment milestones must equal the invoice’s contract total.\n\nReview each milestone amount and the amount remaining to schedule. Correct the difference before confirming. Paid milestones cannot be deleted from the schedule editor.",
+    "requires_admin": false,
+    "search_terms": [
+      "payment schedule",
+      "balanced",
+      "invoice total",
+      "remaining to schedule"
+    ],
+    "route": "/Invoices",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-36"
+  },
+  {
+    "slug": "send-invoice-email",
+    "feature_area": "Invoices",
+    "audience": "contractor",
+    "question": "How do I send an invoice by email?",
+    "answer_short": "Use Send Invoice via Email. The message includes a secure View & Pay Invoice link and an Access Client Portal link, then marks the invoice Sent after a successful send.",
+    "answer_long": "Open the invoice, choose its email sending action, and review the client’s address, subject, message, and secure **View & Pay Invoice** link. Send after confirming the invoice details.\n\nA successful send updates the invoice to **Sent**. The client portal link is included where supported. Do not treat opening the send dialog as confirmation of delivery.",
+    "requires_admin": false,
+    "search_terms": [
+      "invoice",
+      "email",
+      "send",
+      "pay"
+    ],
+    "route": "/Invoices",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-37"
+  },
+  {
+    "slug": "send-invoice-sms",
+    "feature_area": "Invoices",
+    "audience": "contractor",
+    "question": "Can I send an invoice by text message?",
+    "answer_short": "Yes. FuzedFlow can send the client an SMS with the invoice number, balance due and a secure Public Invoice link.",
+    "answer_long": "Yes. FuzedFlow can send the client an SMS with the invoice number, balance due and a secure Public Invoice link.",
+    "route": "/Invoices",
+    "search_terms": [
+      "invoice",
+      "sms",
+      "text",
+      "balance due"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-38"
+  },
+  {
+    "slug": "assign-lead",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "Can I assign a lead to a team member?",
+    "answer_short": "Yes. Leads can be assigned to a team member for follow-up and sales ownership.",
+    "answer_long": "1. Open the lead in **Lead Tracker**.\n2. Open the lead’s editing form.\n3. Choose the person under **Assign Team Member**.\n4. Save the change.\n\nAn assigned sales owner helps your team track follow-up responsibility; it does not automatically create a separate task.",
+    "requires_admin": false,
+    "search_terms": [
+      "lead",
+      "assign",
+      "salesperson",
+      "team"
+    ],
+    "route": "/LeadTracker",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-39"
+  },
+  {
+    "slug": "convert-lead-client",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "What happens when I convert a lead to a client?",
+    "answer_short": "FuzedFlow creates a client from the lead's contact and address information, marks the lead Won and opens the new client profile.",
+    "answer_long": "Use the conversion action on the lead when the prospect becomes a client. FuzedFlow creates a client using the lead’s contact and address details, copies notes and the lead source, marks the lead **Won**, and opens the new client profile.\n\nReview the new client’s email, phone, and site address before creating documents.",
+    "requires_admin": false,
+    "search_terms": [
+      "lead",
+      "convert",
+      "client",
+      "won"
+    ],
+    "route": "/LeadTracker",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-40"
+  },
+  {
+    "slug": "import-export-leads",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "Can I import or export leads?",
+    "answer_short": "Yes. The leads area includes import and export functionality.",
+    "answer_long": "Yes. The leads area includes import and export functionality.",
+    "route": "/LeadTracker",
+    "search_terms": [
+      "lead",
+      "import",
+      "export",
+      "csv"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-41"
+  },
+  {
+    "slug": "lead-fields",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "What information can I store on a lead?",
+    "answer_short": "Lead records can include contact details, address, description, internal notes, priority, estimated value, next follow-up date, assigned team member and files.",
+    "answer_long": "Open **Lead Tracker** and select **New Lead**. Enter the required first name and surname, then add email, phone, source, priority, pipeline stage, estimated value, next follow-up date, and **Assign Team Member** as needed.\n\nAdd the site address, description, photos, and internal notes before selecting **Create Lead**. Review the lead after saving to confirm the details.",
+    "requires_admin": false,
+    "search_terms": [
+      "lead",
+      "priority",
+      "estimated value",
+      "follow up",
+      "notes",
+      "files"
+    ],
+    "route": "/LeadTracker",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-42"
+  },
+  {
+    "slug": "lead-follow-up-date",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "Can I set a follow-up date on a lead?",
+    "answer_short": "Yes. A lead can have a next follow-up date so the sales team can track when to contact the prospect again.",
+    "answer_long": "Open the lead’s editing form, enter **Next Follow Up Date**, and save. Use the lead details and filters to review when the prospect should be contacted again.\n\nA saved follow-up date is a planning field; it does not by itself send a message to the prospect.",
+    "requires_admin": false,
+    "search_terms": [
+      "lead",
+      "follow up",
+      "date",
+      "reminder"
+    ],
+    "route": "/LeadTracker",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-43"
+  },
+  {
+    "slug": "lead-list-kanban",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "Can I view leads as a list instead of a Kanban board?",
+    "answer_short": "Yes. FuzedFlow supports both Kanban and list views for lead tracking.",
+    "answer_long": "In **Lead Tracker**, use the view controls to switch between **Kanban** and **List**. Kanban groups leads by stage; List makes it easier to compare lead details.\n\nUse search and the available filters to narrow the records shown. Switching views does not change a lead’s pipeline stage.",
+    "requires_admin": false,
+    "search_terms": [
+      "lead",
+      "list",
+      "kanban",
+      "view"
+    ],
+    "route": "/LeadTracker",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-44"
+  },
+  {
+    "slug": "lead-notes-transfer",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "Do lead notes transfer when I convert a lead to a client?",
+    "answer_short": "Yes. The lead notes are copied into the new client record during conversion.",
+    "answer_long": "Yes. The lead notes are copied into the new client record during conversion.",
+    "route": "/LeadTracker",
+    "search_terms": [
+      "lead",
+      "notes",
+      "convert",
+      "client"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-45"
+  },
+  {
+    "slug": "lead-pipeline-stages",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "What stages are available in the FuzedFlow lead pipeline?",
+    "answer_short": "The lead pipeline includes New, Contacted, Booked Visit, Quoted, Negotiation, Won and Lost.",
+    "answer_long": "The pipeline stages are **New, Contacted, Booked Visit, Quoted, Negotiation, Won, and Lost**.\n\nMove the lead as the sales conversation progresses. **Won** and **Lost** are closing outcomes. Updating a stage does not send a quote or invoice to the client.",
+    "requires_admin": false,
+    "search_terms": [
+      "lead",
+      "pipeline",
+      "stage",
+      "won",
+      "lost"
+    ],
+    "route": "/LeadTracker",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-46"
+  },
+  {
+    "slug": "move-lead-stage",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "How do I move a lead to another pipeline stage?",
+    "answer_short": "Use the lead pipeline to update the lead's stage. In Kanban view, leads can be moved through the sales stages.",
+    "answer_long": "Use the lead pipeline to update the lead's stage. In Kanban view, leads can be moved through the sales stages.",
+    "route": "/LeadTracker",
+    "search_terms": [
+      "lead",
+      "kanban",
+      "drag",
+      "stage"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-47"
+  },
+  {
+    "slug": "apply-payment-milestone",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "Can I apply a payment to a specific scheduled milestone?",
+    "answer_short": "Yes. Select the scheduled payment and FuzedFlow automatically fills the amount still due on that milestone.",
+    "answer_long": "Yes. Select the scheduled payment and FuzedFlow automatically fills the amount still due on that milestone.",
+    "route": "/Invoices",
+    "search_terms": [
+      "payment",
+      "milestone",
+      "scheduled payment",
+      "amount due"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-48"
+  },
+  {
+    "slug": "apply-payment-overall",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "Can I record a payment against the overall invoice balance instead of a milestone?",
+    "answer_short": "Yes. Choose Apply to Overall Balance and FuzedFlow fills the invoice's current remaining balance.",
+    "answer_long": "Yes. Choose Apply to Overall Balance and FuzedFlow fills the invoice's current remaining balance.",
+    "route": "/Invoices",
+    "search_terms": [
+      "overall balance",
+      "payment",
+      "invoice"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-49"
+  },
+  {
+    "slug": "invoice-auto-paid",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "When does an invoice become Paid?",
+    "answer_short": "After payment records are recalculated, the invoice becomes Paid when its remaining balance reaches zero.",
+    "answer_long": "After payment records are recalculated, the invoice becomes Paid when its remaining balance reaches zero.",
+    "route": "/Invoices",
+    "search_terms": [
+      "invoice paid",
+      "balance zero",
+      "payment"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-50"
+  },
+  {
+    "slug": "milestone-status-auto",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "How are payment milestone statuses calculated?",
+    "answer_short": "Each milestone becomes Pending, Partial or Paid based on the total payments linked to that milestone.",
+    "answer_long": "Each milestone becomes Pending, Partial or Paid based on the total payments linked to that milestone.",
+    "route": "/Invoices",
+    "search_terms": [
+      "milestone",
+      "pending",
+      "partial",
+      "paid"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-51"
+  },
+  {
+    "slug": "partial-payment",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "Can FuzedFlow track partial payments?",
+    "answer_short": "Yes. If some money has been received but a balance remains, the invoice status becomes Partial.",
+    "answer_long": "Yes. If some money has been received but a balance remains, the invoice status becomes Partial.",
+    "route": "/Invoices",
+    "search_terms": [
+      "partial payment",
+      "invoice status",
+      "balance"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-52"
+  },
+  {
+    "slug": "payment-methods",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "What manual payment methods can I record?",
+    "answer_short": "The payment recorder includes Bank Transfer, Credit Card, Check, Cash and Other.",
+    "answer_long": "The payment recorder includes Bank Transfer, Credit Card, Check, Cash and Other.",
+    "route": "/Invoices",
+    "search_terms": [
+      "bank transfer",
+      "credit card",
+      "check",
+      "cash",
+      "payment method"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-53"
+  },
+  {
+    "slug": "payment-reference-notes",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "Can I store a cheque number or payment reference?",
+    "answer_short": "Yes. Record Payment includes a Reference Notes field for items such as cheque/check numbers or Stripe references.",
+    "answer_long": "Yes. Record Payment includes a Reference Notes field for items such as cheque/check numbers or Stripe references.",
+    "route": "/Invoices",
+    "search_terms": [
+      "reference",
+      "check number",
+      "stripe",
+      "notes"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-54"
+  },
+  {
+    "slug": "receipt-details",
+    "feature_area": "Payments",
+    "audience": "client",
+    "question": "What information appears on the payment receipt?",
+    "answer_short": "The receipt includes payment dates, invoice numbers, payment methods, payment amounts and the total amount received.",
+    "answer_long": "The receipt includes payment dates, invoice numbers, payment methods, payment amounts and the total amount received.",
+    "route": "/Invoices",
+    "search_terms": [
+      "receipt",
+      "date",
+      "invoice number",
+      "method",
+      "amount"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-55"
+  },
+  {
+    "slug": "receipt-multiple-invoices",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "Can a receipt include payments from more than one invoice?",
+    "answer_short": "Yes. The receipt can include selected payments from different invoices belonging to the same client.",
+    "answer_long": "Yes. The receipt can include selected payments from different invoices belonging to the same client.",
+    "route": "/Invoices",
+    "search_terms": [
+      "receipt",
+      "multiple invoices",
+      "payments"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-56"
+  },
+  {
+    "slug": "receipt-multiple-payments",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "Can one receipt include multiple payments?",
+    "answer_short": "Yes. You can select multiple recorded payments for the same client and send them together on one receipt.",
+    "answer_long": "Yes. You can select multiple recorded payments for the same client and send them together on one receipt.",
+    "route": "/Invoices",
+    "search_terms": [
+      "receipt",
+      "multiple payments",
+      "client"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-57"
+  },
+  {
+    "slug": "record-payment",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "How do I record a client payment?",
+    "answer_short": "Open Record Payment, choose the payment date, amount and payment method, optionally link it to a scheduled milestone, then save the payment.",
+    "answer_long": "1. Open **Record Payment** for the invoice.\n2. Enter the payment date, amount received, and payment method.\n3. Add a reference such as a cheque number if useful.\n4. Choose a scheduled milestone or apply the payment to the overall balance.\n5. Save and review the updated invoice balance.\n\nRecord only payments you have actually received; the form records a payment rather than charging a card.",
+    "requires_admin": false,
+    "search_terms": [
+      "record payment",
+      "invoice",
+      "payment method"
+    ],
+    "route": "/Invoices",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-58"
+  },
+  {
+    "slug": "send-payment-receipt",
+    "feature_area": "Payments",
+    "audience": "contractor",
+    "question": "Can I email a payment receipt to a client?",
+    "answer_short": "Yes. FuzedFlow can generate and email a PDF payment receipt.",
+    "answer_long": "Select the client and the recorded payments to include in the receipt. You can combine multiple payments from that client’s invoices.\n\nReview the recipient and selected transactions before sending the generated PDF receipt. Sending a receipt does not record a new payment.",
+    "requires_admin": false,
+    "search_terms": [
+      "receipt",
+      "payment",
+      "pdf",
+      "email"
+    ],
+    "route": "/Invoices",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-59"
+  },
+  {
+    "slug": "plan-categories",
+    "feature_area": "Plans & Elevations",
+    "audience": "contractor",
+    "question": "What drawing categories are available?",
+    "answer_short": "Plans & Elevations supports Floor Plan, Elevation, Site Plan, Electrical, Plumbing, Mechanical, Structural, Detail Drawing, As-Built and Other.",
+    "answer_long": "Plans & Elevations supports Floor Plan, Elevation, Site Plan, Electrical, Plumbing, Mechanical, Structural, Detail Drawing, As-Built and Other.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "plan",
+      "elevation",
+      "structural",
+      "electrical",
+      "drawing"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-60"
+  },
+  {
+    "slug": "plan-download",
+    "feature_area": "Plans & Elevations",
+    "audience": "contractor",
+    "question": "Can I download a project plan?",
+    "answer_short": "Yes. Plans & Elevations includes a download action for the stored file.",
+    "answer_long": "Yes. Plans & Elevations includes a download action for the stored file.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "plan",
+      "download",
+      "drawing"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-61"
+  },
+  {
+    "slug": "plan-preview",
+    "feature_area": "Plans & Elevations",
+    "audience": "contractor",
+    "question": "Can I preview uploaded plans?",
+    "answer_short": "Image-based plan files can be previewed in a large lightbox. Other files can be opened in a new browser tab.",
+    "answer_long": "Open **PM Projects → your project → Plans & Elevations**, then choose the drawing. Image files open in a larger preview. Other file types can open in a new browser tab.\n\nUse the download action to save a copy. Check the revision/version before sharing drawings with a trade.",
+    "requires_admin": false,
+    "search_terms": [
+      "plan",
+      "preview",
+      "lightbox",
+      "open"
+    ],
+    "route": "/PMProjects",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-62"
+  },
+  {
+    "slug": "plan-revision",
+    "feature_area": "Plans & Elevations",
+    "audience": "contractor",
+    "question": "Can I record a revision or version on a plan?",
+    "answer_short": "Yes. Each plan/elevation record can include a Revision / Version value and content notes.",
+    "answer_long": "Yes. Each plan/elevation record can include a Revision / Version value and content notes.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "plan",
+      "revision",
+      "version",
+      "drawing"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-63"
+  },
+  {
+    "slug": "pricebook-categories",
+    "feature_area": "Pricebook",
+    "audience": "contractor",
+    "question": "Can Pricebook items have categories and subcategories?",
+    "answer_short": "Yes. Pricebook items support main category, subcategory and a third category level.",
+    "answer_long": "Yes. Pricebook items support main category, subcategory and a third category level.",
+    "route": "/Products",
+    "search_terms": [
+      "pricebook",
+      "category",
+      "subcategory"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-64"
+  },
+  {
+    "slug": "pricebook-fields",
+    "feature_area": "Pricebook",
+    "audience": "contractor",
+    "question": "What information can I store in a Pricebook item?",
+    "answer_short": "Pricebook items can include name, categories, unit, material cost, labour cost, total cost, margin, client price, description, SKU, supplier, supplier URL, tax status and an image.",
+    "answer_long": "Pricebook items can include name, categories, unit, material cost, labour cost, total cost, margin, client price, description, SKU, supplier, supplier URL, tax status and an image.",
+    "route": "/Products",
+    "search_terms": [
+      "pricebook",
+      "product",
+      "sku",
+      "supplier",
+      "cost",
+      "margin"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-65"
+  },
+  {
+    "slug": "pricebook-use-in-phase",
+    "feature_area": "Pricebook",
+    "audience": "contractor",
+    "question": "Can I add a Pricebook item directly to a quote phase?",
+    "answer_short": "Yes. Quote phases include a Pricebook selector for adding saved products to the phase.",
+    "answer_long": "Yes. Quote phases include a Pricebook selector for adding saved products to the phase.",
+    "route": "/Products",
+    "search_terms": [
+      "pricebook",
+      "quote phase",
+      "add product"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-66"
+  },
+  {
+    "slug": "quote-pricebook-add",
+    "feature_area": "Pricebook",
+    "audience": "contractor",
+    "question": "Can I save a quote line item to the Pricebook?",
+    "answer_short": "Yes. A line item can be saved as a new Pricebook item directly from the quote builder.",
+    "answer_long": "Yes. A line item can be saved as a new Pricebook item directly from the quote builder.",
+    "route": "/Products",
+    "search_terms": [
+      "pricebook",
+      "catalog",
+      "save item",
+      "quote"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-67"
+  },
+  {
+    "slug": "import-materials-quote",
+    "feature_area": "Project Materials",
+    "audience": "contractor",
+    "question": "How do I import materials from a quote into a project?",
+    "answer_short": "Use Import Quote in Project Materials. FuzedFlow finds the attached quote and imports quote line items that are flagged Track Material.",
+    "answer_long": "1. Open the project from **PM Projects**.\n2. Choose **Materials**.\n3. Select **Import Quote**.\n4. Review the imported names, quantities, unit costs, suppliers, and phase assignments.\n\nOnly line items with **Track Material** enabled on the attached quote are imported. Matching material names are skipped to reduce duplicates.",
+    "requires_admin": false,
+    "search_terms": [
+      "import quote",
+      "materials",
+      "track material",
+      "project"
+    ],
+    "route": "/PMProjects",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-68"
+  },
+  {
+    "slug": "material-cost-total",
+    "feature_area": "Project Materials",
+    "audience": "contractor",
+    "question": "How does FuzedFlow calculate a material's total estimated cost?",
+    "answer_short": "Project Materials calculates total estimated cost as Quantity × Estimated Unit Cost.",
+    "answer_long": "Project Materials calculates total estimated cost as Quantity × Estimated Unit Cost.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "material cost",
+      "quantity",
+      "estimated cost"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-69"
+  },
+  {
+    "slug": "material-import-duplicates",
+    "feature_area": "Project Materials",
+    "audience": "contractor",
+    "question": "Does importing materials create duplicates?",
+    "answer_short": "FuzedFlow checks existing project-material names and skips matching names during the quote import.",
+    "answer_long": "FuzedFlow checks existing project-material names and skips matching names during the quote import.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "material",
+      "duplicate",
+      "import quote"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-70"
+  },
+  {
+    "slug": "material-import-fields",
+    "feature_area": "Project Materials",
+    "audience": "contractor",
+    "question": "What information comes across when I import a material from a quote?",
+    "answer_short": "The import brings across the item name, description, quantity, unit, estimated unit cost and supplier.",
+    "answer_long": "The import brings across the item name, description, quantity, unit, estimated unit cost and supplier.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "import",
+      "material",
+      "quote",
+      "supplier",
+      "cost"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-71"
+  },
+  {
+    "slug": "material-phase-assignment",
+    "feature_area": "Project Materials",
+    "audience": "contractor",
+    "question": "Can I assign a material to a project phase?",
+    "answer_short": "Yes. Materials can be linked to a project phase or left under General / Unassigned Materials.",
+    "answer_long": "Yes. Materials can be linked to a project phase or left under General / Unassigned Materials.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "material",
+      "phase",
+      "unassigned"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-72"
+  },
+  {
+    "slug": "material-statuses",
+    "feature_area": "Project Materials",
+    "audience": "contractor",
+    "question": "What statuses are available for project materials?",
+    "answer_short": "Project Materials uses To Order, Ordered and Received.",
+    "answer_long": "Project Materials uses To Order, Ordered and Received.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "materials",
+      "to order",
+      "ordered",
+      "received"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-73"
+  },
+  {
+    "slug": "project-material-fields",
+    "feature_area": "Project Materials",
+    "audience": "contractor",
+    "question": "What can I track on a project material?",
+    "answer_short": "Project materials can include material name, notes, phase, quantity, unit, estimated cost, supplier and order status.",
+    "answer_long": "Project materials can include material name, notes, phase, quantity, unit, estimated cost, supplier and order status.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "project material",
+      "supplier",
+      "quantity",
+      "cost",
+      "status"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-74"
+  },
+  {
+    "slug": "why-material-not-imported",
+    "feature_area": "Project Materials",
+    "audience": "contractor",
+    "question": "Why didn't a quote item import into Project Materials?",
+    "answer_short": "Only quote line items flagged as materials are imported. Make sure Track Material is enabled on the quote item and that the project has an attached quote.",
+    "answer_long": "Check these items:\n\n- The project is linked to the correct quote.\n- **Track Material** is enabled on the quote line item.\n- The quote changes were saved before importing.\n- A project material with the same name has not already been imported.\n\nThen return to the project’s **Materials** tab and use **Import Quote** again.",
+    "requires_admin": false,
+    "search_terms": [
+      "material not imported",
+      "track material",
+      "attached quote"
+    ],
+    "route": "/PMProjects",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-75"
+  },
+  {
+    "slug": "phase-assign-lead",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "Can I assign a lead or foreman to a project phase?",
+    "answer_short": "Yes. A project phase can be assigned to an internal team member as its Lead/Foreman.",
+    "answer_long": "Yes. A project phase can be assigned to an internal team member as its Lead/Foreman.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "phase",
+      "lead",
+      "foreman",
+      "assign"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-76"
+  },
+  {
+    "slug": "phase-assign-subcontractor",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "Can I assign a subcontractor to a project phase?",
+    "answer_short": "Yes. Each phase can have a subcontractor assigned to it.",
+    "answer_long": "Yes. Each phase can have a subcontractor assigned to it.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "phase",
+      "subcontractor",
+      "vendor",
+      "assign"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-77"
+  },
+  {
+    "slug": "phase-budget",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "Can I set a budget for a project phase?",
+    "answer_short": "Yes. Project phases include a Phase Budget field and a Micro-Costing area for comparing tracked material costs against that budget.",
+    "answer_long": "Yes. Project phases include a Phase Budget field and a Micro-Costing area for comparing tracked material costs against that budget.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "phase budget",
+      "micro costing",
+      "materials"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-78"
+  },
+  {
+    "slug": "phase-client-visible",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "Can I hide a project phase from the client?",
+    "answer_short": "Yes. Each project phase has a Visible in Client Portal setting.",
+    "answer_long": "Open the project’s **Phases** tab, edit the phase, and change **Visible in Client Portal**. Save the phase.\n\nOnly make phases visible when their information is appropriate for the client. Internal phase notes and micro-cost information are separate from client-facing updates.",
+    "requires_admin": false,
+    "search_terms": [
+      "client visible",
+      "hide phase",
+      "client portal"
+    ],
+    "route": "/PMProjects",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-79"
+  },
+  {
+    "slug": "phase-internal-notes",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "Can I keep internal notes on a project phase?",
+    "answer_short": "Yes. Project phases include internal notes for private instructions and reminders.",
+    "answer_long": "Yes. Project phases include internal notes for private instructions and reminders.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "phase",
+      "internal notes",
+      "private"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-80"
+  },
+  {
+    "slug": "phase-overdue-warning",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "How does FuzedFlow show an overdue project phase?",
+    "answer_short": "If the target end date has passed and the phase is not Completed, FuzedFlow displays how many days overdue the phase is.",
+    "answer_long": "If the target end date has passed and the phase is not Completed, FuzedFlow displays how many days overdue the phase is.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "phase",
+      "overdue",
+      "schedule",
+      "target end"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-81"
+  },
+  {
+    "slug": "phase-target-actual-dates",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "Can I track planned and actual dates for a project phase?",
+    "answer_short": "Yes. Each phase can store Target Start, Target End, Actual Start and Actual End dates.",
+    "answer_long": "Yes. Each phase can store Target Start, Target End, Actual Start and Actual End dates.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "phase",
+      "target start",
+      "actual start",
+      "schedule"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-82"
+  },
+  {
+    "slug": "phase-task-progress",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "How is project-phase task progress calculated?",
+    "answer_short": "The phase screen calculates progress from the number of linked tasks with Done status compared with the total linked tasks.",
+    "answer_long": "The phase screen calculates progress from the number of linked tasks with Done status compared with the total linked tasks.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "phase progress",
+      "tasks",
+      "done",
+      "percent"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-83"
+  },
+  {
+    "slug": "project-phase-statuses",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "What statuses can a project phase have?",
+    "answer_short": "Project phases support Not Started, In Progress, Blocked and Completed.",
+    "answer_long": "Project phases support Not Started, In Progress, Blocked and Completed.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "project phase",
+      "status",
+      "blocked",
+      "completed"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-84"
+  },
+  {
+    "slug": "quick-add-subcontractor-phase",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "Can I create a subcontractor while editing a phase?",
+    "answer_short": "Yes. The phase screen includes Quick Add for creating a new subcontractor and immediately assigning it to the phase.",
+    "answer_long": "Yes. The phase screen includes Quick Add for creating a new subcontractor and immediately assigning it to the phase.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "quick add",
+      "subcontractor",
+      "phase"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-85"
+  },
+  {
+    "slug": "project-from-quote",
+    "feature_area": "Projects",
+    "audience": "contractor",
+    "question": "Can I create a project from a quote?",
+    "answer_short": "FuzedFlow's project workflow can connect a project to a client and quote and can import quote phases and materials into the project workflow.",
+    "answer_long": "FuzedFlow's project workflow can connect a project to a client and quote and can import quote phases and materials into the project workflow.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "project",
+      "quote",
+      "import phases",
+      "materials"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-86"
+  },
+  {
+    "slug": "project-workspace",
+    "feature_area": "Projects",
+    "audience": "contractor",
+    "question": "What can I manage inside a FuzedFlow project?",
+    "answer_short": "Project workspaces include areas for overview, phases, client view/timeline, subcontractors, materials, staff and tasks, client notes, permits, quotes/documents, plans/elevations, contractor portal and project notes/daily logs.",
+    "answer_long": "Open **PM Projects**, select your project, and use the section selector to navigate.\n\nThe workspace includes **Overview, Phases, Client View, Phase Timeline, Subcontractors, Materials, Staff & Tasks, Client Notes, Permits, Quotes & Docs, Plans & Elevations, Contractor Portal, and Project Notes**.\n\nOn mobile, use the section selector near the project header. Choose **Staff & Tasks** to assign work or filter tasks by assignee.",
+    "requires_admin": false,
+    "search_terms": [
+      "project",
+      "workspace",
+      "phases",
+      "materials",
+      "permits",
+      "daily logs"
+    ],
+    "route": "/PMProjects",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-87"
+  },
+  {
+    "slug": "po-create-vendor",
+    "feature_area": "Purchase Orders",
+    "audience": "contractor",
+    "question": "Can I create a new vendor while making a purchase order?",
+    "answer_short": "Yes. The purchase-order workflow supports creating a vendor during the PO process.",
+    "answer_long": "Yes. The purchase-order workflow supports creating a vendor during the PO process.",
+    "route": "/PurchaseOrders",
+    "search_terms": [
+      "purchase order",
+      "vendor",
+      "create"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-88"
+  },
+  {
+    "slug": "po-fields",
+    "feature_area": "Purchase Orders",
+    "audience": "contractor",
+    "question": "What information can I include on a purchase order?",
+    "answer_short": "Purchase orders can include vendor, project, order date, expected delivery date, shipping address, notes, terms and individual line items.",
+    "answer_long": "Purchase orders can include vendor, project, order date, expected delivery date, shipping address, notes, terms and individual line items.",
+    "route": "/PurchaseOrders",
+    "search_terms": [
+      "purchase order",
+      "vendor",
+      "delivery",
+      "shipping",
+      "terms"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-89"
+  },
+  {
+    "slug": "po-pdf",
+    "feature_area": "Purchase Orders",
+    "audience": "contractor",
+    "question": "Can I generate a PDF purchase order?",
+    "answer_short": "Yes. Purchase-order details include PDF generation.",
+    "answer_long": "Yes. Purchase-order details include PDF generation.",
+    "route": "/PurchaseOrders",
+    "search_terms": [
+      "purchase order",
+      "pdf"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-90"
+  },
+  {
+    "slug": "po-public-view",
+    "feature_area": "Purchase Orders",
+    "audience": "subcontractor",
+    "question": "Can a vendor view a purchase order without a FuzedFlow account?",
+    "answer_short": "Yes. FuzedFlow includes a public vendor-facing purchase-order view.",
+    "answer_long": "Yes. FuzedFlow includes a public vendor-facing purchase-order view.",
+    "route": "/PurchaseOrders",
+    "search_terms": [
+      "purchase order",
+      "vendor",
+      "public",
+      "no account"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-91"
+  },
+  {
+    "slug": "client-modified-label",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "How do I know if a client changed an optional item?",
+    "answer_short": "FuzedFlow marks an optional phase or line item as CLIENT MODIFIED when the client's choice differs from the contractor's default selection.",
+    "answer_long": "FuzedFlow marks an optional phase or line item as CLIENT MODIFIED when the client's choice differs from the contractor's default selection.",
+    "route": "/Quotes",
+    "search_terms": [
+      "client modified",
+      "optional",
+      "selection"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-92"
+  },
+  {
+    "slug": "client-optional-selections",
+    "feature_area": "Quotes",
+    "audience": "client",
+    "question": "Can the client choose optional quote items before approving?",
+    "answer_short": "Yes. Clients can change optional phase and line-item selections before the quote is approved.",
+    "answer_long": "Their selections change the active subtotal, taxable amount, taxes and final quote total. Once the quote is Approved, those selections are locked.",
+    "route": "/Quotes",
+    "search_terms": [
+      "client selection",
+      "optional item",
+      "approve quote",
+      "total"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-93"
+  },
+  {
+    "slug": "cost-change-price",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "What happens to the client price when I change a line item's cost?",
+    "answer_short": "FuzedFlow recalculates the client price while maintaining the item's current margin when possible.",
+    "answer_long": "If an existing valid cost/price margin is available, that margin is preserved. Otherwise FuzedFlow uses the company default margin.",
+    "route": "/Quotes",
+    "search_terms": [
+      "cost change",
+      "price",
+      "margin",
+      "recalculate"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-94"
+  },
+  {
+    "slug": "default-margin",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "What is the default margin on a new item?",
+    "answer_short": "FuzedFlow uses the company's configured default margin. If no value is configured, the quote components fall back to 20%.",
+    "answer_long": "FuzedFlow uses the company's configured default margin. If no value is configured, the quote components fall back to 20%.",
+    "route": "/Quotes",
+    "search_terms": [
+      "default margin",
+      "20%",
+      "pricing"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-95"
+  },
+  {
+    "slug": "duplicate-line-item",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I duplicate a quote line item?",
+    "answer_short": "Yes. Individual line items can be duplicated.",
+    "answer_long": "Yes. Individual line items can be duplicated.",
+    "route": "/Quotes",
+    "search_terms": [
+      "duplicate",
+      "copy",
+      "line item"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-96"
+  },
+  {
+    "slug": "duplicate-phase",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I duplicate a quote phase?",
+    "answer_short": "Yes. Duplicating a phase copies the phase and its line items.",
+    "answer_long": "Yes. Duplicating a phase copies the phase and its line items.",
+    "route": "/Quotes",
+    "search_terms": [
+      "duplicate phase",
+      "copy phase"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-97"
+  },
+  {
+    "slug": "duplicate-quote",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I duplicate an existing quote for another client?",
+    "answer_short": "Yes. Choose a client and duplicate the quote. FuzedFlow creates a new Draft and copies the quote phases, line items and pricing while clearing client-specific approval/view/signature data.",
+    "answer_long": "Use the quote’s duplication action and choose the client for the new estimate. FuzedFlow creates a **Draft** and copies phases, line items, and pricing.\n\nClient-specific approval, viewing, and selection information is cleared. Review the new client, address, quantities, prices, and terms before sending the duplicate.",
+    "requires_admin": false,
+    "search_terms": [
+      "duplicate quote",
+      "copy estimate",
+      "new client"
+    ],
+    "route": "/Quotes",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-98"
+  },
+  {
+    "slug": "margin-vs-markup",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Does FuzedFlow calculate margin or markup?",
+    "answer_short": "FuzedFlow's quote pricing uses gross margin, not markup.",
+    "answer_long": "FuzedFlow uses **gross margin**, not markup.\n\n**Selling price = Cost ÷ (1 − Margin)**\n\nFor example, a $100 cost at a 20% margin gives a $125 selling price. A 20% markup would give $120, so the two methods produce different prices.\n\nChanging the client price recalculates the margin. Review the resulting price and profit before saving.",
+    "requires_admin": false,
+    "search_terms": [
+      "margin",
+      "markup",
+      "selling price",
+      "cost",
+      "profit"
+    ],
+    "route": "/Quotes",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-99"
+  },
+  {
+    "slug": "move-item-phase",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I move a line item from one quote phase to another?",
+    "answer_short": "Yes. Use the move action on the line item to select another phase.",
+    "answer_long": "Yes. Use the move action on the line item to select another phase.",
+    "route": "/Quotes",
+    "search_terms": [
+      "move",
+      "line item",
+      "phase"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-100"
+  },
+  {
+    "slug": "optional-item",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I make a quote line item optional?",
+    "answer_short": "Yes. Mark the line item Optional. You can also choose whether it is Pre-select by default for the client.",
+    "answer_long": "Yes. Mark the line item Optional. You can also choose whether it is Pre-select by default for the client.",
+    "route": "/Quotes",
+    "search_terms": [
+      "optional",
+      "pre-select",
+      "quote item",
+      "client selection"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-101"
+  },
+  {
+    "slug": "optional-phase",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I make an entire quote phase optional?",
+    "answer_short": "Yes. A complete phase can be marked Optional and can also be pre-selected for the client.",
+    "answer_long": "Yes. A complete phase can be marked Optional and can also be pre-selected for the client.",
+    "route": "/Quotes",
+    "search_terms": [
+      "optional phase",
+      "pre-selected",
+      "quote"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-102"
+  },
+  {
+    "slug": "price-change-margin",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "What happens if I manually change the client price?",
+    "answer_short": "FuzedFlow recalculates the margin from the new selling price and the current unit cost.",
+    "answer_long": "FuzedFlow recalculates the margin from the new selling price and the current unit cost.",
+    "route": "/Quotes",
+    "search_terms": [
+      "unit price",
+      "client price",
+      "margin"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-103"
+  },
+  {
+    "slug": "quote-email-template",
+    "feature_area": "Quotes",
+    "audience": "admin",
+    "question": "Can I customize the quote email message?",
+    "answer_short": "Yes. Quote email content and the company email signature can use templates from company settings.",
+    "answer_long": "The quote email template supports variables such as client name, quote number and quote title.",
+    "route": "/Quotes",
+    "search_terms": [
+      "quote email",
+      "template",
+      "signature",
+      "variables"
+    ],
+    "requires_admin": true,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-104"
+  },
+  {
+    "slug": "quote-followup-history",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I see a history of automatic quote follow-ups?",
+    "answer_short": "Yes. FuzedFlow tracks follow-up history, including the follow-up number, send time, recipient, subject and delivery status.",
+    "answer_long": "Yes. FuzedFlow tracks follow-up history, including the follow-up number, send time, recipient, subject and delivery status.",
+    "route": "/Quotes",
+    "search_terms": [
+      "follow up history",
+      "sent",
+      "failed",
+      "bounced"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-105"
+  },
+  {
+    "slug": "quote-followup-template",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I customize the automatic quote follow-up email?",
+    "answer_short": "Yes. The follow-up subject and message can be customized with quote-title and client-name placeholders.",
+    "answer_long": "Yes. The follow-up subject and message can be customized with quote-title and client-name placeholders.",
+    "route": "/Quotes",
+    "search_terms": [
+      "follow up",
+      "template",
+      "quote"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-106"
+  },
+  {
+    "slug": "quote-followups",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can FuzedFlow automatically follow up on sent quotes?",
+    "answer_short": "Yes. Automatic quote follow-ups can be enabled per quote.",
+    "answer_long": "You can set the number of days until the first follow-up, the interval between later reminders and a maximum number of reminders. Follow-ups only run for Sent quotes and stop if the quote becomes Approved or Declined.",
+    "route": "/Quotes",
+    "search_terms": [
+      "follow up",
+      "automatic",
+      "quote",
+      "reminder"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-107"
+  },
+  {
+    "slug": "quote-internal-notes",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I add notes to a quote that the client cannot see?",
+    "answer_short": "Yes. Quote line items and phases support internal notes that are hidden from the client.",
+    "answer_long": "Yes. Quote line items and phases support internal notes that are hidden from the client.",
+    "route": "/Quotes",
+    "search_terms": [
+      "internal notes",
+      "hidden",
+      "client",
+      "quote"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-108"
+  },
+  {
+    "slug": "quote-item-photo",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I add a photo to a quote line item?",
+    "answer_short": "Yes. Individual quote line items can include an image.",
+    "answer_long": "Yes. Individual quote line items can include an image.",
+    "route": "/Quotes",
+    "search_terms": [
+      "photo",
+      "image",
+      "quote",
+      "line item"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-109"
+  },
+  {
+    "slug": "quote-line-item-fields",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "What information can I enter on a quote line item?",
+    "answer_short": "A quote line item can include quantity, unit, material cost, labour cost, total unit cost, client price, margin, tax status, supplier, material tracking, description, internal notes and a photo.",
+    "answer_long": "A quote line item can include quantity, unit, material cost, labour cost, total unit cost, client price, margin, tax status, supplier, material tracking, description, internal notes and a photo.",
+    "route": "/Quotes",
+    "search_terms": [
+      "quote",
+      "line item",
+      "cost",
+      "price",
+      "margin",
+      "supplier"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-110"
+  },
+  {
+    "slug": "quote-lock",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "What does 'Quote is Currently Locked' mean?",
+    "answer_short": "Coordinate quote editing with your team; automatic editing locks are not active in the current Quote Builder.",
+    "answer_long": "Do not rely on automatic editing protection in the current Quote Builder. Coordinate with your team so only one person edits a quote at a time, and save before handing it over.",
+    "requires_admin": false,
+    "search_terms": [
+      "quote locked",
+      "editing",
+      "read only",
+      "team"
+    ],
+    "is_active": false,
+    "route": "/Quotes",
+    "priority": 75,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-111"
+  },
+  {
+    "slug": "quote-phase-photos",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I add photos to a quote phase?",
+    "answer_short": "Yes. A quote phase can contain multiple inspiration or reference photos.",
+    "answer_long": "Yes. A quote phase can contain multiple inspiration or reference photos.",
+    "route": "/Quotes",
+    "search_terms": [
+      "phase",
+      "photos",
+      "quote",
+      "inspiration"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-112"
+  },
+  {
+    "slug": "quote-phase-scope",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I show a scope of work for each quote phase?",
+    "answer_short": "Yes. Each phase has a client-facing Scope of Work field and a setting that controls whether the scope is shown on the quote.",
+    "answer_long": "Yes. Each phase has a client-facing Scope of Work field and a setting that controls whether the scope is shown on the quote.",
+    "route": "/Quotes",
+    "search_terms": [
+      "scope",
+      "phase",
+      "client facing",
+      "quote"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-113"
+  },
+  {
+    "slug": "quote-profit-display",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I see the estimated profit on a quote line item?",
+    "answer_short": "Yes. The line-item editor displays estimated profit based on quantity, unit price and unit cost.",
+    "answer_long": "Yes. The line-item editor displays estimated profit based on quantity, unit price and unit cost.",
+    "route": "/Quotes",
+    "search_terms": [
+      "profit",
+      "quote",
+      "margin",
+      "line item"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-114"
+  },
+  {
+    "slug": "quote-send-email",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "How do I send a quote by email?",
+    "answer_short": "Use Send Quote via Email. FuzedFlow builds a branded email with the client's secure public quote link and marks the quote Sent after a successful send.",
+    "answer_long": "1. Open the quote in **Quote Builder**.\n2. Review the client, scope, pricing, and terms; save your changes.\n3. Open **Actions → Send via Email**.\n4. Check the recipient, subject, message, and secure quote link.\n5. Send the email.\n\nThe quote is marked **Sent** after a successful email send. Previewing a quote is not the same as sending it.",
+    "requires_admin": false,
+    "search_terms": [
+      "quote",
+      "email",
+      "send",
+      "public quote"
+    ],
+    "route": "/Quotes",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-115"
+  },
+  {
+    "slug": "quote-send-sms",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I send a quote by text message?",
+    "answer_short": "Yes. FuzedFlow can send the quote by SMS with the secure Public Quote link appended to the message.",
+    "answer_long": "1. Open and save the quote.\n2. Choose **Actions → Send via Text Message**.\n3. Review the client’s phone number and message.\n4. Send the text.\n\nThe secure public quote link is appended to the outgoing message. SMS availability depends on the company’s messaging setup.",
+    "requires_admin": false,
+    "search_terms": [
+      "quote",
+      "sms",
+      "text",
+      "link"
+    ],
+    "route": "/Quotes",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-116"
+  },
+  {
+    "slug": "quote-sms-template",
+    "feature_area": "Quotes",
+    "audience": "admin",
+    "question": "Can I customize the quote text-message template?",
+    "answer_short": "Yes. FuzedFlow can use the company's quote SMS template and replaces quote/client variables before sending.",
+    "answer_long": "Yes. FuzedFlow can use the company's quote SMS template and replaces quote/client variables before sending.",
+    "route": "/Quotes",
+    "search_terms": [
+      "quote sms",
+      "template",
+      "text"
+    ],
+    "requires_admin": true,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-117"
+  },
+  {
+    "slug": "quote-supplier",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I record the supplier for a quote item?",
+    "answer_short": "Yes. When Track Material is enabled, the quote line item can store the supplier name.",
+    "answer_long": "Yes. When Track Material is enabled, the quote line item can store the supplier name.",
+    "route": "/Quotes",
+    "search_terms": [
+      "supplier",
+      "vendor",
+      "material",
+      "quote"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-118"
+  },
+  {
+    "slug": "quote-units",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "What units can I use on a quote line item?",
+    "answer_short": "The quote builder includes units such as ea, ft, sqft, hr, lft, m, sqm, bag, box and roll.",
+    "answer_long": "The quote builder includes units such as ea, ft, sqft, hr, lft, m, sqm, bag, box and roll.",
+    "route": "/Quotes",
+    "search_terms": [
+      "unit",
+      "ea",
+      "sqft",
+      "lft",
+      "quote"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-119"
+  },
+  {
+    "slug": "quote-view-tracking",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I see whether a quote has been viewed?",
+    "answer_short": "FuzedFlow records quote-view events and distinguishes internal views from client views.",
+    "answer_long": "FuzedFlow records quote-view events and distinguishes internal views from client views.",
+    "route": "/Quotes",
+    "search_terms": [
+      "quote viewed",
+      "view tracking",
+      "client"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-120"
+  },
+  {
+    "slug": "reorder-quote-items",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I reorder line items inside a quote phase?",
+    "answer_short": "Yes. Quote line items support drag-and-drop reordering.",
+    "answer_long": "Yes. Quote line items support drag-and-drop reordering.",
+    "route": "/Quotes",
+    "search_terms": [
+      "reorder",
+      "drag",
+      "line item",
+      "quote"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-121"
+  },
+  {
+    "slug": "split-material-labour-cost",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I split a line item's cost between material and labour?",
+    "answer_short": "Yes. Use Split M/L to enter Material Cost and Labour Cost separately. FuzedFlow combines them into the Unit Cost.",
+    "answer_long": "On the quote line item, use **Split M/L** to enter **Material Cost** and **Labour Cost** separately. The two amounts combine into **Unit Cost**.\n\nCheck the quantity, client price, margin, and taxable setting after changing costs.",
+    "requires_admin": false,
+    "search_terms": [
+      "material cost",
+      "labour cost",
+      "labor cost",
+      "split",
+      "unit cost"
+    ],
+    "route": "/Quotes",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-122"
+  },
+  {
+    "slug": "taxable-line-items",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I choose which quote items are taxable?",
+    "answer_short": "Yes. Each quote line item has its own Taxable setting.",
+    "answer_long": "Yes. Each quote line item has its own Taxable setting.",
+    "route": "/Quotes",
+    "search_terms": [
+      "tax",
+      "taxable",
+      "line item"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-123"
+  },
+  {
+    "slug": "track-material-quote",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "What does Track Material do on a quote item?",
+    "answer_short": "Track Material flags the line item as a material so it can later be imported into Project Materials.",
+    "answer_long": "Enable **Track Material** on a quote line item when the item should be available for import into **Project Materials**. Add a supplier if known.\n\nThe project must be linked to the quote before importing. This flag identifies a material; it does not place an order with the supplier.",
+    "requires_admin": false,
+    "search_terms": [
+      "track material",
+      "material",
+      "project materials",
+      "quote"
+    ],
+    "route": "/Quotes",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-124"
+  },
+  {
+    "slug": "report-periods",
+    "feature_area": "Reports",
+    "audience": "admin",
+    "question": "What reporting periods can I use?",
+    "answer_short": "Reports include filtering for year-to-date, quarter-to-date, current month and last month.",
+    "answer_long": "Reports include filtering for year-to-date, quarter-to-date, current month and last month.",
+    "route": "/Reports",
+    "search_terms": [
+      "report",
+      "ytd",
+      "quarter",
+      "month"
+    ],
+    "requires_admin": true,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-125"
+  },
+  {
+    "slug": "reports-available",
+    "feature_area": "Reports",
+    "audience": "admin",
+    "question": "What reports are available in FuzedFlow?",
+    "answer_short": "The Reports area includes Sales & Revenue, Expense Report, Tax Summary and Invoice Aging.",
+    "answer_long": "The Reports area includes Sales & Revenue, Expense Report, Tax Summary and Invoice Aging.",
+    "route": "/Reports",
+    "search_terms": [
+      "reports",
+      "sales",
+      "revenue",
+      "expense",
+      "tax",
+      "invoice aging"
+    ],
+    "requires_admin": true,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-126"
+  },
+  {
+    "slug": "resource-library",
+    "feature_area": "Resource Library",
+    "audience": "contractor",
+    "question": "What can I store in the Resource Library?",
+    "answer_short": "The Resource Library is designed for reusable company files such as flyers, licences and blank forms, with optional project association.",
+    "answer_long": "The **Resource Library** is available with the company’s saved products and resources. Store reusable company files such as licences, flyers, and blank forms there.\n\nIn Quote Builder, use **Resources** when attaching a saved company file to a quote. Project drawings belong in the project’s **Plans & Elevations** area.",
+    "requires_admin": false,
+    "search_terms": [
+      "resource library",
+      "flyer",
+      "license",
+      "form"
+    ],
+    "route": "/Products",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-127"
+  },
+  {
+    "slug": "invite-team-member",
+    "feature_area": "Team",
+    "audience": "admin",
+    "question": "How do I invite a team member?",
+    "answer_short": "Open Team management and send an invitation using the employee's email address and the appropriate role.",
+    "answer_long": "Owners and admins can invite a team member.\n\n1. Open **Settings** and select **Team Management**.\n2. Start an invitation and enter the person’s name and email.\n3. Choose the appropriate **Access Role** and check any payroll details.\n4. Send the invitation.\n\nThe recipient should follow the invitation link to join your company, rather than create a separate company account.",
+    "requires_admin": true,
+    "search_terms": [
+      "invite",
+      "team",
+      "employee",
+      "user"
+    ],
+    "route": "/AdminSettings",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-128"
+  },
+  {
+    "slug": "pending-invites",
+    "feature_area": "Team",
+    "audience": "admin",
+    "question": "Can I see pending team invitations?",
+    "answer_short": "Yes. Pending invitations are tracked in Team management.",
+    "answer_long": "Open **Settings → Team Management** to review pending invitations. Check the recipient’s email and role before resending an invitation. Ask the recipient to check their spam folder and use the invitation link to join the existing company.",
+    "requires_admin": false,
+    "search_terms": [
+      "pending",
+      "invitation",
+      "team"
+    ],
+    "route": "/AdminSettings",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-129"
+  },
+  {
+    "slug": "team-roles",
+    "feature_area": "Team",
+    "audience": "admin",
+    "question": "What team roles are available in FuzedFlow?",
+    "answer_short": "FuzedFlow supports Owner, Admin, Project Manager, Office Staff, Employee, and Subcontractor roles.",
+    "answer_long": "FuzedFlow uses **Owner, Admin, Project Manager, Office Staff, Employee, and Subcontractor** roles.\n\n- **Owner / Admin:** company administration and full access.\n- **Project Manager:** operational access, subject to permissions.\n- **Office Staff:** office modules, subject to permissions.\n- **Employee / Subcontractor:** field tools in the Employee Portal.\n\nOwners and admins manage invitations and access in **Settings → Team Management**. The older Team page may show a legacy Standard User label; use Team Management for current role options.",
+    "requires_admin": true,
+    "search_terms": [
+      "role",
+      "permissions",
+      "admin",
+      "manager",
+      "standard user"
+    ],
+    "route": "/AdminSettings",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-130"
+  },
+  {
+    "slug": "user-limit",
+    "feature_area": "Team",
+    "audience": "admin",
+    "question": "Why can't I add another team member?",
+    "answer_short": "Your FuzedFlow plan can have a user limit. If you have reached that limit, another user cannot be added until capacity is available or the plan changes.",
+    "answer_long": "Your FuzedFlow plan can have a user limit. If you have reached that limit, another user cannot be added until capacity is available or the plan changes.",
+    "route": "/AdminSettings",
+    "search_terms": [
+      "user limit",
+      "seat",
+      "plan",
+      "team"
+    ],
+    "requires_admin": true,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-131"
+  },
+  {
+    "slug": "phase-templates",
+    "feature_area": "Templates",
+    "audience": "contractor",
+    "question": "Can I save a reusable phase or room template?",
+    "answer_short": "Yes. FuzedFlow supports Phase/Room Templates containing scope and reusable line items.",
+    "answer_long": "Yes. FuzedFlow supports Phase/Room Templates containing scope and reusable line items.",
+    "route": "/Templates",
+    "search_terms": [
+      "phase template",
+      "room template",
+      "line items"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-132"
+  },
+  {
+    "slug": "quote-templates",
+    "feature_area": "Templates",
+    "audience": "contractor",
+    "question": "Can I save reusable quote templates?",
+    "answer_short": "Yes. FuzedFlow supports reusable Quote Templates.",
+    "answer_long": "Yes. FuzedFlow supports reusable Quote Templates.",
+    "route": "/Templates",
+    "search_terms": [
+      "quote template",
+      "template",
+      "reuse"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-133"
+  },
+  {
+    "slug": "template-search",
+    "feature_area": "Templates",
+    "audience": "contractor",
+    "question": "Can I search my templates?",
+    "answer_short": "Yes. The Templates page supports searching quote and phase templates.",
+    "answer_long": "Yes. The Templates page supports searching quote and phase templates.",
+    "route": "/Templates",
+    "search_terms": [
+      "template",
+      "search"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-08-22",
+    "priority": 50,
+    "is_active": true,
+    "id": "fixture-134"
+  },
+  {
+    "slug": "timesheet-approval",
+    "feature_area": "Timesheets",
+    "audience": "admin",
+    "question": "Do timesheets require approval?",
+    "answer_short": "Completed time entries can be submitted for approval, and administrators can review and approve or reject timesheets.",
+    "answer_long": "Employees review their entries in **Employee Portal → My Time Sheets** and submit completed hours for approval. Administrators review submitted timesheets in **Human Resources**, then approve, reject, or adjust them.\n\nIf a timesheet is rejected, review the feedback and correct the entry before submitting it again.",
+    "requires_admin": true,
+    "search_terms": [
+      "timesheet",
+      "approval",
+      "approve",
+      "reject"
+    ],
+    "route": "/EmployeePortal?tab=timesheets",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-135"
+  },
+  {
+    "slug": "timesheet-clock-in",
+    "feature_area": "Timesheets",
+    "audience": "employee",
+    "question": "Can I clock in and out in FuzedFlow?",
+    "answer_short": "Yes. Timesheets support clock-in/clock-out as well as manual time entry.",
+    "answer_long": "1. Open **Employee Portal**.\n2. Choose **Clock In**.\n3. Start your time entry when work begins and clock out when you finish.\n4. Review your hours under **My Time Sheets**.\n\nUse the available manual entry tools when you need to record missed time. Check the project and date before submitting hours for review.",
+    "requires_admin": false,
+    "search_terms": [
+      "clock in",
+      "clock out",
+      "timesheet"
+    ],
+    "route": "/EmployeePortal?tab=time_clock",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-136"
+  },
+  {
+    "slug": "quote-editing-collaboration",
+    "feature_area": "Quotes",
+    "question": "Can two people edit the same quote at the same time?",
+    "answer_short": "Use one editor at a time; the current Quote Builder does not enforce an automatic editing lock.",
+    "answer_long": "To avoid overwriting each other’s changes:\n\n1. Agree who is editing the quote.\n2. Have that person save their changes before handing it over.\n3. Reload the quote before the next person starts editing.\n\nThe current Quote Builder does not enforce an automatic editing lock.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "editing",
+      "lock",
+      "locked",
+      "collaboration",
+      "overwrite",
+      "two users"
+    ],
+    "route": "/Quotes",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-137"
+  },
+  {
+    "slug": "create-lead-steps",
+    "feature_area": "Leads",
+    "question": "How do I create a new lead?",
+    "answer_short": "Open Lead Tracker, choose New Lead, enter the details, and select Create Lead.",
+    "answer_long": "1. Open **Lead Tracker**.\n2. Select **New Lead**.\n3. Enter the required first name and surname, then contact details and the site address.\n4. Set the pipeline stage, assignee, and follow-up date as needed.\n5. Select **Create Lead**.\n\nOwners, admins, and permitted managers/office staff receive an in-app creation notification, including the creator.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "create",
+      "new lead",
+      "prospect",
+      "notification",
+      "button"
+    ],
+    "route": "/LeadTracker",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-138"
+  },
+  {
+    "slug": "pm-task-assignee-filter",
+    "feature_area": "Tasks",
+    "question": "How do I filter project tasks by the person assigned?",
+    "answer_short": "In Staff & Tasks, open Task List and choose a person under Assigned to.",
+    "answer_long": "1. Open **PM Projects** and select the project.\n2. Choose **Staff & Tasks**, then **Task List**.\n3. Use **Assigned to** to choose a team member.\n4. Choose **Unassigned** to find tasks without an assignee.\n5. Select **All users** or **Clear filter** to show the complete list again.\n\nTasks assigned to multiple people appear for each matching person. Filtering does not change the assignments.",
+    "audience": "office",
+    "requires_admin": false,
+    "search_terms": [
+      "filter",
+      "assigned",
+      "assignee",
+      "user",
+      "staff",
+      "unassigned",
+      "task list"
+    ],
+    "route": "/PMProjects",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-139"
+  },
+  {
+    "slug": "notification-overview",
+    "feature_area": "Notifications",
+    "question": "Where do I find my notifications?",
+    "answer_short": "Use the notification bell in the app header to see alerts for your role and assigned work.",
+    "answer_long": "1. Tap the **notification bell** in the app header.\n2. Start with **Unread** or choose **All** to include read notifications.\n3. Use **Mentions, Projects, Financial, or Action Required** to narrow the list.\n4. Open a notification to view the related record.\n\nFinancial notifications are restricted to owners, admins, and office staff. Other alerts depend on your role, permissions, and assigned work.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "bell",
+      "alert",
+      "notifications",
+      "unread",
+      "all",
+      "mentions",
+      "financial"
+    ],
+    "route": "/FAQ?article=notification-overview",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-140"
+  },
+  {
+    "slug": "lead-creation-notification",
+    "feature_area": "Notifications",
+    "question": "Who receives a notification when a lead is created?",
+    "answer_short": "Owners, admins, and managers or office staff with Leads access receive the alert, including the creator.",
+    "answer_long": "A saved new lead generates an **Action Required** in-app notification for owners, admins, and eligible managers/office staff with Leads access. The creator is included when they are eligible.\n\nOpen the notification bell and choose **Unread** or **All**. The alert links to the new lead. Updating the same lead does not repeat its creation alert. Employees and subcontractors do not receive general company lead alerts.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "lead",
+      "created",
+      "new lead",
+      "missing notification",
+      "sales alert"
+    ],
+    "route": "/LeadTracker",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-141"
+  },
+  {
+    "slug": "notification-action-only",
+    "feature_area": "Notifications",
+    "question": "How do I show only notifications that need action?",
+    "answer_short": "Turn on Notify me only when action is required in the notification panel settings.",
+    "answer_long": "1. Open the **notification bell**.\n2. Open the panel’s **settings** button.\n3. Turn on **Notify me only when action is required**.\n\nThis filters both the list and unread badge. Important and FYI updates are hidden, not deleted. Turn the preference off to see them again. This is your personal in-app preference; company email and SMS settings are separate.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "action",
+      "required",
+      "only",
+      "preference",
+      "badge",
+      "fyi",
+      "important"
+    ],
+    "route": "/FAQ?article=notification-action-only",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-142"
+  },
+  {
+    "slug": "notification-read-history",
+    "feature_area": "Notifications",
+    "question": "How do I mark notifications as read or find older alerts?",
+    "answer_short": "Open an alert to read it, or use Mark this view read. Choose All for read and unread history.",
+    "answer_long": "Open a notification to mark it read and go to its related record. You can also use **Mark this view read** for the current filtered view.\n\nChoose **All** to include read notifications. Use **Next** and **Previous** to move through older pages. Changing your action-only preference can reveal previously hidden alerts.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "mark",
+      "read",
+      "history",
+      "old",
+      "next",
+      "previous",
+      "all"
+    ],
+    "route": "/FAQ?article=notification-read-history",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-143"
+  },
+  {
+    "slug": "notification-missing",
+    "feature_area": "Notifications",
+    "question": "Why am I not seeing an expected notification?",
+    "answer_short": "Check your notification filters, personal action-only setting, role, and assignment.",
+    "answer_long": "1. Open the bell and choose **All**.\n2. Check whether **Notify me only when action is required** is on.\n3. Confirm you have access to the relevant module or are assigned to the work.\n4. Allow the app to refresh; it also checks for updates about once a minute.\n\nIf the alert is still missing, contact support with the event, record name, and approximate time. Do not include passwords or payment details.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "missing",
+      "not received",
+      "notification",
+      "refresh",
+      "filter"
+    ],
+    "route": "/FAQ?article=notification-missing",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-144"
+  },
+  {
+    "slug": "phone-push-notifications",
+    "feature_area": "Notifications",
+    "question": "Are in-app notifications the same as phone push notifications?",
+    "answer_short": "No. The current notification centre provides in-app alerts; it does not add native phone push notifications.",
+    "answer_long": "The bell displays notifications while you use FuzedFlow. A new notification centre alert does not by itself send a native phone push notification.\n\nCompany email and SMS settings are separate. Do not rely on an in-app alert as confirmation that a phone push, text, or email was sent.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "phone",
+      "push",
+      "mobile",
+      "text",
+      "sms",
+      "email"
+    ],
+    "route": "/FAQ?article=phone-push-notifications",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-145"
+  },
+  {
+    "slug": "warranty-workflow-availability",
+    "feature_area": "Help & Support",
+    "question": "Can I manage warranty claims in FuzedFlow?",
+    "answer_short": "FuzedFlow does not currently provide a complete dedicated warranty-claim workflow.",
+    "answer_long": "You can keep relevant project notes and documents, but FuzedFlow does not currently provide a complete dedicated warranty-claim intake, assignment, tracking, and resolution workflow.\n\nContact support if you need help finding an existing project record. Do not treat a project note as confirmation that a warranty claim has been formally submitted.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "warranty",
+      "claim",
+      "deficiency",
+      "repair"
+    ],
+    "route": "/Contact",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-146"
+  },
+  {
+    "slug": "document-signature-availability",
+    "feature_area": "Help & Support",
+    "question": "Does document approval capture an electronic signature?",
+    "answer_short": "Quote/change-order approval and general document e-signing are different workflows.",
+    "answer_long": "FuzedFlow supports quote and change-order approval. It does not currently provide a complete general document e-signing and signature-tracking workflow.\n\nDo not treat a document approval notification as proof that a signed document was captured. Use your agreed signing process when a signature is required.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "signature",
+      "sign",
+      "esign",
+      "e-sign",
+      "approval",
+      "signed document"
+    ],
+    "route": "/Contact",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-147"
+  },
+  {
+    "slug": "help-search-tips",
+    "feature_area": "Help & Support",
+    "question": "How do I find help for a feature?",
+    "answer_short": "Search the Knowledge Base & FAQ or choose a topic.",
+    "answer_long": "1. Open **Help → Knowledge Base & FAQ**.\n2. Search using a feature name or a few keywords.\n3. Choose a topic to narrow the results.\n4. Open a question to read the steps and follow **Open related page** where available.\n\nUse **Clear search** or **Reset filters** to start again. Articles are shown according to your role.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "help",
+      "search",
+      "faq",
+      "knowledge base",
+      "topic",
+      "article"
+    ],
+    "route": "/FAQ",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-148"
+  },
+  {
+    "slug": "support-contact",
+    "feature_area": "Help & Support",
+    "question": "How do I contact FuzedFlow support?",
+    "answer_short": "Use Contact support to prepare an email draft, email support@fuzedflow.com, or call 1-855-400-3000.",
+    "answer_long": "Open **Help → Contact support**. Enter a subject and describe the page and issue, then select **Open email app**. Review the draft and send it from your email app.\n\nIf no email app opens, copy **support@fuzedflow.com** into your email service. You can also call **1-855-400-3000**. Published support hours are Monday–Friday, 8 AM–5 PM Mountain Time.\n\nLeave out passwords and payment card details.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "support",
+      "contact",
+      "email",
+      "phone",
+      "send message"
+    ],
+    "route": "/Contact",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-149"
+  },
+  {
+    "slug": "video-tutorial-availability",
+    "feature_area": "Help & Support",
+    "question": "Where are the video tutorials?",
+    "answer_short": "Video tutorials are coming soon. Use the Knowledge Base & FAQ for the current written guidance.",
+    "answer_long": "The **Video tutorials** page is a coming-soon page. Use **Knowledge Base & FAQ** for written instructions or **Contact support** for help with a specific task.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "video",
+      "tutorial",
+      "training",
+      "guide"
+    ],
+    "route": "/Tutorials",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-150"
+  },
+  {
+    "slug": "create-quote-steps",
+    "feature_area": "Quotes",
+    "question": "How do I start a quote?",
+    "answer_short": "Open Quotes, select New Quote, add the client, phases, and line items, then save the draft.",
+    "answer_long": "1. Open **Quotes** and choose **New Quote**.\n2. Select the client and enter the quote details.\n3. Use **Add Phase** to organize the scope of work.\n4. Add line items and review quantities, costs, margin, taxes, and client prices.\n5. Select **Save Draft** before previewing or sending the quote.\n\nUse **Actions** to send by email or text after checking the final details.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "create",
+      "new quote",
+      "estimate",
+      "phase",
+      "save draft"
+    ],
+    "route": "/Quotes",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-151"
+  },
+  {
+    "slug": "employee-assigned-work",
+    "feature_area": "Employee Portal",
+    "question": "Where can I see my assigned projects and schedule?",
+    "answer_short": "Open Employee Portal and choose My Projects or My Schedule.",
+    "answer_long": "1. Open **Employee Portal**.\n2. Choose **My Projects** to see assigned work.\n3. Choose **My Schedule** for your scheduled work.\n4. Use **My Tasks** to review tasks assigned to you.\n\nIf work is missing, ask your manager to check the assignment and company settings.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "assigned",
+      "project",
+      "schedule",
+      "my tasks",
+      "field work"
+    ],
+    "route": "/EmployeePortal?tab=projects",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-152"
+  },
+  {
+    "slug": "company-settings-location",
+    "feature_area": "Settings",
+    "question": "Where do I change company settings?",
+    "answer_short": "Authorized owners, admins, and managers use Settings; available sections depend on the role.",
+    "answer_long": "Open **Settings** and choose a section using the sidebar or the mobile **Settings Section** selector. Sections include branding, quote customization, message templates, financial settings, payments, notifications, and portal controls.\n\nOwners and admins have full administration access. Managers see a limited set of sections. If a setting is not available, ask your company administrator.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "settings",
+      "company",
+      "branding",
+      "mobile",
+      "configuration"
+    ],
+    "route": "/AdminSettings",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-153"
+  },
+  {
+    "slug": "quickbooks-availability",
+    "feature_area": "Settings",
+    "question": "Can I connect QuickBooks from Settings?",
+    "answer_short": "The current QuickBooks connection action is marked Coming soon.",
+    "answer_long": "The current **QuickBooks** connection action in Settings displays **Coming soon**. Do not assume invoices or payments are synchronizing with QuickBooks. Keep using your existing accounting process until an active integration is available.",
+    "audience": "admin",
+    "requires_admin": true,
+    "search_terms": [
+      "quickbooks",
+      "accounting",
+      "integration",
+      "sync",
+      "connect"
+    ],
+    "route": "/AdminSettings",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-154"
+  },
+  {
+    "slug": "vendors-location",
+    "feature_area": "Vendors",
+    "question": "Where do I manage vendors and subcontractors?",
+    "answer_short": "Use Vendors for the company directory and the project’s Subcontractors tab for project-specific work.",
+    "answer_long": "Open **Vendors** for your supplier/subcontractor directory, contact details, categories, preferred status, and records.\n\nFor a specific job, open **PM Projects → your project → Subcontractors**. Assign a subcontractor to a phase from the project’s **Phases** tab when needed.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "vendor",
+      "subcontractor",
+      "supplier",
+      "directory"
+    ],
+    "route": "/Vendors",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-155"
+  },
+  {
+    "slug": "task-list-location",
+    "feature_area": "Tasks",
+    "question": "Where do I manage tasks?",
+    "answer_short": "Use Tasks for general work, Staff & Tasks for a project, or My Tasks in the Employee Portal.",
+    "answer_long": "- **Tasks:** general task management for authorized office and project staff.\n- **PM Projects → your project → Staff & Tasks:** work linked to that project, including the **Assigned to** filter.\n- **Employee Portal → My Tasks:** tasks assigned to the field user.\n\nCheck the assignee, due date, status, and project before saving changes.",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "task",
+      "list",
+      "assigned",
+      "due date",
+      "staff"
+    ],
+    "route": "/Tasks",
+    "priority": 90,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "id": "fixture-156"
+  }
+]

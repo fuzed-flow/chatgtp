@@ -78,7 +78,7 @@ const AuthenticatedApp = () => {
         {/* 🟡 MANAGERS & ADMINS: Dynamically mapped pages from config */}
         {Object.entries(Pages)
           // 🛡️ FILTER OUT THE ADMIN-ONLY PAGES SO MANAGERS CANNOT ACCESS THEM
-          .filter(([path]) => path !== 'Invoices' && path !== 'HumanResources' && path !== 'AdminSettings')
+          .filter(([path]) => !['Invoices', 'HumanResources', 'AdminSettings', 'FAQ', 'Tutorials', 'Contact'].includes(path))
           .map(([path, Page]) => (
             <Route
               key={path}
@@ -100,19 +100,13 @@ const AuthenticatedApp = () => {
           </RoleGuard>
         } />
         <Route path="/Tutorials" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName="Tutorials"><Tutorials /></LayoutWrapper>
-          </RoleGuard>
         } />
         <Route path="/FAQ" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName="FAQ"><FAQ /></LayoutWrapper>
-          </RoleGuard>
         } />
         <Route path="/Contact" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName="Contact"><Contact /></LayoutWrapper>
-          </RoleGuard>
         } />
         <Route path="/Settings" element={
           <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>

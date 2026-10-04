@@ -95,7 +95,7 @@ export default function Layout({ children, currentPageName }) {
   const isEmployeeRole = ["employee", "subcontractor"].includes(userRole);
 
   useEffect(() => {
-    if (isEmployeeRole && currentPageName && currentPageName !== "EmployeePortal") {
+    if (isEmployeeRole && currentPageName && !["EmployeePortal", "FAQ", "Tutorials", "Contact"].includes(currentPageName)) {
       navigate("/EmployeePortal", { replace: true });
     }
   }, [isEmployeeRole, currentPageName, navigate]);

@@ -1,0 +1,14 @@
+CREATE ROLE anon;
+CREATE ROLE authenticated;
+CREATE ROLE service_role BYPASSRLS;
+CREATE SCHEMA auth;
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+GRANT USAGE ON SCHEMA public,auth TO anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION auth.uid() TO PUBLIC;
+CREATE TABLE profiles(id uuid PRIMARY KEY,company_id uuid,role text,is_active boolean DEFAULT true);
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY self_read ON profiles FOR SELECT TO authenticated USING (id=auth.uid());
+GRANT SELECT ON profiles TO authenticated,service_role;
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE TABLE help_faqs(id uuid DEFAULT gen_random_uuid() PRIMARY KEY,slug text UNIQUE NOT NULL,feature_area text NOT NULL,audience text NOT NULL DEFAULT 'contractor',question text NOT NULL,answer_short text NOT NULL,answer_long text,route text,search_terms text[] NOT NULL DEFAULT '{}',priority smallint NOT NULL DEFAULT 50 CHECK(priority BETWEEN 0 AND 100),requires_admin boolean NOT NULL DEFAULT false,is_active boolean NOT NULL DEFAULT true,source_key text,last_verified_at date DEFAULT CURRENT_DATE,embedding vector(1536));
+CREATE TABLE knowledge_chunks(slug text,title text,summary text,content text,route text,last_verified_at date,is_active boolean DEFAULT true,requires_admin boolean DEFAULT false,audience text DEFAULT 'all',feature_area text DEFAULT 'Quotes');
