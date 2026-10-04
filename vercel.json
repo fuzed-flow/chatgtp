@@ -1,5 +1,23 @@
 {
+  "buildCommand": "npx vite build --config tests/help-center/browser/vite.config.mjs",
+  "outputDirectory": "tests/help-center/browser/dist",
   "rewrites": [
+    {
+      "source": "/HelpArticles",
+      "destination": "/widget.html"
+    },
+    {
+      "source": "/FAQ",
+      "destination": "/widget.html"
+    },
+    {
+      "source": "/Contact",
+      "destination": "/widget.html"
+    },
+    {
+      "source": "/Tutorials",
+      "destination": "/widget.html"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

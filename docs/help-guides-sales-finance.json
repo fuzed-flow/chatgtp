@@ -1,0 +1,878 @@
+[
+  {
+    "slug": "guide-quotes-create-save",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Create and save a quote for a lead or client",
+    "answer_short": "Start a quote, select its contact, build the scope in phases, and confirm that your saved draft is available before sharing it.",
+    "answer_long": "## Before you start\n\nA quote can be linked to either an existing lead or a client. Have the contact name, site address, scope, quantities, and pricing ready. The quote builder also lets you create a client using the person-plus button beside **Client/Lead**. A quote is a sales document; saving it does not create a project or collect payment.\n\n## Create a draft\n\n1. Open **Quotes** and choose **New Quote**. To reuse an estimate, choose **From Template** instead.\n2. Enter **Title \\***, then choose the correct **Client/Lead**. Confirm **Site Address**, **Issue Date**, and **Expiry Date** rather than relying on the contact's stored address.\n3. Write the **Introduction**. Use **Show to client** to control whether that introduction appears in the customer document.\n4. Under **Phases / Rooms**, choose **Add Phase** and build the work breakdown. Review each phase's items, quantities, prices, taxes, and optional choices.\n5. Add your **Client Message**, **Terms & Conditions**, and any attachments the customer should receive.\n6. Choose **Save Draft**. The builder assigns a quote number when a new quote is first saved; existing quote numbers are displayed as read-only.\n\n## Confirm the save\n\nAfter a successful save, reopen the quote from **Quotes** and check the contact, scope, and total. Treat the success message and a persistent saved record as your confirmation. A title is required; a missing company session also prevents saving.\n\nIf saving fails, keep the builder open and preserve your entered scope. Capture the visible error, check the Quotes list in another tab to see whether a record was created, and avoid creating repeated copies. Retry only after checking your connection and session. If the error continues, contact support with the quote number, page, and error message, excluding sensitive customer information.\n\n## On a phone\n\nThe builder stacks its sections vertically. Scroll through the scope and totals before using the compact Save control. Save before navigating away; an unsaved-change warning is a prompt to review your work, not proof that it has already been saved.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Quotes",
+    "search_terms": [
+      "new quote",
+      "estimate",
+      "create quote",
+      "draft",
+      "save",
+      "client lead",
+      "title",
+      "quote number"
+    ],
+    "priority": 84,
+    "related_slugs": [
+      "guide-quotes-phases-items",
+      "guide-quotes-review-send",
+      "guide-templates-quote-library"
+    ],
+    "source_files": [
+      "src/pages/Quotes.jsx",
+      "src/pages/QuoteBuilder.jsx",
+      "src/components/quotes/CreateClientDialog.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-quotes-phases-items",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Build quote phases, rooms, line items, and material scope",
+    "answer_short": "Organize the quote into phases, add Pricebook or custom items, and keep customer scope separate from internal notes.",
+    "answer_long": "## Organize the work\n\nUse **Phases / Rooms** to group an estimate into work areas such as demolition, kitchen, or finishing. Phases give the customer a readable scope and help the office review costs. They are part of the quote until you deliberately convert it to a project.\n\n## Add phases and items\n\n1. Choose **Add Phase**. Select an available phase template or create the phase, then enter its name.\n2. Expand the phase and open **Settings** when you need the scope, private notes, photos, or optional settings.\n3. Enter **Scope of Work (Client-Facing)** and check its customer visibility setting. Put reminders for your team in the internal notes field instead.\n4. Use the **Pricebook...** selector to bring in an existing product, or add a custom line item. Enter a meaningful item name, description, quantity, unit, unit cost, and unit selling price.\n5. Check the item's tax and optional settings. Where an item is marked as material, confirm its supplier and quantity so that later project conversion has useful material information.\n6. Review the phase cost, margin, tax, and total. Choose **Save Draft** to persist the complete quote.\n\n## Reuse and reorder\n\nThe phase controls offer **Duplicate Phase**, **Delete Phase**, and move-up or move-down actions. Line items can also be duplicated, moved, or removed. Duplicating creates another priced entry, so review quantities and totals after copying. Saving a phase as a template creates reusable scope for future quotes; it is separate from saving the current quote.\n\n## Troubleshooting\n\nAn empty or collapsed phase may hide the item controls. Expand it before assuming the items are missing. A phase or item that is optional and not selected contributes no value to the selected scope. Check both the phase-level and item-level selection if the subtotal seems too low.\n\nPricebook values are copied into quote items. Updating the Pricebook does not justify assuming that every existing quote has changed. Review the copied item prices and use **Refresh Pricing** only deliberately. On mobile, work through one expanded phase at a time and save after a substantial scope change.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Quotes",
+    "search_terms": [
+      "phases rooms",
+      "line items",
+      "scope",
+      "materials",
+      "labour labor",
+      "pricebook",
+      "quantity",
+      "duplicate phase"
+    ],
+    "priority": 81,
+    "related_slugs": [
+      "guide-quotes-create-save",
+      "guide-quotes-pricing-tax-discount",
+      "guide-templates-phase-library",
+      "guide-pricebook-create-maintain"
+    ],
+    "source_files": [
+      "src/pages/QuoteBuilder.jsx",
+      "src/components/quotes/PhaseCard.jsx",
+      "src/components/quotes/LineItemRow.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-quotes-pricing-tax-discount",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Review quote costs, margin, tax, discounts, and final totals",
+    "answer_short": "Check line-item pricing, optional scope, margin adjustments, tax settings, and customer-facing totals before issuing a quote.",
+    "answer_long": "## Start with the item prices\n\nThe quote's base selling value comes from selected item quantities multiplied by unit prices. Its base cost comes from quantities multiplied by unit costs. **Total Cost vs Revenue** shows the relationship, and margin is profit as a percentage of selling revenue. Margin and markup are different measures: a 20% margin on a $100 cost implies a $125 selling price, not $120.\n\n## Review pricing in order\n\n1. Check every selected phase and line item for the correct quantity, unit, cost, and selling price. Optional items only belong in the selected total when selected.\n2. Review **Total Cost vs Revenue** and **Final Margin**.\n3. If needed, use **Adjust Margin (Optional)** and select dollars or percent. Review the effect on the estimate rather than assuming this edits every displayed line price.\n4. Check whether each item is taxable. Company settings provide the primary tax label and rate, with a secondary tax when enabled.\n5. Enter the **Discount** using the dollar or percentage mode. Check the resulting total and **Deposit Required**.\n6. Save, open **Client Preview**, and compare the customer-facing total and downloaded PDF with the amount you intend to offer.\n\n## Verify the customer document\n\nAlways review the customer view after margin overrides, percentage discounts, tax changes, or optional selections. The customer view recalculates selected scope, so its displayed amount is the amount the customer will see. If the builder, preview, and PDF disagree, stop before sending or collecting payment and ask support to review the discrepancy. Include the quote number and which totals differ; do not attempt to compensate by entering an unexplained negative charge.\n\n## Troubleshooting\n\nFor missing tax, check the item's tax checkbox and the company tax settings. For a lower subtotal, check optional phase and item selection. For an unexpected selling price after **Refresh Pricing**, compare the item name against the corresponding Pricebook entry and recheck any special negotiated price. Only authorized administrators should change company-wide tax defaults. A tax calculation in the app is operational information; confirm your company's billing requirements with your responsible finance person.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Quotes",
+    "search_terms": [
+      "margin",
+      "markup",
+      "discount",
+      "tax",
+      "gst",
+      "pst",
+      "selling price",
+      "profit",
+      "wrong total",
+      "cost revenue"
+    ],
+    "priority": 85,
+    "related_slugs": [
+      "guide-quotes-phases-items",
+      "guide-quotes-review-send",
+      "guide-pricebook-create-maintain"
+    ],
+    "source_files": [
+      "src/pages/QuoteBuilder.jsx",
+      "src/pages/QuoteView.jsx",
+      "src/pages/PublicQuoteView.jsx",
+      "src/pages/Products.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-quotes-review-send",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Preview, email, text, and track a quote",
+    "answer_short": "Review the saved customer document, personalize the recipient and message, and distinguish sending a quote from manually changing its status.",
+    "answer_long": "## Review before sharing\n\nOpen the quote in its builder, save your latest changes, then choose **Actions → Client Preview**. Check the contact, address, dates, visible scope, optional choices, images, attached documents, terms, and final total. A preview of an existing quote should be reviewed after saving; opening another tab alone does not guarantee that your unsaved edits are included.\n\n## Send an email\n\n1. Choose **Actions → Send via Email**, or use **Send** from the Quotes list action menu.\n2. Review **To (Client Email)**. The dialog attempts to fill this from the linked client or lead, but you can correct it before sending.\n3. Review **Subject**, **Message**, and **Email Signature**. The outgoing message includes a link to the digital quote.\n4. Submit the send action and wait for its result. A successful send updates the quote to **Sent**; check the recipient with the customer if they still cannot find it.\n\n## Send a text\n\nChoose **Actions → Send via Text Message**. Confirm **Mobile Phone Number** and **Text Message**. The dialog includes the quote link with your message. Review the phone number carefully, including the appropriate country information, before choosing **Send Text**.\n\n## Understand status and viewing\n\n**Mark as Sent** changes the quote's workflow status; it does not send an email or text. Likewise, **Mark as Approved** records an office decision and does not create a separate document signature. Customer quote pages support viewing and online approval; delivery, viewing, and approval are separate events.\n\n## Troubleshooting\n\nIf email fails, verify the address and preserve the visible error. If SMS fails, verify the number and wait for a send result before repeating; a Sent status alone is insufficient proof of SMS delivery. Ask the customer to check spam or reopen the original link in a regular browser. If a link is inaccessible or shows incomplete scope, verify that the record was saved and ask support for help. Share only the intended customer document, not an internal builder URL or private notes.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Quotes",
+    "search_terms": [
+      "send quote",
+      "email quote",
+      "text sms",
+      "client preview",
+      "pdf",
+      "sent",
+      "delivery",
+      "recipient",
+      "viewed"
+    ],
+    "priority": 84,
+    "related_slugs": [
+      "guide-quotes-create-save",
+      "guide-quotes-client-options-approval",
+      "guide-quotes-find-duplicate-archive"
+    ],
+    "source_files": [
+      "src/pages/QuoteBuilder.jsx",
+      "src/pages/Quotes.jsx",
+      "src/components/quotes/SendQuoteEmailDialog.jsx",
+      "src/components/quotes/SendQuoteTextDialog.jsx",
+      "src/pages/PublicQuoteView.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-quotes-client-options-approval",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Help a customer select quote options, approve, or request changes",
+    "answer_short": "Explain optional phases and items, customer approval, change requests, PDF downloads, and when deposit checkout is available.",
+    "answer_long": "## What the customer receives\n\nAn emailed or texted quote opens a customer document with scope, pricing, optional selections, company information, and the available actions. This is a quote approval workflow. It is not a general document-signing service, and clicking acceptance is not a drawn-signature workflow.\n\n## Review and select scope\n\n1. Ask the customer to open the quote link from the message in a regular browser.\n2. Review the introduction, each phase, and item details before taking action.\n3. Select or deselect available optional phases and line items. A deselected optional phase excludes its items from the selected scope. Required items remain part of the quote.\n4. Check the recalculated subtotal, tax, discount, and total after changing options.\n5. Use **Download PDF** when a copy of the displayed estimate is needed.\n\n## Approve or request a change\n\nThe customer can choose **Accept Quote** when ready to proceed. The app records **Approved**, selected options, and the resulting totals, and attempts to notify the team. If the customer needs an adjustment, **Request Changes** opens a message dialog. They must describe the requested changes before submitting. That message goes to the team; it does not automatically rewrite the estimate.\n\nOffice staff should review the approved scope before project or invoice conversion. If a customer approves verbally, an authorized office user can record **Mark as Approved**, but should keep the actual agreement in the company's records.\n\n## Deposits and limitations\n\nWhen a deposit payment action is available, it uses the company's configured payment processing. A deposit amount on a quote is a request, not evidence that money was received. Checkout cannot be completed from an embedded preview; open the published customer page instead.\n\n## Troubleshooting\n\nIf the total changes unexpectedly, check the selected optional items and ask the office to clarify the scope before acceptance. If acceptance or a change request returns an error, keep the link and visible message and contact the company; do not assume the request was recorded. An approval does not guarantee that a project, invoice, or payment was created.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Quotes",
+    "search_terms": [
+      "accept quote",
+      "approve quote",
+      "optional items",
+      "optional phase",
+      "request changes",
+      "client selection",
+      "deposit",
+      "signature"
+    ],
+    "priority": 83,
+    "related_slugs": [
+      "guide-quotes-review-send",
+      "guide-quotes-convert-project-invoice",
+      "guide-quotes-pricing-tax-discount"
+    ],
+    "source_files": [
+      "src/pages/PublicQuoteView.jsx",
+      "src/pages/QuoteView.jsx",
+      "src/components/quotes/PhaseCard.jsx",
+      "src/components/quotes/LineItemRow.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-quotes-convert-project-invoice",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Convert an agreed quote into a project, invoice, or both",
+    "answer_short": "Choose the correct conversion outcome, review the copied scope and materials, and avoid duplicate projects or invoices.",
+    "answer_long": "## Choose the outcome\n\nConversion creates new working records from a quote. Use **Project Only** to begin delivery planning, **Invoice Only** to begin billing, or the combined project and invoice option when you need both. Confirm the agreed customer, selected scope, and final total first. Creating another record is a separate action from changing the quote's status.\n\n## Convert from the builder\n\n1. Open the quote and verify the saved scope and customer-facing total.\n2. Ensure the contact is a client if the work requires client-linked project or billing records. Convert a lead through its Lead Detail page when appropriate, then confirm the quote's client link.\n3. Choose **Actions → Convert Quote...**.\n4. Select the desired conversion option and wait for completion.\n5. Open the resulting project or invoice and inspect its name, client, address, totals, phases, and payment schedule.\n\nThe builder's project conversion copies selected phases into project phases and selected line items into project tasks. Items marked as material are also used to create planned material entries, with their quantities, unit, estimated cost, supplier, and notes. Review these entries before assigning work or ordering stock. Conversion is a starting point, not confirmation that staff assignments or purchasing have been completed.\n\n## Check limits and duplicates\n\nProject creation can be subject to your subscription's active-project limit. If a limit message appears, review your plan or existing project statuses with the owner. Do not use repeated clicks or another conversion route to work around a limit.\n\nDifferent quote views offer conversion actions, and their copied details can differ. Prefer the builder when you need to review project phases, tasks, and materials from your estimate. Inspect the created record in every case.\n\n## Troubleshooting\n\nIf conversion fails or a follow-up page does not open, check the Projects and Invoices lists before retrying. Some steps may have completed before the error appeared. Record the quote number and any created project or invoice number for support. Conversion does not provide an automatic merge with an existing project, and repeating it can create a duplicate. Verify materials and payment milestones after any partial conversion.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Quotes",
+    "search_terms": [
+      "convert quote",
+      "project only",
+      "invoice only",
+      "project invoice",
+      "accepted quote",
+      "materials tracker",
+      "planning"
+    ],
+    "priority": 83,
+    "related_slugs": [
+      "guide-quotes-client-options-approval",
+      "guide-invoices-create-edit",
+      "guide-quotes-phases-items"
+    ],
+    "source_files": [
+      "src/pages/QuoteBuilder.jsx",
+      "src/pages/QuoteView.jsx",
+      "src/lib/planConfig.js"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-quotes-find-duplicate-archive",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Find, duplicate, archive, decline, or expire quotes",
+    "answer_short": "Use quote search, active and archived views, status filters, and duplication to keep your quote list organized.",
+    "answer_long": "## Find the right quote\n\nThe **Quotes** page separates **Active** and **Archived** records. Declined and expired quotes are included in the archived view even when you did not manually archive them. Quote templates live in **Templates**, so they do not appear in the normal Quotes list.\n\n1. Choose **Active** or **Archived** first.\n2. Search using a title, quote number, client or lead name, or site address.\n3. Use the **Status** filter to narrow the list. Active choices include Draft, Sent, and Approved; the archived filter offers Declined and Expired.\n4. Use the sort selector for newest/default order, A–Z, or Z–A.\n5. Open a quote title or card to reach its builder. Desktop supports list and card views; phones display quote cards.\n\n## Duplicate deliberately\n\nChoose **Duplicate** from the quote's action menu. Select the destination client or lead using the search control, then confirm. Duplication copies the quote and its related scope into a new record. Review the title, recipient, dates, prices, attachments, terms, and payment schedule before issuing it. Copying an old quote does not verify that its pricing or terms are still current.\n\n## Update status or archive\n\nUse **Mark Declined** or **Mark Expired** to record that outcome; those actions also move the quote into the archived group. **Archive** hides a quote from the active group without deleting it. **Unarchive** removes the manual archive flag, but a quote still marked Declined or Expired continues to meet the archived-view rules. Review its status if you intend to resume active negotiation.\n\n## Troubleshooting and deletion\n\nFor a missing quote, clear the search and status filter, check both views, and check Templates if it was saved as a template. A quote can be present but excluded by the current filter. If it still cannot be found, ask the office to confirm your role, company, and whether it was deleted.\n\n**Delete** removes the record and is different from archiving. Use it only when your company has decided the quote is unnecessary; prefer archiving for ordinary record keeping. Confirm the specific quote number before deletion. Do not assume a deleted quote can be recovered from Archived.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Quotes",
+    "search_terms": [
+      "search quotes",
+      "archive quote",
+      "unarchive",
+      "declined",
+      "expired",
+      "duplicate estimate",
+      "copy quote",
+      "missing quote"
+    ],
+    "priority": 78,
+    "related_slugs": [
+      "guide-quotes-create-save",
+      "guide-templates-quote-library",
+      "guide-quotes-review-send"
+    ],
+    "source_files": [
+      "src/pages/Quotes.jsx",
+      "src/components/quotes/DuplicateQuoteDialog.jsx",
+      "src/pages/QuoteBuilder.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-templates-quote-library",
+    "feature_area": "Templates",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Create and reuse complete quote templates",
+    "answer_short": "Store reusable whole estimates and start new quotes from them while reviewing customer-specific details and current pricing.",
+    "answer_long": "## Choose a template type\n\nThe **Templates** page has **Quote Templates** and **Phase/Room Templates**. A quote template is a reusable whole estimate, including its phases and items. A phase template is a smaller work package that you can insert into another quote. Choose the size of template that matches the work you repeat.\n\n## Create a whole quote template\n\n1. Open **Templates → Quote Templates** and choose **New Template**.\n2. Enter **Template Name \\*** in the builder and add the standard introduction, phases, item descriptions, quantities, prices, photos, documents, customer message, and terms.\n3. Review default optional selections and any payment schedule.\n4. Save the template. You can also open a useful existing quote and choose **Actions → Save as Template** to create a library copy.\n5. Return to Quote Templates and search for the saved name. Open it to maintain its reusable scope.\n\n## Start a customer quote\n\nFrom Quotes or a client/lead page, choose **From Template** or **Quote from Template**. In **Create Quote from Template**, select the template. Select a client when the dialog offers that field, or use the contact already supplied by the client/lead page. Choose **Create Quote** to open the builder, then check the customer, title, dates, address, prices, and terms before saving the new quote.\n\nInside an existing quote, **Import Template** can append template scope. It can also bring in payment-schedule entries and supporting content. Review the result so you do not accidentally duplicate phases or payments that were already present. Verify the imported phase names and scope text, and restore any missing details before saving or sending.\n\n## Troubleshooting\n\nIf the selector says no templates are available, create and save a quote template in the same company. Saving a normal Draft quote does not make it a template. Updating a template is maintenance for future reuse; review already-created quotes separately rather than assuming they changed automatically. If imported scope appears twice, remove the unintended copy before saving.\n\nOn mobile, search by a distinctive template name and review the entire imported estimate before sending. A reusable template should contain standard scope, not confidential details copied from another customer's project.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Templates",
+    "search_terms": [
+      "quote template",
+      "new template",
+      "save as template",
+      "from template",
+      "import template",
+      "estimate library"
+    ],
+    "priority": 79,
+    "related_slugs": [
+      "guide-templates-phase-library",
+      "guide-quotes-create-save",
+      "guide-quotes-find-duplicate-archive"
+    ],
+    "source_files": [
+      "src/pages/Templates.jsx",
+      "src/pages/QuoteBuilder.jsx",
+      "src/components/shared/CreateQuoteFromTemplateDialog.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-templates-phase-library",
+    "feature_area": "Templates",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Create and maintain phase or room templates",
+    "answer_short": "Save repeatable phase scope with line items, then reuse it in quotes without rebuilding the same work package.",
+    "answer_long": "## When to use a phase template\n\nA **Phase/Room Template** stores a repeatable work package such as a bathroom demolition or painting scope. It includes a template name, phase name, scope, and reusable line items. Use it when the same package appears in several different quotes; use a complete Quote Template for an entire standard estimate.\n\n## Save an existing quote phase\n\n1. Open a quote with a phase you want to reuse.\n2. Review the phase's name, scope, quantities, pricing, tax settings, and optional items.\n3. Use the phase's save-as-template action beneath the phase.\n4. Enter **Template Name \\*** and an optional description, then save.\n5. Open **Templates → Phase/Room Templates** and confirm the package appears.\n\nWhen saving from the quote builder, using the exact name of an existing company phase template updates that template. Use a different name if you intend to keep both versions.\n\n## Maintain the library\n\nThe Phase/Room Templates tab lets you create or edit a phase template. Review **Phase Name**, **Scope of Work**, and its line items. Items can be reordered, duplicated, removed, or given photos. Save when the package is complete. Search matches the template name or phase name, so give both clear descriptive names.\n\nTo use the template in a quote, choose **Add Phase** and select the available package. Recheck the imported quantities, item descriptions, costs, selling prices, and materials for that job. Template defaults are a starting point, not a substitute for the customer's actual measurements or current supplier prices.\n\n## Troubleshooting\n\nIf a template contains no items, open it and verify that the line-item changes were saved. If the desired version has changed, check whether someone saved another phase with the same template name. Avoid keeping several indistinguishable names; use names that show the work type or package version.\n\nDeleting a library template is different from removing a phase in an individual quote. Check which record you are editing before choosing Delete. On a phone, review one item at a time and save after finishing the package so incomplete editing does not become the next customer's starting point.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Templates",
+    "search_terms": [
+      "phase template",
+      "room template",
+      "scope template",
+      "line item library",
+      "save phase as template"
+    ],
+    "priority": 77,
+    "related_slugs": [
+      "guide-templates-quote-library",
+      "guide-quotes-phases-items",
+      "guide-pricebook-create-maintain"
+    ],
+    "source_files": [
+      "src/pages/Templates.jsx",
+      "src/pages/QuoteBuilder.jsx",
+      "src/components/quotes/LineItemRow.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-pricebook-create-maintain",
+    "feature_area": "Pricebook",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Create and maintain Pricebook products and pricing",
+    "answer_short": "Maintain reusable items with costs, selling price, margin, taxability, units, supplier details, and a clear category structure.",
+    "answer_long": "## What the Pricebook stores\n\n**Pricebook** contains reusable products and services for quotes. It is a pricing catalog, not a stock count. Use Inventory for on-hand quantities and stock movements. Pricebook item costs and selling prices are copied into quote scope when you select an item.\n\n## Add or edit an item\n\n1. Open Pricebook and choose the new-item button. On mobile, open the header menu for item and category actions.\n2. Enter **Item Name \\*** and choose **Main Category**, **Sub Category**, and **3rd Category** where useful.\n3. Set **Unit** to the unit you actually estimate, such as each or an area unit.\n4. Enter **Material Cost** and **Labor Cost**. Their sum feeds **Total Cost**; you can also edit total cost directly.\n5. Review **Margin** and **Client Pays**. The app uses gross margin: cost divided by one minus the margin rate. Changing Client Pays recalculates the displayed margin.\n6. Add **SKU / Item #**, **Supplier / Vendor**, **Supplier Link / URL**, **Description & Notes**, and an image when helpful.\n7. Check **Taxable** and save the item.\n\n## Keep the catalog usable\n\nSearch by product name or SKU and use category or supplier filters. Category actions let you add a category level or rename an existing category and its associated products. Use a consistent naming convention so staff can distinguish similar products and units.\n\nReview prices whenever supplier costs change. Existing quotes have copied prices; check them individually before sending. **Refresh Pricing** in the quote builder looks for matching product names, so renamed items or negotiated quote prices need particular care.\n\n## Troubleshooting\n\nIf a price looks wrong, confirm the cost components, margin mode, and unit before correcting it. A high margin is not a percentage added directly to cost. If the item cannot be saved, preserve the visible error and ask support to check your access or setup. Do not repeatedly create the same name to bypass a save problem. Removing a catalog item does not mean you should delete historical customer scope; review any existing quote separately.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Products",
+    "search_terms": [
+      "pricebook",
+      "products",
+      "new item",
+      "sku",
+      "material cost",
+      "labor cost",
+      "margin",
+      "client pays",
+      "supplier",
+      "category"
+    ],
+    "priority": 80,
+    "related_slugs": [
+      "guide-pricebook-import-export",
+      "guide-quotes-phases-items",
+      "guide-quotes-pricing-tax-discount"
+    ],
+    "source_files": [
+      "src/pages/Products.jsx",
+      "src/pages/QuoteBuilder.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-pricebook-import-export",
+    "feature_area": "Pricebook",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Import, export, and safely update Pricebook CSV files",
+    "answer_short": "Use the Pricebook export as a starting format and preserve item IDs when updating an existing catalog through CSV.",
+    "answer_long": "## Prepare a controlled update\n\nPricebook supports CSV import and export. Exporting first gives you a useful record of the items you can currently see and their IDs. Keep a copy of that file before editing so you can compare the intended changes. Export operates on the current sorted and filtered product results; clear filters when you need the whole visible catalog.\n\n## Export and edit\n\n1. Open Pricebook, clear unintended filters, and choose **Export CSV**.\n2. Open the file in your spreadsheet application while preserving text fields such as SKUs and IDs.\n3. Keep the header row. Exported columns include ID, Name, SKU, Category, Sub Category, 3rd Category, Unit, Material Cost, Labor Cost, Total Cost, Price, Supplier, Vendor URL, Taxable, and Image URL.\n4. Change only the fields you intend to update and save as CSV.\n\n## Import carefully\n\nChoose **Import CSV** and select the file. A recognizable **Name** column is required. The importer matches existing items by ID when provided; otherwise it tries an exact name match without considering letter case. Rows that match an existing item update that item, and unmatched rows can create new products. A change to the name without retaining the original ID can therefore create an unintended duplicate.\n\nStart with a small file and verify the results before importing a large catalog. Imported monetary values are parsed from their text; check decimal values, units, cost components, and supplier URLs after import. The current importer makes imported rows taxable by default, so review taxability in the item editor rather than assuming the exported Taxable column round-trips unchanged.\n\n## Troubleshooting\n\nFor “Could not find a Name column,” restore the original header structure. For no valid products, check that rows have a name and are not blank. If an import fails partway, inspect the catalog before trying again because earlier groups may already have saved. Reuse stable IDs when repeating an update.\n\nCSV import is a data update, not a preview-only action. Do not use another company's IDs or a customer list as a Pricebook file. After bulk price changes, review any quotes that need the new pricing; saved quotes are separate records.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Products",
+    "search_terms": [
+      "pricebook csv",
+      "import products",
+      "export products",
+      "bulk pricing",
+      "id column",
+      "spreadsheet",
+      "sku"
+    ],
+    "priority": 79,
+    "related_slugs": [
+      "guide-pricebook-create-maintain",
+      "guide-quotes-pricing-tax-discount"
+    ],
+    "source_files": [
+      "src/pages/Products.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-resource-library-upload-attach",
+    "feature_area": "Resource Library",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Upload company resources and attach them to quotes",
+    "answer_short": "Maintain flyers, licenses, blank forms, and supporting documents in Resource Library, then choose which files belong on a customer quote.",
+    "answer_long": "## Choose the right document\n\n**Resource Library** stores company files such as flyers, certificates, and blank forms. It is a file library, not a warranty-claim workflow or general electronic-signature service. Uploading a warranty document does not create claim tracking, and uploading a form does not make it automatically fillable or signable.\n\n## Upload a resource\n\n1. Open Resource Library and choose **Upload File**.\n2. Enter **Document Name \\*** using a clear title, such as the document type and version or year.\n3. Choose **Link to Project (Optional)** if the file relates to a particular project, or leave **General Document (Available for all)**.\n4. Choose **Attachment \\*** and browse for the file. The dialog describes common formats such as PDF, DOCX, or images.\n5. Choose **Save Document**, wait for upload completion, and confirm the new record in the library.\n6. Use **View** to verify that the file opens correctly before attaching or sharing it.\n\n## Find and attach files\n\nSearch matches the resource title and original filename. The library shows ten records per page; use the page controls when the desired file is not on the current page. Changing the search returns you to the first page.\n\nIn a quote builder, open the resource picker under **Attached Documents**. Search **Company Resources**, choose **Attach** beside the intended file, then save the quote. Attaching is a deliberate customer-document choice. A project link in the library organizes the resource; it should not be treated as proof that the file has been distributed to the customer or as a substitute for access controls.\n\n## Troubleshooting\n\nIf upload fails, keep the exact visible message and check whether the document record appeared before uploading again. Verify your connection and permission, then contact support if the issue continues. If a file opens incorrectly, confirm that you selected the right original file and format.\n\nThe delete control removes the library record after confirmation. It is not a promise to recall files already attached, downloaded, or shared. Keep appropriate company records and avoid uploading sensitive information unless your company intends to store and share it in this workflow.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/ClientForms",
+    "search_terms": [
+      "resource library",
+      "client forms",
+      "upload file",
+      "document",
+      "wcb",
+      "license",
+      "warranty document",
+      "attach quote"
+    ],
+    "priority": 76,
+    "related_slugs": [
+      "guide-quotes-review-send",
+      "guide-quotes-create-save"
+    ],
+    "source_files": [
+      "src/pages/ClientForms.jsx",
+      "src/pages/QuoteBuilder.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-leads-create-follow-up",
+    "feature_area": "Leads",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Create a lead and organize the next follow-up",
+    "answer_short": "Capture lead contact details, source, stage, owner, photos, estimated value, and follow-up date without creating avoidable duplicates.",
+    "answer_long": "## Capture the opportunity\n\nUse **Lead Tracker** for prospective work that has not yet become a client job. A lead stores contact information, sales stage, source, estimated value, priority, a next-follow-up date, and an assigned team member. Keeping these fields current helps the team distinguish a new enquiry from an opportunity already being handled.\n\n## Create a lead\n\n1. Open Lead Tracker and choose the yellow **New Lead** button. On a narrow phone, this appears as the plus button labelled Create a new lead.\n2. Enter **First Name \\*** and **Surname \\***, then the email and phone number if available.\n3. Choose **Source**, **Priority**, and **Pipeline Stage**. A new enquiry normally starts as New; use the stage that represents the actual sales progress.\n4. Enter **Value Estimate**, **Next Follow Up Date**, and **Assign Team Member** where useful. The estimate is an opportunity value, not an invoice or received payment.\n5. Confirm **Site / Project Address**, add a description, notes, and any site photos.\n6. Save the lead and confirm that it appears in the tracker or opens correctly in Lead Detail.\n\n## Handle a duplicate warning\n\nFor an entered email, the form checks existing clients and leads in the same company. If it finds a match, review the existing profile before choosing **Create Duplicate Anyway**. The warning is intended to help you update an existing record instead of splitting its history across several profiles. It is not a complete identity check; records without email or bulk imports need manual review.\n\n## Follow up and troubleshoot\n\nOpen the lead card to review its detail page, update the follow-up date, and create a task or note for the next action. A saved date is not proof that a phone push notification or an email reminder has been sent. Use the task and notification workflows your company actually has configured.\n\nIf saving or uploading fails, preserve the visible error and check whether the lead was created before retrying. If the card is missing, clear search and stage filters. Verify failed photos individually rather than assuming that a saved lead contains every selected image.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/LeadTracker",
+    "search_terms": [
+      "lead tracker",
+      "new lead",
+      "contact",
+      "source",
+      "priority",
+      "assigned team",
+      "follow up",
+      "duplicate lead"
+    ],
+    "priority": 84,
+    "related_slugs": [
+      "guide-leads-pipeline-find-import",
+      "guide-leads-detail-convert",
+      "guide-quotes-create-save"
+    ],
+    "source_files": [
+      "src/pages/LeadTracker.jsx",
+      "src/components/leads/LeadFormDialog.jsx",
+      "src/pages/LeadDetail.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-leads-pipeline-find-import",
+    "feature_area": "Leads",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Use the lead pipeline, search, and CSV import",
+    "answer_short": "Move opportunities through verified sales stages, find Won or Lost leads, and import CSV records without expecting an automatic merge.",
+    "answer_long": "## Understand the stages\n\nLead Tracker uses **New**, **Contacted**, **Booked Visit**, **Quoted**, **Negotiation**, **Won**, and **Lost**. The main Kanban board displays the five active sales stages. Won and Lost records are terminal outcomes rather than active negotiation columns, so switch view or filter when looking for those records.\n\n## Navigate the pipeline\n\n1. Use **Search leads...** for contact name, email, or description.\n2. Use **Filter Stage** to narrow the records, or choose **All Stages** to clear it.\n3. Choose the list or Kanban view that suits your work. Desktop cards support dragging between active columns; cards also offer a stage selector.\n4. On mobile, tap a stage heading to expand its group. Booked Visit starts expanded; other collapsed groups can contain leads even when you cannot initially see their cards.\n5. Open a card to inspect the contact and full history before changing its stage.\n\nMoving a lead to Won through the tracker's confirmation flow creates a client record. Lost records remain a recorded outcome. Review the confirmation rather than using Won merely as a color or label change. If you need to carry detailed notes, files, and quote links into a client, review the Lead Detail conversion guide first.\n\n## Import and export\n\nChoose **CSV Template** for the supported file layout, then **Import** to select a CSV. Columns include Contact Name, Contact Email, Contact Phone, Stage, Value Estimate, Source, and Description. Stage defaults to New when omitted. The importer inserts records; it does not promise to match or merge existing leads by email. Use a small sample and check for duplicates before a large import.\n\nThe download control exports the filtered results. Clear unintended filters when you want a fuller list. Although the file picker accepts spreadsheet extensions, the current import processing is CSV text; save your spreadsheet as CSV first.\n\n## Troubleshooting\n\nFor a missing card, clear the search and filter, expand mobile stage groups, and inspect the list view. For import errors, compare the header spelling with the template and check that rows contain names. Inspect the tracker after any failed import before repeating it, so the same enquiries are not created twice.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/LeadTracker",
+    "search_terms": [
+      "kanban",
+      "pipeline",
+      "new contacted booked visit quoted negotiation won lost",
+      "lead csv",
+      "import",
+      "search"
+    ],
+    "priority": 79,
+    "related_slugs": [
+      "guide-leads-create-follow-up",
+      "guide-leads-detail-convert",
+      "guide-clients-create-organize"
+    ],
+    "source_files": [
+      "src/pages/LeadTracker.jsx",
+      "src/components/shared/DownloadButton.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-leads-detail-convert",
+    "feature_area": "Leads",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Manage lead history and convert a lead to a client",
+    "answer_short": "Keep notes, tasks, photos, files, and quotes together, then review what the selected conversion route transfers to the new client.",
+    "answer_long": "## Work from the detail page\n\nOpen a lead from Lead Tracker to view its contact details, stage, priority, estimated value, follow-up information, notes, tasks, quotes, photos, and documents. Use **Edit** to correct the contact or sales details. On mobile, some actions move into the header menu; open it before assuming an action is unavailable.\n\n## Record the next action\n\n1. Use **Create → Add Note** for a call, email, meeting, update, or general internal note. Pin a note when it needs to stay prominent.\n2. Use **Create → Add Task / Request** for work that needs an owner and completion tracking. Review the assignee, due date, priority, and status.\n3. Use **Create → Quote** or **Quote from Template** to prepare an estimate linked to the lead.\n4. Add site photos and documents, then confirm that each uploaded file opens and has a useful description.\n\nNotes are history; tasks are work to be followed through. Changing a task's status does not automatically update the lead's sales stage or send a customer message.\n\n## Convert deliberately\n\nFrom Lead Detail, choose **Convert to Client** only after confirming that the lead should become a client and that the correct client does not already exist. This route creates a client, marks the lead Won, copies lead notes and files, and attempts to relink lead quotes to the client. Open the resulting Client Detail page and verify contact information, billing/site addresses, notes, attachments, and quotes.\n\nThe Lead Tracker's Won confirmation also creates a client, but it is a different conversion route and should not be assumed to transfer the same detailed history. Use the detail workflow when you need to review that history, and check the result either way.\n\n## Troubleshooting\n\nConversion is not an automatic merge into an existing client. If an error appears or navigation stalls, check Clients for a new record and inspect the lead before retrying. Repeating conversion can create another client. If photos, notes, or quotes are missing afterward, keep both record names and the visible error for support. Do not delete the original lead while resolving incomplete transfers.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/LeadTracker",
+    "search_terms": [
+      "lead detail",
+      "convert to client",
+      "won lead",
+      "lead notes",
+      "lead tasks",
+      "lead photos",
+      "documents",
+      "quote lead"
+    ],
+    "priority": 83,
+    "related_slugs": [
+      "guide-leads-create-follow-up",
+      "guide-clients-detail-workflows",
+      "guide-quotes-create-save"
+    ],
+    "source_files": [
+      "src/pages/LeadDetail.jsx",
+      "src/pages/LeadTracker.jsx",
+      "src/components/leads/LeadFilesSection.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-clients-create-organize",
+    "feature_area": "Clients",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Create, edit, find, and organize clients",
+    "answer_short": "Maintain accurate contact and address details, search the client list, use segments, and handle CSV imports with care.",
+    "answer_long": "## Keep a single useful client record\n\nClients links a customer's contact information to their quotes, projects, invoices, tasks, and files. Search for an existing profile before adding another, especially after a lead has been converted. Duplicate clients can split the same customer's work and payment history across several records.\n\n## Add or correct a client\n\n1. Open **Clients** and choose **New Client**. On mobile, look for the plus button.\n2. Enter **First Name \\*** and **Surname \\*** in the new-client form, choose the type, and add **Primary Contact**, **Email**, and **Phone**.\n3. Complete **Site Address (Project Address)** and the billing address. Use the same-as-site option only when it is correct; the invoice recipient and job site may differ.\n4. Add useful notes and save. Review any duplicate-email warning before deliberately creating another profile.\n5. To correct an existing client, use **Quick Edit** for the compact contact fields or **Full Edit** for the complete form. Save rather than just closing the editor.\n\n## Search and segments\n\nSearch clients by name, email, or primary contact. Filters include type, location, and tags; sorting offers default/newest, A–Z, and Z–A. Desktop **Save Segment** stores your filter combination and **Load Segment** restores it. A segment is a saved view, not a new collection of client copies. Shared segments can be visible to the company. Clear the active segment or filters when a client appears missing.\n\n## CSV handling\n\nUse **CSV Template** and **Import** for a CSV with Name, Type, Primary Contact, Email, Phone, Billing Address, Site Address, and Notes. Import inserts client rows; it does not automatically merge by email. Export uses the currently filtered results, so clear filters for a broader list. Start with a small sample and inspect it before importing more.\n\n## Troubleshooting\n\nIf saving fails, preserve the details and check whether the client already appeared before retrying. If import fails, inspect the list for partially created or duplicate records. Delete is different from removing a filter; verify the client and its linked history before deleting anything.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Clients",
+    "search_terms": [
+      "new client",
+      "edit client",
+      "client search",
+      "billing address",
+      "site address",
+      "segments",
+      "client csv",
+      "quick edit"
+    ],
+    "priority": 81,
+    "related_slugs": [
+      "guide-clients-detail-workflows",
+      "guide-leads-detail-convert",
+      "guide-invoices-create-edit"
+    ],
+    "source_files": [
+      "src/pages/Clients.jsx",
+      "src/components/clients/ClientFormDialog.jsx",
+      "src/components/shared/DownloadButton.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-clients-detail-workflows",
+    "feature_area": "Clients",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Use Client Detail as the customer work hub",
+    "answer_short": "Find the client’s linked work, create customer-specific quotes or tasks, and distinguish private notes from shared documents.",
+    "answer_long": "## Open the customer's hub\n\nChoose a client from **Clients** to open Client Detail. It brings together the customer's contact and address information, tasks and requests, projects, quotes, invoices, change orders, photos, documents, and internal notes. Check the client name and email before creating work so you do not link it to a similarly named customer.\n\n## Create linked work\n\n1. Use **Edit** to correct the contact, billing address, site address, type, or internal notes.\n2. Open **Create** for **Add Note**, **Add Task**, **Create Quote**, **Quote from Template**, **Create Invoice**, or **Create Project**.\n3. Review the customer and site details in the resulting builder; starting from a client page helps preselect the client but does not remove the need to check the form.\n4. Save the new record and confirm it is listed under the relevant Client Detail section.\n\nEach workflow still has its own access rules. If invoice creation is unavailable for your role, ask an authorized billing user to perform it. A Create action shown in a customer hub is not a guarantee that your role can complete every downstream action.\n\n## Review history and files\n\nOpen project cards to reach the project workspace and quote cards to reach the quote builder. Invoice summaries show total, balance due, and status. Use the Invoices workspace for detailed payment management rather than treating the summary as a complete ledger.\n\nFor tasks, review the owner, priority, due date, and status and use the edit control when the assignment needs correction. Add notes with the appropriate note type and pin significant history. Notes labelled internal are for the team; they do not automatically become customer correspondence. Verify uploaded photos and documents before deliberately sharing them through a customer-facing workflow.\n\n## Troubleshooting\n\nA record only appears here when linked to this client. If a quote or project exists elsewhere but is missing from the hub, inspect its client link. A quote still linked to a lead may need the lead conversion or an office review of its association. Clear errors before repeatedly recreating work. For a missing attachment, check that its upload completed and that you opened the intended customer.\n\nOn mobile, scroll through the separate sections and expand the header action menu for additional commands.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Clients",
+    "search_terms": [
+      "client detail",
+      "customer hub",
+      "client tasks",
+      "client notes",
+      "client photos",
+      "create invoice",
+      "create project",
+      "linked records"
+    ],
+    "priority": 80,
+    "related_slugs": [
+      "guide-clients-create-organize",
+      "guide-quotes-create-save",
+      "guide-invoices-create-edit",
+      "guide-leads-detail-convert"
+    ],
+    "source_files": [
+      "src/pages/ClientDetail.jsx",
+      "src/components/shared/CreateQuoteFromTemplateDialog.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-invoices-create-edit",
+    "feature_area": "Invoices",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Create or edit an invoice and review the saved billing scope",
+    "answer_short": "Select the client, choose invoice dates and payment terms, import quote scope when appropriate, and confirm that the saved invoice is complete.",
+    "answer_long": "## Who can manage invoices\n\nThe Invoices workspace is available to owners, administrators, and office users. Managers can have other project and sales access without access to this billing list. Ask an authorized billing user when your role cannot open it.\n\n## Build the invoice\n\n1. Open **Invoices & Payments** and choose **Create New Invoice**, or open an existing invoice number. On a phone, the new action can appear as a plus icon.\n2. Select **Client \\*** before importing quote scope.\n3. Review **Billing Address**, **Site Address**, and **Issue Date**.\n4. Choose **Payment Terms**: Due on Receipt, Net 15, Net 30, Net 60, or Custom Date. For a custom term, enter **Custom Due Date**.\n5. Use **Import from Quote** if this invoice should draw scope from an existing quote for the selected client. Review the imported phases and items rather than assuming every quote option belongs on the invoice.\n6. Add or edit phase scope and any additional item, then review discount, tax, contract total, amount paid, and balance due.\n7. Add **Note to Client** only if you intend it to appear, using **Show on Invoice**. Keep private reminders in **Internal PM Notes**.\n8. Save, then confirm the invoice appears in the Invoices list and reopens with the intended details.\n\n## Confirm persistence before sharing\n\nSelecting Draft, Sent, Paid, Overdue, or Cancelled is a status change; it is not proof that a send, payment, or cancellation with a processor happened. Payment records are the evidence for money received. Review the customer preview and PDF after saving.\n\n## If Save or preview fails\n\nKeep the builder open and preserve the information you entered. Check the invoice list in another tab to see whether the invoice or changes were saved before repeating an action. Capture the visible error and intended invoice number. Verify the connection and session, then ask support if the problem persists. Do not recreate the invoice several times or send an incomplete draft to bypass the error.\n\nImporting a quote is a billing-scope action; it does not replace the separate project-delivery workflow.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Invoices",
+    "search_terms": [
+      "create invoice",
+      "invoice builder",
+      "save invoice",
+      "import quote",
+      "payment terms",
+      "due date",
+      "billing address",
+      "draft"
+    ],
+    "priority": 85,
+    "related_slugs": [
+      "guide-invoices-milestones-ledger",
+      "guide-invoices-share-customer-pay",
+      "guide-quotes-convert-project-invoice"
+    ],
+    "source_files": [
+      "src/pages/Invoices.jsx",
+      "src/pages/InvoiceBuilder.jsx",
+      "src/pages/InvoiceView.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-invoices-milestones-ledger",
+    "feature_area": "Invoices",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Set invoice payment milestones and record progress payments",
+    "answer_short": "Break the contract into payment milestones and apply actual payments to either a milestone or the overall invoice balance.",
+    "answer_long": "## Separate the schedule from money received\n\nA payment milestone describes what should be collected and when. It does not itself record a payment or charge the customer. Actual payment records determine amount paid, balance due, and paid or partial statuses. Review both before deciding that a project payment is complete.\n\n## Add milestones\n\n1. Open the invoice builder and review the contract total.\n2. Under **Payment Schedule**, choose **Add Milestone**.\n3. Enter **Payment Name \\***, choose or type **Due Event / Milestone**, and select a fixed dollar amount or percentage.\n4. Choose **Save Item** and review the displayed schedule amounts.\n5. Edit or remove unintended entries and save the complete invoice.\n\nRecheck the schedule after changing the invoice total. Percentage entries depend on that total, and the builder may adjust an unpaid entry to balance the schedule. Do not assume a previously agreed milestone amount remained unchanged after scope or pricing edits. Preserve paid payment history when discussing schedule changes with the finance person.\n\n## Record an actual payment\n\nFrom the invoice action menu on **Invoices**, choose **Record Payment**. The dialog asks **Which Scheduled Payment is this for? (Optional)**. Select a milestone when the payment belongs there, or **Apply to Overall Balance** when it does not. Enter **Date Received \\***, **Amount Received \\***, **Payment Method**, and **Reference Notes**, then save.\n\nRecording or editing a payment recalculates the invoice and milestone balances from its payment records. A payment applied to the overall balance reduces the invoice total due but does not necessarily complete an individual milestone. Check the chosen allocation if the invoice and milestone statuses look different.\n\n## Troubleshooting\n\nCheck Payments History before recording money that may already have arrived online. Duplicate manual and online records can overstate the amount collected. Enter the amount actually received, not an estimate or future promise. If saving fails, inspect the ledger before retrying and keep the visible error for support. If a milestone remains Pending despite a payment, verify its allocation and compare its required amount with the total allocated to it.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Invoices",
+    "search_terms": [
+      "progress billing",
+      "payment schedule",
+      "milestone",
+      "record payment",
+      "ledger",
+      "partial",
+      "paid",
+      "balance due"
+    ],
+    "priority": 84,
+    "related_slugs": [
+      "guide-invoices-create-edit",
+      "guide-payments-history-corrections-receipts",
+      "guide-invoices-share-customer-pay"
+    ],
+    "source_files": [
+      "src/pages/InvoiceBuilder.jsx",
+      "src/components/invoices/RecordPaymentDialog.jsx",
+      "src/pages/Invoices.jsx",
+      "src/pages/PublicInvoiceView.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-invoices-share-customer-pay",
+    "feature_area": "Invoices",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Share an invoice and help the customer use payment checkout",
+    "answer_short": "Review the saved invoice, email or text the intended customer, and explain balance or milestone checkout without assuming a send means payment.",
+    "answer_long": "## Review the saved document\n\nBefore sharing, confirm the invoice is saved and reopens with its correct client, number, addresses, scope, dates, payment schedule, total, and balance. Use **Client Preview** or **Download PDF** to inspect the customer document. Do not share an incomplete draft while a save error remains unresolved.\n\n## Email or text\n\n1. Open the invoice's sharing menu and choose **Send via Email** or **Send via Text Message**.\n2. For email, review **To (Client Email)**, **Subject**, **Message**, and **Email Signature**. Correct any auto-filled contact information before sending.\n3. For text, review **Mobile Phone Number**, **Text Message**, and the included invoice link before submitting.\n4. Wait for the send result. Ask the customer to check their spam folder or reopen the original message if needed.\n\nSending and payment are separate events. A Sent status is a workflow label; the payment ledger and processor confirmation establish whether money was received.\n\n## Customer payment flow\n\nWhen online payment is available, the customer document opens secure checkout through the company's payment processor. The amount depends on the document: the public progress-billing view can offer the next unpaid milestone less its allocated payments, while another invoice view can offer the remaining balance. The customer should check the amount shown on the page and again in checkout before proceeding.\n\nCustomers can also download the displayed PDF and review payment history. The office should confirm a completed transaction in the processor and the app ledger before marking the payment resolved. A success message or return to the invoice page alone should not replace that check.\n\n## Troubleshooting\n\nIf checkout is unavailable, ask the company's authorized administrator to confirm payment setup. If the customer reports an error after submitting card information, verify whether the processor recorded a charge before asking them to try again. For an incorrect amount, check milestone allocation and the invoice balance first.\n\nFor a link that will not load, confirm the intended invoice and original link and contact support with the invoice number and visible error. Do not request card details by email or place them in invoice notes.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Invoices",
+    "search_terms": [
+      "send invoice",
+      "email invoice",
+      "text invoice",
+      "public invoice",
+      "pay now",
+      "checkout",
+      "pdf invoice",
+      "payment failed"
+    ],
+    "priority": 84,
+    "related_slugs": [
+      "guide-invoices-create-edit",
+      "guide-invoices-milestones-ledger",
+      "guide-payments-connect-and-refunds"
+    ],
+    "source_files": [
+      "src/pages/InvoiceBuilder.jsx",
+      "src/components/invoices/SendInvoiceEmailDialog.jsx",
+      "src/components/invoices/SendInvoiceTextDialog.jsx",
+      "src/pages/InvoiceView.jsx",
+      "src/pages/PublicInvoiceView.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-payments-history-corrections-receipts",
+    "feature_area": "Payments",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Review payment history, correct records, and send receipts",
+    "answer_short": "Find payments by client or invoice, distinguish ledger corrections from refunds, and send receipts for selected recorded payments.",
+    "answer_long": "## Find a payment\n\nOpen **Invoices & Payments → Payments History**. Search by client name or invoice number, then use date range and payment-method filters. The table shows invoice, client, amount, method, notes, and date paid. These are recorded payments; their presence should be reconciled with actual bank or processor receipts.\n\n## Correct a record\n\n1. Confirm the invoice and payment reference before changing anything.\n2. Choose **Edit Payment** from the payment's action menu.\n3. Review the received date, amount, method, reference notes, and milestone allocation, then save.\n4. Check the invoice and milestone balances after the update.\n\nUse **Delete Record** only to remove an incorrect ledger entry. The confirmation states that this adjusts the invoice balance. It deletes a record and recalculates balances; it does not send money back to the customer. If the payment was real, discuss the correction with the person responsible for company finances before altering its history.\n\n## Send a receipt\n\nFrom Payments History, choose **Send Receipts**. Select the client, then select the specific payments to include. Review the combined selected amount, continue to the message step, and check **To (Client Email)**, **Subject**, and **Message** before choosing **Send Receipt**. The workflow produces an emailed receipt for selected recorded payments. It does not collect another payment or correct the underlying ledger.\n\nIf no payments are available, ensure you selected the client whose invoices contain the payments. A client with a similar name may be a different record. Confirm that the intended payment has been recorded and linked to the correct invoice.\n\n## Troubleshooting\n\nFor a payment that seems missing, clear search and date/method filters and inspect the relevant invoice. For a wrong balance, look for duplicate entries or an incorrect amount. For a milestone that remains unpaid, review its allocation rather than simply deleting and recreating the receipt.\n\nIf saving or sending fails, check whether the record changed or receipt action succeeded before retrying. Preserve the visible error and invoice reference for support. Never use Delete Record as a substitute for a processor refund.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Invoices",
+    "search_terms": [
+      "payments history",
+      "edit payment",
+      "delete payment",
+      "receipt",
+      "date received",
+      "reference",
+      "refund record",
+      "payment method"
+    ],
+    "priority": 84,
+    "related_slugs": [
+      "guide-invoices-milestones-ledger",
+      "guide-payments-connect-and-refunds",
+      "guide-reports-review-reconcile"
+    ],
+    "source_files": [
+      "src/pages/Invoices.jsx",
+      "src/components/invoices/RecordPaymentDialog.jsx",
+      "src/components/invoices/SendReceiptDialog.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-payments-connect-and-refunds",
+    "feature_area": "Payments",
+    "audience": "admin",
+    "requires_admin": true,
+    "question": "Set up payment processing and handle refund questions",
+    "answer_short": "Connect the company’s bank account through the authorized payment setup, verify processor readiness, and distinguish refunds from app ledger edits.",
+    "answer_long": "## Set up the company account\n\nPayment setup belongs to the company, not an individual invoice. An owner or administrator opens **Admin Settings → Payments** to review **FuzedFlow Payments**. The payment processor handles its onboarding and payment processing. Do not add bank or card details to customer notes or help messages.\n\n## Connect and review settings\n\n1. In Payments, choose **Link Bank Account** when the company is not connected.\n2. Follow the processor's onboarding instructions and provide the requested information there.\n3. Return to the app and review the connection state. **Account Active** indicates that the app has a linked account; check the processor dashboard for any outstanding verification or processing requirements.\n4. Use **View Stripe Dashboard** to inspect the linked processor account when available.\n5. Under **Invoicing Defaults**, choose **Default Payment Terms** and select **Save Payment Settings**.\n6. Check the payment terms and due date on each invoice before sending; a saved default does not establish the terms of every existing invoice.\n\nLinking the account is not a guarantee that every checkout or payout has completed. Confirm a customer's transaction in the payment processor and the app ledger. Payout timing and account requirements are controlled by the processor and should be checked there.\n\n## Refunds and record corrections\n\nThe invoice payment ledger provides edit and delete-record actions. There is no verified in-app financial Refund button in this workflow. **Delete Record** adjusts the app's accounting record and invoice balance; it does not reverse a card payment or bank transfer.\n\nFor an actual refund, an authorized finance person should inspect the transaction in the company's payment processor and use that processor's supported refund process. Then reconcile the result with company records and ask support how the relevant invoice should be reflected if necessary. Do not assume an external refund automatically synchronized into the app.\n\n## Troubleshooting\n\nIf onboarding fails, preserve the visible error and verify your signed-in company account before retrying. If checkout fails after a customer may have paid, check the processor first to avoid a repeated charge. Ask support about unresolved connection or ledger discrepancies with transaction references, without sharing card numbers or bank credentials.\n\n## Access and support\n\nCompany payment setup is available to owners and administrators through Admin Settings. Ask an authorized administrator to perform setup; sharing an article does not change account permissions.",
+    "route": "/AdminSettings",
+    "search_terms": [
+      "stripe",
+      "link bank account",
+      "payment settings",
+      "connect payments",
+      "refund",
+      "payout",
+      "account active",
+      "default payment terms"
+    ],
+    "priority": 83,
+    "related_slugs": [
+      "guide-invoices-share-customer-pay",
+      "guide-payments-history-corrections-receipts",
+      "guide-invoices-create-edit"
+    ],
+    "source_files": [
+      "src/pages/AdminSettings.jsx",
+      "src/components/settings/PaymentSettings.jsx",
+      "src/pages/InvoiceView.jsx",
+      "src/pages/PublicInvoiceView.jsx",
+      "src/pages/Invoices.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-reports-review-reconcile",
+    "feature_area": "Reports",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Read reports and reconcile sales, expenses, taxes, and receivables",
+    "answer_short": "Use the available report sections and date filters while verifying important totals against invoice, payment, and expense records.",
+    "answer_long": "## Choose the right report\n\nThe Reports workspace offers **Sales & Revenue**, **Expense Report**, **Tax Summary**, and **Invoice Aging**. These views summarize operational records. Use them to identify work that needs review, and reconcile important financial decisions against the source invoices, actual payments, expenses, and your company's accounting records.\n\n## Navigate and filter\n\n1. Open Reports and choose the section you need. Desktop uses report tabs; mobile uses the report selector.\n2. For sales, expenses, or taxes, choose **YTD**, **QTD**, **This Month**, or **Last Month**.\n3. Read the labels carefully: billed value and revenue received are different amounts, and outstanding receivables represent unpaid billing.\n4. Compare the summary with the relevant invoices and Payments History before acting on a mismatch.\n\nThe monthly sales chart is a recent-month trend and should not be assumed to show exactly the same window as every selected summary. Invoice Aging groups unpaid invoices using their due dates; records without due dates cannot be placed reliably into an aging bucket. Review dates on the underlying invoices when an aging amount looks incorrect.\n\n## Reconcile discrepancies\n\nFirst confirm the selected date window and what the metric represents. Then inspect the related invoice, payment date and amount, ledger allocations, and expense entries. Some totals rely on the availability of their expected date and tax data, so a blank or zero summary does not prove that no transaction occurred. Tax summaries should be checked against invoice and expense tax records before being used for a filing or payment decision.\n\nIf client names show as unknown in a summary, confirm the client link in the original invoice rather than creating another client just to change the report label. Keep a list of the records whose values differ for the finance person or support.\n\n## Troubleshooting\n\nClear the chosen period and compare a broader period when records appear missing. If the summary still conflicts with source records, preserve the report name, period, expected amount, and relevant invoice numbers. Do not edit real payments solely to force a dashboard total to agree. Report visibility is also subject to your subscription's advanced-reporting access.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Reports",
+    "search_terms": [
+      "reports",
+      "sales revenue",
+      "expense report",
+      "tax summary",
+      "invoice aging",
+      "ytd",
+      "qtd",
+      "reconcile",
+      "wrong report total"
+    ],
+    "priority": 82,
+    "related_slugs": [
+      "guide-reports-availability-export",
+      "guide-payments-history-corrections-receipts",
+      "guide-invoices-milestones-ledger"
+    ],
+    "source_files": [
+      "src/pages/Reports.jsx",
+      "src/pages/Invoices.jsx",
+      "src/lib/planConfig.js"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-reports-availability-export",
+    "feature_area": "Reports",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Understand advanced-report access and current export availability",
+    "answer_short": "Check report subscription access, navigate reports on mobile, and use verified source-record downloads when a report export is not available.",
+    "answer_long": "## Access depends on the plan\n\nReports checks the company's advanced-reporting feature. The verified plan configuration enables it for Professional and Business and excludes Starter. A blocked page displays an upgrade panel identifying **Custom & Advanced Reporting**; that panel can name Business even though Professional also has the feature configured. Ask the account owner to review the current subscription if access is unexpected. A different role or an article link does not bypass a subscription requirement.\n\n## Desktop and mobile navigation\n\nOn desktop, use the report tabs for Sales & Revenue, Expense Report, Tax Summary, and Invoice Aging. On a phone, use the **Select report...** control to change sections. For sections with period filtering, the available choices are YTD, QTD, This Month, and Last Month. Horizontal chart or table content may require scrolling; use the selected report name and period to orient yourself before interpreting the values.\n\n## Current export limitation\n\nThe Reports page shows **Export** or **Export Report**, but a downloadable report file is not implemented in the verified workflow. An export toast does not prove that a file has been created. Do not keep pressing the button or assume that the file must be in your device Downloads folder when no download starts.\n\nWhen you need a durable copy, use an available document or source-record workflow instead: customer invoice pages offer a PDF, Clients and Lead Tracker have download controls for their filtered records, and Pricebook provides CSV export. These are different record sets, not a substitute financial report with identical calculations. Check what each file contains and which filters were active when it was generated.\n\n## Troubleshooting and support\n\nIf a report page will not open, confirm the subscription and your company's role permissions. If an available source-file download fails, preserve the selected record and visible error and check your browser's download handling. If you need a report format that is not currently available, give support the report name, date window, required fields, and the purpose of the export.\n\nFor finance review, compare source invoices and actual payment records. Do not infer that a summary is a complete accounting export or an automatic sync with external bookkeeping software.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Reports",
+    "search_terms": [
+      "report export",
+      "export unavailable",
+      "advanced reporting",
+      "business plan",
+      "upgrade wall",
+      "mobile reports",
+      "download report"
+    ],
+    "priority": 80,
+    "related_slugs": [
+      "guide-reports-review-reconcile",
+      "guide-payments-history-corrections-receipts",
+      "guide-clients-create-organize",
+      "guide-leads-pipeline-find-import"
+    ],
+    "source_files": [
+      "src/pages/Reports.jsx",
+      "src/lib/planConfig.js",
+      "src/pages/Clients.jsx",
+      "src/pages/LeadTracker.jsx",
+      "src/components/shared/DownloadButton.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-dashboard-sales-navigation",
+    "feature_area": "Reports",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Use the Dashboard to resume sales work and follow active leads",
+    "answer_short": "Resume unfinished quotes and invoices, inspect recent active leads, and open the complete workspace when the Dashboard shows only a summary.",
+    "answer_long": "## Use the Dashboard as a starting point\n\nThe Dashboard brings together recent work and shortcuts. It is useful for resuming a sales conversation or checking what needs attention, but it does not display every company record. Use the full Quotes, Lead Tracker, Clients, or Invoices workspace when you need a complete search or history.\n\n## Resume a document\n\n1. In the continue-working area, look for **Resume Quotes** and unfinished invoice work.\n2. Open the relevant entry to return to its builder.\n3. Verify the contact and current saved scope before editing, particularly when another office user may have worked on it.\n4. Save any changes, then review the customer document before sending.\n5. Use the section's link to the full workspace if the document you need is absent.\n\nThe resume area shows a small selection of unfinished records. Approved, declined, expired, archived, or older documents may not appear there even though they remain in their appropriate lists. A document missing from the Dashboard is not evidence that it was deleted.\n\n## Follow active leads\n\nThe **Leads Snapshot** shows recent active enquiries. Tap a lead to expand its summary and review estimated value, phone, and other available details. Choose **View All Leads** for the complete tracker and its stage/search tools. Active sales summaries exclude Won and Lost opportunities; use the tracker to review those outcomes.\n\nUse the Dashboard's sales shortcuts for new work when offered, then confirm the client or lead in the destination form. Starting from a general Dashboard shortcut does not always preselect a specific customer.\n\n## Troubleshooting\n\nFor a missing record, search in its full workspace, clear filters, and check the archived or terminal-stage views. For an unexpected customer name, inspect the linked client rather than assuming the summary renamed the record. For a financial amount, open the actual invoice and payment history; Dashboard summaries do not replace the ledger.\n\nOn mobile, Dashboard columns stack, so scroll beyond the first card to find the sales sections and shortcuts. Preserve unsaved builder work before navigating back to the Dashboard. If a record still cannot be found, ask the office or support to review the company, role, record number, and visible error.\n\n## Access and support\n\nThese instructions cover the company office workspace. Availability depends on your role and subscription. If a page redirects or is missing from navigation, ask your company owner or administrator to confirm access. Reading this guide does not grant access to the underlying records.",
+    "route": "/Dashboard",
+    "search_terms": [
+      "dashboard",
+      "resume quotes",
+      "continue working",
+      "leads snapshot",
+      "recent leads",
+      "sales crm",
+      "missing dashboard record"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-leads-pipeline-find-import",
+      "guide-quotes-find-duplicate-archive",
+      "guide-invoices-create-edit",
+      "guide-reports-review-reconcile"
+    ],
+    "source_files": [
+      "src/pages/Dashboard.jsx",
+      "src/components/dashboard/ContinueWorking.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  }
+]

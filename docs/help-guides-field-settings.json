@@ -1,0 +1,876 @@
+[
+  {
+    "slug": "guide-account-sign-in",
+    "feature_area": "Account",
+    "question": "Create an account, join an invited team, and sign in",
+    "answer_short": "Choose the correct signup or sign-in path, use the invited email, and troubleshoot confirmation and Google login.",
+    "answer_long": "## Choose the correct account path\nUse **Sign up** when creating a new company account. Use the signup link provided for your team's invited email when joining an existing company. These paths serve different purposes: creating another company does not add you to your employer's workspace.\n\nA new company signup asks for **Company Name**, **Your Full Name**, **Email address**, **Password**, and **Confirm Password**. An invited signup displays **Join your team**, pre-fills the invited email, and hides Company Name. The invited email cannot be changed in that form.\n\n## Sign up or join your team\n1. Open the appropriate signup page and check the heading.\n2. Enter your full name. For a new company, enter the company name as well.\n3. Enter matching passwords of at least six characters. The eye buttons reveal each password so you can check typing.\n4. Select **Sign up** or **Join Team** once and wait for the result.\n5. If prompted to confirm your account, check your inbox and spam folder, confirm the email, and return to **Sign in**.\n\n**Sign up with Google** is also available. Choose the Google account whose email matches the intended company membership. An email can belong to only one FuzedFlow company; an existing-account message is a reason to use Sign in or ask your company administrator, rather than repeatedly create accounts.\n\n## Return to your account\nOn the login page, use **Email address**, **Password**, and **Sign in**, or **Sign in with Google** if that was your original login method. Google users may not have a separate email password.\n\n## If login fails\nCheck the email spelling, confirmation status, and original login method. The current login screen does not provide a self-service **Forgot Password** button. For password recovery or an unexpected company association, contact support and provide your account email and the error wording. Do not send your password. If Google returns you to the login page, allow the authentication screen to finish before refreshing.",
+    "route": "/login",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "signup",
+      "login",
+      "Google",
+      "password",
+      "confirm email",
+      "join team",
+      "forgot password"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-team-invites",
+      "guide-support-and-ai"
+    ],
+    "source_files": [
+      "src/pages/Login.jsx",
+      "src/pages/Signup.jsx",
+      "src/lib/AuthContext.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-team-invites",
+    "feature_area": "Team",
+    "question": "Invite team members and choose their access role",
+    "answer_short": "Owners and administrators can invite colleagues through Team Management and track pending membership.",
+    "answer_long": "## Who can invite people\nUse an **Owner** or **Admin** account for team invitations. Open **Settings**, then **Team Management**. A project staff assignment and a company invitation are different: invite the person into the company first, then assign them to the relevant project when needed.\n\n## Create a company invitation\n1. Select the invitation action to open **Invite Team Member**.\n2. Enter **Full Name** and **Email Address**. Check the address with the colleague before saving; they must register with this same email.\n3. Choose **Access Role**.\n4. Enter **Hourly Pay Rate** if required for your company's estimates, or leave the appropriate initial value for your payroll process.\n5. Select **Send Invite** and wait until the member appears as pending in the team list.\n\nThe detailed invitation form offers **Employee (Field Only)**, **Project Manager (Ops Access)**, **Office Staff (Office Access)**, **Subcontractor (Field Only)**, and **Admin (Full Access)**. Existing owners may also appear in the list. Give the access needed for the person's work; an admin role includes settings and company-level administration.\n\n## Help the colleague join\nAsk the colleague to use the invited email on the company join/signup path. An invitation appearing in **Pending** means the registration has not yet been accepted. The screen's success message confirms that an invitation was saved; do not treat it as proof that an email was delivered. If the colleague has no invitation email, share the approved signup instructions with them and check the pending record.\n\n## Find and correct an invitation\nSearch by name, email, or role. Use the pending member's edit action to correct the name, role, or initial rate, or cancel an obsolete pending invitation. Pending invitations count toward the limit checked by this form.\n\n## Troubleshooting\nIf the user already belongs to another FuzedFlow company, resolve that membership with support. If a legacy **Team Settings** page offers **Standard User**, use the detailed **Settings → Team Management** form instead. Current invitations use the canonical roles above and require an owner or administrator.",
+    "route": "/AdminSettings",
+    "audience": "admin",
+    "requires_admin": true,
+    "search_terms": [
+      "invite staff",
+      "join company",
+      "team member",
+      "role",
+      "pending invitation"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-team-access-and-seats",
+      "guide-account-sign-in"
+    ],
+    "source_files": [
+      "src/components/settings/TeamManagementSettings.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/pages/Signup.jsx",
+      "src/pages/TeamSettings.jsx",
+      "supabase/migrations/20261003220500_role_based_notifications.sql"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-team-access-and-seats",
+    "feature_area": "Team",
+    "question": "Manage roles, account activity, and team seat limits",
+    "answer_short": "Review team access, edit a member, deactivate an account, and resolve company user-limit messages.",
+    "answer_long": "## Review company access\nOwners and administrators manage company membership in **Settings → Team Management**. The list combines existing profile records and pending invitations. Use its search field to find a member by name, email, or role before making an access change.\n\nCompany roles control the areas available after sign-in. Employees and subcontractors use the field portal; managers have operations access; office staff have office access. Some areas have extra restrictions: HR is for owners, administrators, and office staff, while the main Settings page is for owners, administrators, and managers. Managers cannot open every Settings section.\n\n## Edit a member\n1. Open the member's edit action.\n2. Check the email shown in **Edit Team Member** so you are changing the intended account.\n3. Update **Full Name**, **Access Role**, or **Hourly Pay Rate** as needed.\n4. For an existing account, set **Active Account** appropriately.\n5. Save and check the updated list.\n\nTurning Active Account off is the reversible access-management option provided by the form. The control is not shown for pending invitations. If a name change is needed, also check historical time records with HR: some employee screens match recorded entries by employee name.\n\n## Understand seat checks\nThe detailed invitation form compares the combined team and pending-invitation count with the company's maximum users. A limit warning may therefore occur even when not every colleague has completed signup. Review and cancel obsolete pending invitations before adding more people. Do not assume deactivating an account automatically removes it from the count used by that invitation form.\n\nUse the billing or user-management action when the company needs a different subscription arrangement. Subscription changes are completed in the billing portal, not by changing an employee role.\n\n## Removal and troubleshooting\nPermanent deletion is different from deactivation and is explicitly labelled as permanent in the team workflow. Verify the member carefully before using it. If an access or role update is rejected, confirm you are an active owner or administrator in the correct company and record the error. An employee cannot grant themselves a higher role from their own profile.",
+    "route": "/AdminSettings",
+    "audience": "admin",
+    "requires_admin": true,
+    "search_terms": [
+      "roles",
+      "permissions",
+      "active account",
+      "deactivate",
+      "user limit",
+      "seats",
+      "delete team"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-team-invites",
+      "guide-stripe-and-subscription"
+    ],
+    "source_files": [
+      "src/components/settings/TeamManagementSettings.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/App.jsx",
+      "src/components/RoleGuard.jsx",
+      "supabase/migrations/20261003220500_role_based_notifications.sql"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-employee-portal",
+    "feature_area": "Employee Portal",
+    "question": "Find your personal work and HR tools in Employee Portal",
+    "answer_short": "Use the field portal on a phone or desktop and understand why a module may be missing.",
+    "answer_long": "## What the field portal contains\n**Employee Portal** brings your personal attendance, requests, and assigned work together. The available tabs depend on the company's plan and module settings. The portal requires a plan with HR access; the current upgrade screen identifies **Professional** as the required plan. A Business plan also includes HR access.\n\nEmployees and subcontractors are directed to this portal for field work. Your own records are different from the company's office lists. A blank personal list does not mean every company record is missing; it may mean you have no matching records or assignments.\n\n## Navigate on desktop\nThe left sidebar separates **My Information** from **Operations**. My Information can include **Clock In**, **My Time Sheets**, **My Pay**, **My Time Off**, and **My Expenses**. Operations includes **My Projects**, **My Schedule**, **Project Notes**, **My Tasks**, and **Inventory**. Select the relevant tab to load its content.\n\n## Navigate on a phone\nThe bottom bar shows the first available personal tabs with shorter labels such as **Clock**, **Time Sheets**, **Pay**, and **Time Off**. Select **More** to open the full menu and find Expenses or Operations tabs. Selecting an item closes the menu. Use the close button if you opened More only to look around.\n\n## Understand missing modules\nThe company owner or administrator controls portal modules in **Settings → Employee Portal**. **Time & Attendance** controls Clock In, timesheets, pay views, and time-off requests together. Expenses, daily logs, tasks, and inventory have separate switches. Turning a module off hides its navigation tab. Ask the office to check the plan and switches before assuming your account is broken.\n\n## Work without duplicate entries\nOpen the right tab and review existing history before submitting another timesheet, expense, or material checkout. Wait for the success or error message after saving. On a slow mobile connection, repeated taps can create extra records.\n\n## If a page will not load\nCheck that your login is active and belongs to the correct company. Use Retry where offered, or sign in again if your session expired. The self-service **Profile → Set Up Profile** form is currently incomplete. If it does not save, ask an owner or administrator to use **Settings → Team Management → Edit Team Member** for name, role, hourly rate, or active-account corrections. Ask HR about additional employee information and leave balances. Do not rely on this form as the sole record for emergency contact details.",
+    "route": "/EmployeePortal",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "employee portal",
+      "field portal",
+      "missing tabs",
+      "more menu",
+      "professional plan",
+      "staff portal"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-clock-in-out",
+      "guide-field-assigned-work"
+    ],
+    "source_files": [
+      "src/pages/EmployeePortal.jsx",
+      "src/lib/planConfig.js",
+      "src/components/settings/EmployeePortalSettings.jsx",
+      "src/Layout.jsx",
+      "src/components/employee/EPProfile.jsx",
+      "src/components/settings/TeamManagementSettings.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-clock-in-out",
+    "feature_area": "Timesheets",
+    "question": "Clock in, clock out, and review tracked hours",
+    "answer_short": "Track a live shift and submit the completed hours to HR without creating duplicate entries.",
+    "answer_long": "## Before starting a shift\nOpen **Employee Portal → Clock In**. On a phone the bottom-bar label is **Clock**. The page displays a live local clock, today's date, your current shift state, **Today's Hours**, and **This Week**. It uses your employee identity; if your name or company looks wrong, ask the office to correct the account before recording work.\n\nThe portal's **Time & Attendance** module must be enabled and the company's plan must include HR access. A missing Clock tab can be a company setting rather than a device problem.\n\n## Start and end work\n1. When the card says **OFF THE CLOCK**, optionally enter a note in **What are you working on today? (optional)**.\n2. Select **CLOCK IN** once.\n3. Wait for the success message and confirm the card changes to **CLOCKED IN**, showing the start time.\n4. At the end of the shift, return to this same tab and select **CLOCK OUT**.\n5. Wait for confirmation that your hours have been submitted, then review the shift in **My Time Sheets**.\n\nClocking out records the end time, calculates the elapsed hours, and changes the completed shift to **Pending** for HR review. This is a submitted time record, not payroll approval.\n\n## Understand the totals\nToday's total includes completed hours and elapsed time for a currently active shift. The weekly figure sums recorded total hours for the displayed week, beginning Monday; a live shift's unfinished hours may therefore differ from what you expect in the weekly total. Use the individual time-entry record when checking a discrepancy.\n\n## If you forgot to clock out\nDo not start another shift to compensate for the old one. The screen detects an existing **Clocked In** entry and offers clock-out for it. Tell HR the intended finish time and ask them to adjust the record through **Adjust Timesheet**. If an entire shift was never recorded, use **Submit Missing Hours** instead.\n\n## If an action fails\nRead the error and check the saved state before retrying. The time clock refreshes periodically, but a success toast and matching record are stronger confirmation than a button tap alone. Preserve the date, actual start/end times, and error wording for HR if a correction is needed.",
+    "route": "/EmployeePortal?tab=time_clock",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "clock in",
+      "clock out",
+      "shift",
+      "forgot clock out",
+      "attendance",
+      "hours"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-missing-timesheets",
+      "guide-my-pay"
+    ],
+    "source_files": [
+      "src/components/employee/EPTimeClock.jsx",
+      "src/components/employee/EPTimesheets.jsx",
+      "src/pages/EmployeePortal.jsx",
+      "src/pages/HumanResources.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-missing-timesheets",
+    "feature_area": "Timesheets",
+    "question": "Submit missing hours and understand timesheet statuses",
+    "answer_short": "Submit one manual missing shift with date, times, break, project, and notes for HR approval.",
+    "answer_long": "## Review existing shifts first\nOpen **Employee Portal → My Time Sheets**. The page shows the last 30 shifts in date order, including recorded start and finish times, total hours, project where available, notes, and the status. A **Manual Entry** badge identifies a manually submitted shift.\n\nCheck this history before adding missing hours. If the shift already exists but has the wrong times, ask HR for an adjustment. The employee form creates a new record; it does not edit or delete an existing shift.\n\n## Submit a genuinely missing shift\n1. Select **Submit Missing Hours**.\n2. In **Submit Missing Shift**, choose the **Date** worked.\n3. Enter **Clock In** and **Clock Out**.\n4. Enter **Unpaid Break (Minutes)** using minutes rather than decimal hours.\n5. Review the calculated **Total Shift**. It must be greater than zero.\n6. Choose **Project**, or **No Project** when appropriate.\n7. Add **Notes to HR** explaining why the shift is being submitted manually.\n8. Select **Submit to HR** and wait for the confirmation.\n\nThe record is saved with the type **Manual** and status **Pending**. Selecting a project associates the shift with that project; it does not create an assignment or a project by itself.\n\n## Understand status and corrections\n**Clocked In** means a shift is still active. **Pending** means the completed or manual shift is awaiting review. **Approved** and **Rejected** reflect HR decisions. An estimate on My Pay can include pending hours, but that does not mean those hours were approved or paid.\n\nIf an entry is rejected or you submitted the wrong date, explain the issue to HR instead of adding a second copy without agreement. HR can use its timesheet adjustment workflow to correct dates, hours, and timestamps.\n\n## Check unusual time ranges\nThe form calculates overnight duration when the finish time is earlier than the start time. It still asks for one shift date, so have HR verify the saved clock timestamps for overnight work. Confirm your device's timezone before entering local times.\n\n## If Submit is disabled or fails\nBoth time fields are required. Check the break amount and positive total. After an error, inspect the shift list before trying again and include the date and expected hours when asking HR for help.",
+    "route": "/EmployeePortal?tab=timesheets",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "missing hours",
+      "manual timesheet",
+      "break minutes",
+      "submit shift",
+      "pending",
+      "overnight"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-clock-in-out",
+      "guide-my-pay"
+    ],
+    "source_files": [
+      "src/components/employee/EPTimesheets.jsx",
+      "src/components/employee/EPTimeClock.jsx",
+      "src/pages/HumanResources.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-my-pay",
+    "feature_area": "Employee Portal",
+    "question": "Read My Pay estimates and explain missing hours or expenses",
+    "answer_short": "Understand approved versus pending hours, displayed pay periods, estimates, and approved expense totals.",
+    "answer_long": "## What My Pay shows\nOpen **Employee Portal → My Pay**. The content heading is **My Pay & Hours**. This page combines your recorded shifts, an hourly rate from your profile, and approved expense records to show a personal overview. It is an estimate display, not a bank transfer, payslip generator, or confirmation that payroll has been processed.\n\nThe screen displays a current biweekly period and a previous period. These periods are calculated by the application. Compare the dates shown on the screen with your employer's payroll calendar before comparing totals to an actual payslip.\n\n## Check the numbers in a useful order\n1. Read the **Current Period** date range.\n2. Review **Approved** hours separately from pending or active-shift hours.\n3. Open **My Time Sheets** and find any shift you expected to see in that date range.\n4. Check each shift's date, total hours, and status.\n5. Ask HR to confirm the hourly rate assigned to your account if the pay estimate appears wrong.\n6. For expenses, open **My Expenses** and check whether the claim has been approved and falls in the period being displayed.\n\nThe page's notice explains that HR must approve shifts before they are finalized for payroll. Pending hours can be counted in the estimate while awaiting approval. A currently clocked-in shift may not yet have a completed total-hours value.\n\n## Understand calculation limits\nEstimated pay is calculated from recorded hours and the profile hourly rate. The page also displays an overtime-style hours indicator using its own calculation. It does not establish your employer's overtime policy, deductions, tax withholding, holiday rules, or actual pay entitlement. Have HR reconcile those details through the company's payroll process.\n\nApproved expenses in the period can appear in the expense portion of the overview. Their appearance is not evidence that reimbursement has been deposited into your bank account.\n\n## Troubleshooting\nIf hours are missing, check the period dates, approval state, and whether a clock-out was saved. Use the missing-hours form only for an absent shift, not as a way to correct an existing one. If the pay estimate is zero while hours exist, ask an owner or administrator to check the profile's hourly rate. For final payroll or reimbursement questions, contact your own HR or office team with the relevant dates and records.",
+    "route": "/EmployeePortal?tab=payroll",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "pay",
+      "payroll",
+      "estimated pay",
+      "approved hours",
+      "hourly rate",
+      "reimbursement",
+      "pay period"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-missing-timesheets",
+      "guide-expense-claims",
+      "guide-time-off"
+    ],
+    "source_files": [
+      "src/components/employee/EPPayroll.jsx",
+      "src/components/employee/EPTimesheets.jsx",
+      "src/components/employee/EPExpenses.jsx",
+      "src/pages/HumanResources.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-time-off",
+    "feature_area": "Employee Portal",
+    "question": "Request time off and track the HR decision",
+    "answer_short": "Submit a dated absence request, review balances and status, and cancel a pending request.",
+    "answer_long": "## Before requesting an absence\nOpen **Employee Portal → My Time Off**. The page shows **Vacation Left**, **Sick Days Left**, **Pending**, and **Request History**. The balance cards use the totals and used-day values stored in your profile. They are a display of configured records, so ask HR to confirm them if they do not match your company's records.\n\nThe Time Off tab is part of **Time & Attendance**. If it is missing, ask the owner or administrator to check the portal's module setting and the company's HR plan access.\n\n## Submit a request\n1. Select **Request Time Off**.\n2. Choose **Absence Type**. Available types include Vacation, Sick Day, Personal Day, and Unpaid Leave.\n3. Enter **First Day Off** and **Last Day Off**, ensuring the last date is on or after the first.\n4. Review the day count shown by the form.\n5. Add an optional reason with enough context for the office to understand the request.\n6. Select **Submit to HR** and wait for the success message.\n7. Find the new record in Request History and check its dates and **Pending** status.\n\nThe day display counts calendar dates inclusively. A Monday-through-Friday range is five calendar days; a range that includes a weekend includes those dates as well. Use your company's instructions for how to request a workday absence and have HR reconcile any different company counting rules.\n\n## Read the outcome\nThe record shows **Pending**, **Approved**, or **Rejected**. An **HR Note** may appear when provided. A submitted request is not permission to take the absence; wait for the company's approval and follow its attendance process.\n\n## Cancel or change a request\nA pending request offers **Cancel Request** with a confirmation. Approved or rejected records do not expose that same cancellation action. For changed dates or an approved absence you no longer need, ask HR to correct the records and explain whether a replacement request is required.\n\n## Troubleshooting\nCheck both dates carefully before saving; do not rely on the displayed day count to catch every date mistake. If a request does not appear after an error, verify the account name and ask HR to check the record before resubmitting. Avoid sending detailed sensitive medical information in an ordinary note.",
+    "route": "/EmployeePortal?tab=vacation_tracker",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "vacation",
+      "sick day",
+      "time off",
+      "absence",
+      "leave",
+      "cancel request",
+      "calendar days"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-employee-portal",
+      "guide-my-pay"
+    ],
+    "source_files": [
+      "src/components/employee/EPVacationTracker.jsx",
+      "src/pages/EmployeePortal.jsx",
+      "src/pages/HumanResources.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-expense-claims",
+    "feature_area": "Employee Portal",
+    "question": "Submit expenses, attach receipts, and correct a claim",
+    "answer_short": "Create an expense claim with a positive amount, category, payment method, and optional receipt or project.",
+    "answer_long": "## Prepare the claim\nOpen **Employee Portal → My Expenses**. Check **Claim History** before creating a new claim so the same receipt is not submitted twice. The **Pending Reimbursement** total combines certain claim statuses; it is not confirmation that money has been transferred.\n\nExpense Tracking must be enabled by the company administrator. Keep the original receipt and use the employer's policy to decide which costs and payment methods are claimable.\n\n## Create an expense\n1. Select **New Claim**.\n2. Enter the purchase **Date** and a positive **Amount ($)**. The form formats the amount to two decimal places.\n3. Choose **Category**: Materials, Fuel, Tools, Meals, Accommodation, Parking, or Other.\n4. Select **Payment Method** such as Personal Card, Cash, Company Card, or Other.\n5. Choose **Project (Optional)** if the purchase belongs to a particular job.\n6. Add a clear **Description** explaining the purchase.\n7. Under **Receipt Document**, select **Snap picture or upload file** and attach an image or PDF if needed.\n8. Wait until the upload finishes and shows **Receipt Attached**, then select **Submit Claim**.\n\nA successful submission is recorded as **Submitted** and sent into the company's review records. It does not automatically mean Approved or Reimbursed.\n\n## Review or correct the claim\nThe history shows category, status, date, amount, description, payment method, project where linked, and **View Receipt** when attached. Claims that are not Approved or Reimbursed expose edit and delete controls. Editing re-submits the claim as Submitted. If an approved or reimbursed claim is wrong, ask HR to handle the correction rather than creating a duplicate without instructions.\n\nOn a phone, some action buttons show icons instead of the full Edit or Delete word. Review the correct row and confirmation carefully.\n\n## Troubleshooting\nA disabled submit button can mean the amount is blank, an upload is running, or a save is already pending. If a receipt upload fails, check the connection and file, then retry the upload before saving. If HR cannot find a newly Submitted claim, ask them to select **All Statuses** in the HR Expenses view; **Pending Only** does not include every expense status. Record the error before retrying a failed save.",
+    "route": "/EmployeePortal?tab=expenses",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "expense claim",
+      "receipt",
+      "reimbursement",
+      "fuel",
+      "materials",
+      "Submitted",
+      "HR expenses"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-my-pay",
+      "guide-hr-approvals"
+    ],
+    "source_files": [
+      "src/components/employee/EPExpenses.jsx",
+      "src/pages/HumanResources.jsx",
+      "src/components/settings/EmployeePortalSettings.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-field-assigned-work",
+    "feature_area": "Employee Portal",
+    "question": "View assigned projects, milestones, and your schedule",
+    "answer_short": "Find project details and schedule events tied to your active project staff assignments.",
+    "answer_long": "## Where assigned work comes from\nOpen **Employee Portal → My Projects** for the projects assigned to your user account. Open **My Schedule** for schedule events belonging to those assigned projects. These views rely on active project staff assignments; an existing company project alone does not put it in every employee's list.\n\nOn a phone, use **More** to find My Projects and My Schedule in the Operations section. The desktop portal exposes them in the left navigation.\n\n## Read a project\n1. Open My Projects and find the project name.\n2. Review its status and site address.\n3. Check **Start** and **Target completion**. A missing date is displayed as **Not set**.\n4. Read the milestone lines showing the milestone title, current status, and target date where available.\n5. Use My Tasks and Project Notes for your actions and reports relating to that work.\n\nMy Projects is a focused overview. It does not provide the full office project editor or permissions to change a budget, staffing, or project dates.\n\n## Read the schedule\nOpen My Schedule to see event titles, the related project name, start and end times, address, and status. Missing event times display **Not scheduled**. Check the date and local time carefully, especially after travel or a device timezone change. Schedule events and task due dates are separate records; changing task completion does not update the schedule by itself.\n\n## Open an alert about assigned work\nProject or schedule notifications can open a focused portal view. That link may temporarily show only the project or event mentioned by the notification. If the message says **This item is no longer available in your assigned work**, the assignment or event may have changed. Open the normal My Projects or My Schedule tab to review the rest of your work.\n\n## Troubleshooting\n**No assigned work to show** usually calls for an assignment check. Ask the project manager to verify that you were added to project staff under the correct company account and that the assignment remains active. If the page says **Could not load your assigned work**, use **Retry**. If a project appears but an expected event does not, have the manager check the event's project and saved schedule dates. Do not create another login simply to try to find the missing assignment.",
+    "route": "/EmployeePortal?tab=projects",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "my projects",
+      "my schedule",
+      "assigned work",
+      "milestone",
+      "site address",
+      "missing project",
+      "schedule event"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-field-tasks",
+      "guide-field-project-notes",
+      "guide-notifications"
+    ],
+    "source_files": [
+      "src/components/employee/EPAssignedWork.jsx",
+      "src/pages/EmployeePortal.jsx",
+      "src/lib/notificationLinks.js"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-field-tasks",
+    "feature_area": "Tasks",
+    "question": "Read and complete tasks assigned to you",
+    "answer_short": "Review task details, priority, project, phase, and due date, then mark the work complete or reopen it.",
+    "answer_long": "## Find your task list\nOpen **Employee Portal → My Tasks**. On a phone, open **More** and choose My Tasks from Operations. The portal combines assigned tasks from the application's general and project task lists. Tasks must be assigned to your user identity or matching email to appear here.\n\nThe page separates active **To Do** tasks from **Completed** tasks. An active count appears near the heading. Completed or Done records are treated as finished; other statuses remain in the active group.\n\n## Review the work before changing its status\n1. Find the task title in the appropriate group.\n2. Review its project or phase badge, priority, and due date.\n3. Select **Details**. On smaller screens the action may appear as a document icon.\n4. Read **Task Description** and the other metadata in the dialog.\n5. Complete the actual work and confirm any acceptance steps with the project manager.\n6. Select **Mark Task as Completed**, or use the circle/check control on the task row.\n7. Wait for **Task updated!** and confirm the task moves to the completed group.\n\nMarking a task complete changes its status; it does not submit a timesheet, create an invoice, or approve a project's finances.\n\n## Reopen unfinished work\nIf a completed task needs more work, open its Details and select **Re-open Task as Incomplete**, or use the completed row's check control. This returns it to **To Do**. Tell the manager why it was reopened so the team understands the change.\n\n## Due dates and mobile tables\nAn overdue active task can have red highlighting. The portal displays the due-date value supplied with the task; check any expected deadline with the manager if the date is unclear. Tables can scroll horizontally on a phone to expose project, priority, due date, and actions.\n\n## Troubleshooting\nIf the list says you have no tasks, ask the manager to verify the assignee and company. Being project staff does not automatically assign every task. A notification link can open one particular task's details only if it is still in your available list. If an update fails, preserve the error and review the current status before retrying. Avoid repeated taps while **Updating Status...** is shown.",
+    "route": "/EmployeePortal?tab=tasks",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "my tasks",
+      "complete task",
+      "reopen task",
+      "assignee",
+      "overdue",
+      "priority",
+      "task details"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-field-assigned-work",
+      "guide-notifications"
+    ],
+    "source_files": [
+      "src/components/employee/EPTasks.jsx",
+      "src/pages/EmployeePortal.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-field-project-notes",
+    "feature_area": "Daily Logs",
+    "question": "Submit project notes with progress photos from the field",
+    "answer_short": "Create a dated project note with work completed, issues, safety concerns, materials, and site photos.",
+    "answer_long": "## Choose the field workflow\nOpen **Employee Portal → Project Notes**. On a phone the full Operations menu is available under **More**. This personal view shows **My Log History** and the daily field logs submitted by your account. The company must have the Daily Logs & Project Notes module enabled.\n\nUse the separate office **Daily Logs** screen when you need company-wide filtering or notes linked directly to a client or lead. The field Project Notes form requires a project.\n\n## Submit a new note\n1. Select **Submit New Log**.\n2. Confirm the **Date** and choose **Weather**.\n3. Select **Project Location***. A valid project is required.\n4. Enter **Work Completed Today*** with a clear description of the actual progress.\n5. Add **Issues / Delays**, **Safety Concerns**, and **Materials Used** where relevant.\n6. Attach **Site Photos** using the photo upload control. Wait for uploads to finish and inspect the previews.\n7. Submit the note and wait for the confirmation.\n8. Open the saved record's **Details** to verify the text, project, date, and attachments.\n\nUse the note to describe location and work specifically, for example the room or phase affected, the blocker, and the decision needed. Written Materials Used text is a report; it does not perform an inventory checkout. Use the Inventory material-usage workflow when stock needs to be deducted.\n\n## Review and correct a note\nThe history lists date, project, summary, media count, and actions. Details displays the full work summary and any issue, safety, materials, and photo sections. Photos open in a separate view. The personal list has a delete action with confirmation, but it does not offer the office's full edit form. Ask the manager how to correct an important submitted report before deleting and recreating it.\n\n## Troubleshooting\nIf no projects are available, ask the office to confirm the project and your access. A blank project or summary prevents a valid submission. After an upload error, preserve your written text and retry only the missing photos. After a save error, record its exact wording and check history before resubmitting. Urgent safety issues need your company's immediate reporting process as well as a written note; do not depend on a log alone for an urgent response.",
+    "route": "/EmployeePortal?tab=daily_logs",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "project notes",
+      "daily field log",
+      "site photos",
+      "blockers",
+      "safety concerns",
+      "materials used"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-field-material-usage",
+      "guide-office-daily-logs",
+      "guide-field-assigned-work"
+    ],
+    "source_files": [
+      "src/components/employee/EPDailyLogs.jsx",
+      "src/pages/EmployeePortal.jsx",
+      "src/pages/DailyLogs.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-office-daily-logs",
+    "feature_area": "Daily Logs",
+    "question": "Manage office daily logs for projects, clients, and leads",
+    "answer_short": "Create, find, inspect, edit, and delete field notes from the company Daily Logs screen.",
+    "answer_long": "## Choose the correct log screen\nThe office **Daily Logs** screen is available to users with office or operations access. Employees and subcontractors use **Employee Portal → Project Notes** for their own reports. These two screens have different navigation and form options.\n\nThe office list can display notes related to a **Project**, **Client**, or **Lead**, together with date, author, weather, summary, issue indicators, and media count. Desktop uses a table; mobile uses stacked cards with the same basic actions.\n\n## Create a linked log\n1. Open Daily Logs and select its new-log action.\n2. In **New Field Log / Note**, choose **Date** and **Weather**.\n3. Choose the appropriate **Project**, **Client**, or **Lead** relationship. The form requires at least one relationship before saving and prevents conflicting client/lead choices while another relationship is selected.\n4. Enter **Work Completed / Note***.\n5. Add **Issues / Delays**, **Safety Concerns**, and **Materials Used** when needed.\n6. Upload photos, inspect their previews, and wait for uploading to finish.\n7. Save the log and verify it appears in the list.\n\nProject-linked notes belong to the project record. A sales-site note may instead belong to a client or lead before a project exists. Select the right relationship rather than placing every note under an unrelated project.\n\n## Find and inspect records\nUse **Search descriptions or issues...** to search summaries and blockers. Use **All Projects** to narrow the project view. Pagination controls move through the matching results. Selecting the document/details icon opens the full log, including text and attached photos.\n\n## Correct or remove a note\nUse the pencil action to open **Edit Log**, make the intended changes, save, and reopen Details to check the result. The delete action asks for confirmation and removes the selected log. Review author, date, and relationship carefully before deleting.\n\n## Troubleshooting\nIf **No logs found** appears, clear the search and reset the project filter before concluding the data is absent. If Save is disabled, ensure the note and a project/client/lead relationship are present and no upload is running. Text in Materials Used does not deduct warehouse stock; an inventory transaction is a separate action. Preserve errors and check the list before retrying a failed save.",
+    "route": "/DailyLogs",
+    "audience": "office",
+    "requires_admin": false,
+    "search_terms": [
+      "daily logs",
+      "field note",
+      "edit log",
+      "lead note",
+      "client note",
+      "photos",
+      "filter logs"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-field-project-notes",
+      "guide-field-material-usage"
+    ],
+    "source_files": [
+      "src/pages/DailyLogs.jsx",
+      "src/App.jsx",
+      "src/components/employee/EPDailyLogs.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-field-material-usage",
+    "feature_area": "Inventory",
+    "question": "Log materials taken from the warehouse and correct a checkout",
+    "answer_short": "Record inventory consumption, associate it with a project, and inspect or refund a recorded checkout.",
+    "answer_long": "## What this inventory screen does\nOpen **Employee Portal → Inventory**. The content heading is **Material Usage**, with **Checkout History** underneath. This workflow records stock taken from company inventory and deducts the quantity from the warehouse item. It is different from writing materials into a daily log or creating a purchase order.\n\nThe company must enable Inventory Checks for the portal. Check the material name, unit, and current stock before entering a quantity; a unit such as feet, sheets, or each changes what the number means.\n\n## Log materials taken\n1. Select **Log Material Taken**.\n2. In **Log Materials Taken**, choose **Warehouse Material*** from company stock.\n3. Enter a positive **Quantity Taken*** using the item's unit.\n4. Review the displayed **Remaining** stock.\n5. Select **Project (Optional)**, or **Shop / Unassigned** where appropriate.\n6. Add **Notes / Where used?** with the location or purpose.\n7. Select **Log Checkout** once and wait for confirmation.\n8. Review the new Checkout History row and the warehouse balance.\n\nThe application records this as consumption with a negative stock change. It can show a negative Remaining value if the entered quantity exceeds recorded stock; resolve that discrepancy with the office before logging an incorrect amount. Do not assume the form automatically prevents an overdraw.\n\n## Inspect and correct a checkout\nOpen the row's **Details** to view the timestamp, material, quantity, assigned project, and notes. **Delete & Refund Stock** asks for confirmation and removes the log while attempting to return the recorded quantity to stock. Use this for a wrong checkout only after confirming the intended correction; it is not a general material-return form for a different transaction.\n\n## Troubleshooting\nA missing-company message calls for checking your account and signing in again. A missing warehouse item should be corrected by the office before you submit usage. If a save fails, inspect both Checkout History and the stock balance before retrying: the stock change and log are separate operations in this workflow, so a partial failure needs office reconciliation. Repeated submissions can deduct stock more than once. If Details says an item is unknown or deleted, use the transaction date, project, and notes to help the office identify the original material.",
+    "route": "/EmployeePortal?tab=inventory",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "material usage",
+      "warehouse",
+      "checkout",
+      "consume stock",
+      "quantity taken",
+      "refund stock",
+      "remaining inventory"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-field-project-notes",
+      "guide-employee-portal"
+    ],
+    "source_files": [
+      "src/components/employee/EPInventory.jsx",
+      "src/components/settings/EmployeePortalSettings.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-hr-approvals",
+    "feature_area": "HR",
+    "question": "Review and approve timesheets, time off, and expense claims",
+    "answer_short": "Use HR filters and bulk actions, adjust a time entry, and find claims hidden by status filters.",
+    "answer_long": "## Who uses Human Resources\n**Human Resources** is available to owners, administrators, and office staff when the company plan includes HR. The current upgrade screen identifies Professional as the required plan. Managers and field users use their own permitted areas; a manager role does not automatically include this HR route.\n\nDesktop offers **Employee List**, **Timesheets**, **Time Off**, and **Expenses** across the top. On mobile, choose the same view through the dropdown. Time-related and expense views can be hidden by the company's portal feature settings.\n\n## Review a queue\n1. Choose the correct HR view.\n2. Set the status selector to **Pending Only**, **Approved Only**, or **All Statuses**.\n3. Select **All Employees** or the individual employee.\n4. Choose **Daily**, **Weekly**, or **All Time**. Use date controls when reviewing a day or week.\n5. Inspect dates, hours or amounts, type, status, and receipt where provided.\n6. Tick the records you intend to decide, or use **Select All** for the current displayed list.\n7. Select **Approve (count)** or **Reject**, then confirm the records now show the intended status.\n\nSelecting all applies to the filtered displayed list. Review the employee, date, and selected count before a bulk action so another person's records are not unintentionally included.\n\n## Find newly submitted expenses\nEmployee expense claims are saved as **Submitted**. The HR **Pending Only** filter checks Pending or blank statuses, so a Submitted claim can be absent from that view. Choose **All Statuses** and the correct employee/date range to locate it. A lack of Pending results does not prove no claims were submitted.\n\n## Adjust a timesheet\nIn Timesheets, select **Adjust** on the relevant row. **Adjust Timesheet** exposes Date, Total Hours, Clock In Time, Clock Out Time, Type, Status, and **Admin Notes / Overrides**. Check the actual hours and timestamps together, explain the correction, and select **Save Adjustment**.\n\n## Troubleshooting\n**All caught up!** means no records match the current filters. Reset employee, status, and date filters before escalating. Approval updates records; it does not issue wages or reimbursements. If a write is rejected, check role permissions and preserve the error. Avoid adding a second employee submission as a workaround for an existing record that needs adjustment.",
+    "route": "/HumanResources",
+    "audience": "office",
+    "requires_admin": false,
+    "search_terms": [
+      "HR",
+      "approve timesheets",
+      "approve expenses",
+      "time off",
+      "adjust timesheet",
+      "Pending Only",
+      "Submitted"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-hr-directory-and-exports",
+      "guide-expense-claims",
+      "guide-missing-timesheets"
+    ],
+    "source_files": [
+      "src/pages/HumanResources.jsx",
+      "src/App.jsx",
+      "src/components/employee/EPExpenses.jsx",
+      "src/lib/planConfig.js"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-hr-directory-and-exports",
+    "feature_area": "HR",
+    "question": "Use the HR employee directory, hourly rates, and CSV exports",
+    "answer_short": "Find an employee, review their recorded work, and export the filtered HR view for reconciliation.",
+    "answer_long": "## Open the employee directory\nOwners, administrators, and office staff can open **Human Resources** on a plan with HR access. Select **Employee List** to browse the company's employee directory. The list combines account and profile records and displays the available name, email, and role information.\n\nUse the search field to find an employee by name or email, then select the employee to open their detail panel. Check that you selected the correct person before reviewing their hours or updating a rate.\n\n## Understand hourly-rate access\nThe employee detail panel shows an hourly rate and an Edit control. Changes to account profile fields such as hourly_rate are restricted by company security rules; owners and administrators should perform rate updates. Office staff may review HR but should ask an owner or administrator to save an account-rate change when a write is blocked.\n\n1. Select the employee.\n2. Open the hourly-rate Edit control.\n3. Enter the intended numeric rate.\n4. Save and wait for the success message.\n5. Reopen the record and check the saved value.\n\nThis rate feeds the employee's My Pay estimate. It does not independently run payroll, apply deductions, or change the cost of every labour item in a pricebook. Pricebook labour cost and a person's hourly pay rate are different records.\n\n## Export the view you actually need\nSwitch to **Timesheets**, **Time Off**, or **Expenses**. Apply employee, status, and date filters before selecting **Export CSV**. The export uses the displayed filtered data for that HR view, with fields relevant to its records. For example, timesheets include the employee and shift details, while expenses include expense values.\n\nThe Export CSV button is hidden on the smallest phone layout. Use a wider device or desktop when you need the download action. Keep the exported date range and status filters with the file so a later reviewer knows what it contains.\n\n## Troubleshooting and reconciliation\nIf the directory has an unexpected name or duplicate-looking records, compare emails and ask the administrator to reconcile membership before editing. If an export looks incomplete, reset filters to All Statuses, All Employees, and All Time, then narrow them again deliberately. A downloaded HR file is a snapshot of records; payroll and reimbursement decisions remain part of the employer's separate process.",
+    "route": "/HumanResources",
+    "audience": "office",
+    "requires_admin": false,
+    "search_terms": [
+      "employee directory",
+      "hourly rate",
+      "HR export",
+      "CSV",
+      "pay rate",
+      "employee list"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-hr-approvals",
+      "guide-my-pay",
+      "guide-team-access-and-seats"
+    ],
+    "source_files": [
+      "src/pages/HumanResources.jsx",
+      "src/App.jsx",
+      "supabase/migrations/20261003220500_role_based_notifications.sql",
+      "src/components/employee/EPPayroll.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-company-branding",
+    "feature_area": "Settings",
+    "question": "Set your company identity, logo, and PDF brand styling",
+    "answer_short": "Save company contact details separately from PDF colour and price-visibility settings.",
+    "answer_long": "## Open Branding & PDFs\nOwners and administrators can open **Settings → Branding & PDFs**. Managers do not see this section. The page contains **Company Identity** and **PDF Document Styling**, with separate save buttons. Saving one section does not replace the need to save the other.\n\nUse company-approved contact details and a clear logo suited to document headers. These settings represent your business identity within generated documents; the application itself retains FuzedFlow's general theme.\n\n## Save company identity\n1. Under Company Identity, choose **Upload Logo** and select an image if needed.\n2. Wait for the upload to finish and check the logo preview.\n3. Enter **Company Name***.\n4. Check **Phone Number**, **Email Address**, and **Website**.\n5. Set **Physical / Billing Address** using the address field.\n6. Select **Save Identity** and wait for **Settings saved successfully**.\n\nThe logo upload saves the company's logo separately when the upload succeeds. If the preview does not change, do not assume the file was stored; read the upload error and retry only after checking the file and connection.\n\n## Save PDF styling\n1. Under PDF Document Styling, choose **Primary Brand Color** using the colour picker or the colour value field.\n2. Set **Show Item Quantities & Prices** to suit how much detail clients should see.\n3. Set **Show Phase/Category Totals**.\n4. Select **Save PDF Settings**.\n5. Generate or preview a representative document and confirm the result before sending it to a client.\n\nHiding quantities or phase totals affects presentation; it does not remove the underlying estimate values. Quote-specific PDF customization may also provide document-level options, so compare the exact document preview rather than relying on a settings value alone.\n\n## Troubleshooting\nChanges still sitting in a field are not saved until the correct button succeeds. If company details look unchanged after navigation, return to the section and inspect saved values. If an upload or save is blocked, verify that you are an owner or administrator in the intended company and record the error. Use a valid colour value and a supported image file. Keep a sample PDF from before and after a styling change when investigating inconsistent document appearance.",
+    "route": "/AdminSettings",
+    "audience": "admin",
+    "requires_admin": true,
+    "search_terms": [
+      "branding",
+      "company logo",
+      "PDF colour",
+      "brand color",
+      "company identity",
+      "hide prices"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-quote-default-text",
+      "guide-message-templates"
+    ],
+    "source_files": [
+      "src/components/settings/BrandingSettings.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/components/pdf/PDFCustomizationPanel.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-quote-default-text",
+    "feature_area": "Settings",
+    "question": "Set default quote introduction, client message, and terms",
+    "answer_short": "Configure the default text used when creating new quotes and verify each quote before sending.",
+    "answer_long": "## Choose company quote defaults\nOwners, administrators, and managers can open **Settings → Quote Customization**. This section sets text that pre-fills when building a new quote. It does not create a quote, approve a quote, or automatically rewrite every existing document.\n\nThe three text areas serve different places in the document. **Default Executive Summary / Intro** is the project introduction. **Default Client Message** is a personal note before the pricing breakdown. **Default Terms and Conditions** is the terms text shown toward the bottom of the quote.\n\n## Update the defaults\n1. Open Quote Customization.\n2. Enter **1. Default Executive Summary / Intro** with a company-approved introduction that can be adapted to each job.\n3. Enter **2. Default Client Message** with a clear instruction about reviewing the proposal.\n4. Enter **3. Default Terms and Conditions** using the company's approved payment, scope, and other terms.\n5. Select **Save Defaults** and wait for the success message.\n6. Create a new quote and inspect the pre-filled text before adding client-specific details.\n7. Preview the final quote or PDF before sending it.\n\nAvoid placing project-specific dates, client names, or unusual guarantees in a company default unless every new quote should contain them. The defaults provide a starting point; each quote still needs a review against its actual scope and commercial agreement.\n\n## Keep text settings separate\nQuote Customization controls document text. **Message Templates** controls the bodies of outbound communications. **Branding & PDFs** controls company identity and some PDF presentation options. Changing document text does not automatically update communication templates. The quote terms and invoice payment-term default currently share a saved company value; after changing either section, check both a new quote’s terms and a new invoice’s due-date/default-term selection before sending.\n\nWarranty wording in terms is descriptive contract text. It does not activate a separate warranty-claims workflow. Similarly, referring to approval or signing in your terms does not create a general document-signature feature for all uploaded files.\n\n## Troubleshooting\nIf a new quote appears to use old wording, return to Settings and verify that Save Defaults succeeded, then inspect the quote's own text fields. Existing quotes can preserve their own saved values. If the Settings page is unavailable, check the role with an owner or administrator; office staff do not have access to the main Settings route. If a save fails, preserve your edited wording elsewhere temporarily and record the error before leaving the page.",
+    "route": "/AdminSettings",
+    "audience": "office",
+    "requires_admin": false,
+    "search_terms": [
+      "quote defaults",
+      "executive summary",
+      "client message",
+      "terms conditions",
+      "default intro"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-message-templates",
+      "guide-company-branding"
+    ],
+    "source_files": [
+      "src/components/settings/QuoteCustomizationSettings.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/pages/QuoteBuilder.jsx",
+      "src/App.jsx",
+      "src/components/settings/PaymentSettings.jsx",
+      "src/pages/InvoiceBuilder.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-message-templates",
+    "feature_area": "Settings",
+    "question": "Customize email and SMS templates with safe tokens",
+    "answer_short": "Edit document communications and use Insert buttons for client names, numbers, and sender details.",
+    "answer_long": "## What Message Templates controls\nOwners, administrators, and managers can open **Settings → Message Templates**. The page provides communication text for quotes, invoices, change orders, and purchase orders, plus a company email signature. These are shared defaults used by the relevant dispatch workflow; saving a template does not send a message.\n\nQuotes, invoices, and change orders have **Email Body** and **Text Message (SMS)** fields. Purchase orders use an email body. The **Email Signature** is appended to outbound dispatch email where that workflow supports it.\n\n## Edit safely\n1. Choose the document's template section.\n2. Place the cursor where a dynamic value should appear.\n3. Use the small **+ Insert** token buttons instead of typing placeholder punctuation manually.\n4. Add clear surrounding text, leaving document links to the appropriate dispatch workflow rather than inventing a link.\n5. Repeat for SMS if your company uses text delivery.\n6. Review the company signature.\n7. Select **Save All Templates** and wait for confirmation.\n8. Check the next actual draft or dispatch preview before sending it to a client or vendor.\n\nQuote tokens include Client Name, Quote #, and Quote Title. Invoice tokens include Client Name, Invoice #, and Balance Due. Change orders include Client Name and CO #. Purchase orders include Vendor Name and PO #. Signature tokens include My Name (Sender) and Company Name.\n\n## Understand the token syntax\nA placeholder such as `{{client_name}}` is replaced with the relevant record value by the workflow. Changing or deleting its braces can leave literal placeholder text in a message. The Insert buttons add the supported token at your cursor position and reduce these errors.\n\nKeep SMS wording short enough to be useful on a phone, and make the document and next action clear. Your wording should match the workflow that is actually available; an email template cannot enable a missing general signature or payment capability.\n\n## Troubleshooting\nIf a client receives a raw placeholder, compare it with the supported token and the source record, then correct the template. If the wrong number or recipient appears, review the document and contact details as well as the template. An email/SMS switch, saved template, or success saving settings does not prove delivery. Use the relevant document send result and preserve any dispatch error. Office staff should ask a permitted manager or administrator for template changes.",
+    "route": "/AdminSettings",
+    "audience": "office",
+    "requires_admin": false,
+    "search_terms": [
+      "email template",
+      "SMS",
+      "tokens",
+      "client_name",
+      "email signature",
+      "dispatch wording"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-quote-default-text",
+      "guide-alert-and-automation-settings",
+      "guide-support-and-ai"
+    ],
+    "source_files": [
+      "src/components/settings/MessageTemplatesSettings.jsx",
+      "src/pages/AdminSettings.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-regional-financial-settings",
+    "feature_area": "Settings",
+    "question": "Configure timezone, currency, margins, and tax labels",
+    "answer_short": "Save regional display and financial defaults, then check the exact quote or invoice calculation.",
+    "answer_long": "## Open Regional & Financial\nOwners, administrators, and managers can use **Settings → Regional & Financial**. This section stores company defaults for timezone, date formatting, currency, target margin, and tax details. It is a configuration screen; it does not decide which tax laws apply to a particular business or transaction.\n\nUse your company's approved values and confirm them against the documents you generate. Some screens have their own display or calculation behaviour, so a saved setting alone is not proof that every historic record changed.\n\n## Set regional values\n1. Choose **System Timezone** from the available options.\n2. Select **Date Format**, such as a readable month-name format, month/day/year, day/month/year, or year-month-day.\n3. Select **Base Currency**. The menu offers CAD, USD, GBP, EUR, and AUD.\n4. Review **Target Profit Margin**.\n5. Continue to the tax sections before saving the page.\n\nCurrency is a company default and display choice; changing it is not a currency conversion service for existing prices. Keep an eye on explicit currency labels in reports and HR screens when comparing amounts.\n\n## Configure taxes\nUnder **Primary Tax**, set **Tax/Business Number**, **Display Label**, and **Rate**. If the company needs a second tax, enable **Secondary Tax**, then set its optional number, label, and rate. Labels such as GST, HST, VAT, PST, or QST are examples of names; use the correct approved label and rate for your company's documents.\n\nSelect **Save Regional Settings** and wait for the success message. Open a representative quote or invoice to inspect the displayed currency, tax label, rate, and total. Confirm the document's taxable items and its own tax settings where available.\n\n## Understand margin separately from pay rates\nThe target margin is a financial default for pricing. An employee's hourly pay rate is managed in their account profile through the permitted team/HR workflow. Product labour and material costs are managed in the pricebook. These values are related in business use but are not the same setting.\n\n## Troubleshooting\nIf a tax looks wrong, check the saved company setting and the specific document before changing it again. Existing documents can retain saved values. If time appears wrong, compare device timezone with the document's stored dates and times. After a failed save, preserve your intended values and the error rather than assuming the changes took effect.",
+    "route": "/AdminSettings",
+    "audience": "office",
+    "requires_admin": false,
+    "search_terms": [
+      "timezone",
+      "currency",
+      "tax",
+      "GST",
+      "PST",
+      "margin",
+      "date format",
+      "financial settings"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-quote-default-text",
+      "guide-hr-directory-and-exports"
+    ],
+    "source_files": [
+      "src/components/settings/RegionalFinancialSettings.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/pages/Products.jsx",
+      "src/pages/HumanResources.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-portal-module-settings",
+    "feature_area": "Settings",
+    "question": "Control which Employee Portal modules staff can see",
+    "answer_short": "Owners and administrators can enable attendance, expenses, daily logs, tasks, and inventory modules.",
+    "answer_long": "## Who can change field modules\nOwners and administrators manage this in **Settings → Employee Portal**. Managers do not see the Employee Portal settings section. The company must have a plan with HR access; otherwise this section shows an upgrade wall rather than module controls.\n\nThese switches control which portal navigation tabs are visible to field workers on desktop and mobile. They are company settings, not personal preferences. Consider the work your staff need to complete before hiding an active workflow.\n\n## Review the switches\n**Time & Attendance** enables Clock In/Out, timesheets, pay views, and vacation requests together. **Expense Tracking** exposes receipt uploads and expense claims. **Daily Logs & Project Notes** exposes field reports and progress photos. **Task Assignments** exposes assigned tasks and completion controls. **Inventory Checks** exposes warehouse/material-usage access.\n\nMy Projects and My Schedule are separate assigned-work views and remain available in the portal navigation. Company assignments and saved records determine what those views contain.\n\n## Save a module change\n1. Open Settings and choose Employee Portal.\n2. Review **Active Modules**.\n3. Turn the intended module on or off.\n4. Select **Save Module Settings**.\n5. Wait for confirmation before leaving the page.\n6. Ask a staff member with the appropriate role to refresh their portal and verify the intended tab is visible or hidden.\n\nDisabling a module hides the tab; it does not mean existing time entries, expenses, tasks, or inventory transactions were deleted. Re-enabling the navigation does not create records or assignments for staff who have none.\n\n## Explain missing tabs to staff\nA phone shows only the first personal tabs in its bottom bar, so ask staff to check **More** before concluding a module is disabled. Then check the saved switch, plan access, active account, and company membership. For assigned tasks and projects, also check the relevant assignee or project-staff record.\n\n## Troubleshooting\nIf a change does not persist, return to the section and check whether the save succeeded. Use the correct company account and record any permission or network error. Module visibility is not a substitute for database permissions: a hidden tab should not be treated as the only access control. Avoid turning off attendance while staff have active shifts without arranging how they will complete those records.",
+    "route": "/AdminSettings",
+    "audience": "admin",
+    "requires_admin": true,
+    "search_terms": [
+      "employee modules",
+      "enable time clock",
+      "missing portal tab",
+      "feature toggles",
+      "attendance",
+      "portal settings"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-employee-portal",
+      "guide-team-access-and-seats"
+    ],
+    "source_files": [
+      "src/components/settings/EmployeePortalSettings.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/pages/EmployeePortal.jsx",
+      "src/lib/planConfig.js"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-client-portal-settings",
+    "feature_area": "Settings",
+    "question": "Configure the client portal welcome message and visible modules",
+    "answer_short": "Manage portal visibility settings and check a real client view before relying on the change.",
+    "answer_long": "## Open the portal configuration\nOwners, administrators, and managers can use **Settings → Client Portal**. The section stores company preferences for portal activity, a welcome message, and visible client modules. These settings are separate from the employee portal and from your staff's company roles.\n\nUse the client portal to expose the documents and content appropriate for that client. A company setting does not create a client record, send an invitation, or grant a client access to every company document.\n\n## Set the intended visibility\n1. Open Client Portal settings.\n2. Review **Enable Client Portal**.\n3. Enter the **Custom Welcome Message**.\n4. Under **Visible Modules**, review **Quotes Tab**, **Change Orders Tab**, **Invoices Tab**, **Documents Tab**, and **Portfolio Tab**.\n5. Enable the modules your company intends to offer.\n6. Select **Save Portal Settings** and wait for confirmation.\n7. Open the relevant client portal using its approved access path and check the actual tabs and records shown.\n\nThe settings labels describe quotes, change orders, invoices, attached quote documents, and portfolio photos. The complete client experience also depends on the page version and the saved records available to that client. If a tab still appears after changing the configuration, inspect the actual portal rather than assuming the switch was enforced everywhere.\n\n## Keep client actions distinct\nShowing a quote or invoice tab is different from approving a quote or collecting an invoice payment. Those actions require the appropriate document and workflow. A **Documents** tab means viewing or downloading available attachments; it does not create a universal electronic-signature workflow for uploaded documents.\n\nHiding a module is a visibility preference. It does not delete the underlying company documents. A welcome message is ordinary text, so avoid including confidential company details or promises that the application cannot fulfill.\n\n## Troubleshooting\nIf a client sees no records, check the client association and the document's availability as well as module settings. If the welcome message does not change, verify Save Portal Settings succeeded and reload the actual client view. Office staff cannot open the main Settings route and should request changes from a permitted manager or administrator. For access errors, preserve the page name and error and ask the office to verify the specific client's access rather than sharing another client's link.",
+    "route": "/AdminSettings",
+    "audience": "office",
+    "requires_admin": false,
+    "search_terms": [
+      "client portal settings",
+      "welcome message",
+      "visible modules",
+      "documents tab",
+      "portfolio tab"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-message-templates",
+      "guide-quote-default-text"
+    ],
+    "source_files": [
+      "src/components/settings/ClientPortalSettings.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/pages/ClientPortal.jsx",
+      "src/App.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-stripe-and-subscription",
+    "feature_area": "Settings",
+    "question": "Connect client payments and manage your FuzedFlow subscription",
+    "answer_short": "Distinguish Stripe client-payment onboarding from subscription billing and save invoice-term defaults.",
+    "answer_long": "## Two different payment relationships\nCompany owners and administrators use **Settings → Payments** to configure client-payment collection. **Manage Subscription** in the Settings navigation opens the company's FuzedFlow subscription billing portal. These actions serve different purposes: client payments flow to your business, while the subscription pays for your FuzedFlow account.\n\nManagers do not see the Payments settings section or the administrator billing panel. Keep your company and bank details ready before starting external onboarding.\n\n## Link the company payment account\n1. Open Settings → Payments.\n2. In **FuzedFlow Payments**, select **Link Bank Account** when the account is not linked.\n3. Wait for the secure Stripe onboarding redirect.\n4. Complete the required details in the Stripe flow.\n5. Return to FuzedFlow and review the connection state.\n\nThe settings screen displays **Account Active** when the company has a linked Stripe account identifier and offers **View Stripe Dashboard**. Review any remaining onboarding or payout requirements in Stripe; a stored connection indicator alone does not guarantee that every payment or payout is ready.\n\n## Set invoice defaults\nUnder **Invoicing Defaults**, choose **Default Payment Terms**: Due on Receipt, Net 15 Days, Net 30 Days, or Net 60 Days. Select **Save Payment Settings**. Check the next invoice's actual due date before sending it; the default is a starting value for new work, not a mass update of every existing invoice. Quote terms and this invoice-term default currently use a shared company value, so check a new quote’s Terms and Conditions after saving payment terms as well.\n\n## Manage the application subscription\nSelect **Manage Subscription** from the owner/admin Settings panel. The application requests a billing-portal session and redirects to the returned portal. Complete any subscription change there and confirm the company state after returning. Team seat limits are company subscription settings, not employee-role values.\n\n## Current QuickBooks availability\nThe Settings panel can show **Connect QuickBooks**, but its current action says **Coming soon!**. Do not expect a live QuickBooks connection or accounting sync from that button, even if old company metadata makes the button's wording look connected.\n\n## Troubleshooting\nIf onboarding or billing fails, check that your session is active and record the exact error. Do not create repeated payment accounts as a workaround. Confirm the intended company and distinguish a client's unpaid invoice from a failed FuzedFlow subscription charge before seeking help.",
+    "route": "/AdminSettings",
+    "audience": "admin",
+    "requires_admin": true,
+    "search_terms": [
+      "Stripe",
+      "link bank account",
+      "manage subscription",
+      "billing",
+      "payment terms",
+      "QuickBooks coming soon"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-team-access-and-seats",
+      "guide-regional-financial-settings"
+    ],
+    "source_files": [
+      "src/components/settings/PaymentSettings.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/components/settings/TeamManagementSettings.jsx",
+      "src/components/settings/QuoteCustomizationSettings.jsx",
+      "src/pages/QuoteBuilder.jsx",
+      "src/pages/InvoiceBuilder.jsx"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-notifications",
+    "feature_area": "Notifications",
+    "question": "Use the notification bell, filters, and action-only preference",
+    "answer_short": "Find role-specific alerts, open related work, mark the current view read, and troubleshoot a missing alert.",
+    "answer_long": "## Open your notification feed\nSelect the **notification bell** in the top navigation. The badge shows your unread count, with 99+ used for larger counts. Notifications are scoped to your company, user account, role, and assigned work. Another colleague can receive a different alert for the same event.\n\nThe feed opens in **Unread**. Filters include **All**, **Mentions**, **Projects**, **Financial**, and **Action Required**. Use horizontal scrolling on a small phone if a filter is outside the visible row.\n\n## Review and open alerts\n1. Select the relevant filter.\n2. Read the title, body, severity badge, category, and event time.\n3. Select an alert to mark it read and open the related work where an **Open →** destination is available.\n4. Use **All** to find previously read alerts.\n5. Use **Previous** and **Next** when additional pages are available; each page contains up to 30 records.\n\nA read alert disappears from Unread but remains eligible for All. **Mark this view read** applies to unread records matching the current view; it is not a delete action and is not an approval of the underlying work.\n\n## Check action-only mode\nOpen the gear button labelled **Notification settings**. **Notify me only when action is required** hides Important and FYI updates across the feed and unread count. Turn it off to see those updates again. Even **All** is narrowed while this preference is on.\n\n## Understand new lead alerts\nA newly created lead produces an **Action Required** office/operations alert for eligible owners, administrators, managers, and office staff with Leads access. The creator is included when eligible. Employees and subcontractors do not receive general company lead alerts. Action-only mode should not hide this creation alert. Check the saved lead, role, Leads access, and All filter before concluding that creation failed.\n\n## Troubleshooting\nUse **Retry** when the feed reports a loading error. The feed supports realtime updates and also refreshes periodically, so reopen it or refresh if needed. The notification bell is an in-app feature; an alert there does not prove a phone lock-screen push, SMS, or email was delivered. Field alerts can open a focused Employee Portal record; if that work was removed or reassigned, ask the manager to verify current availability.",
+    "route": "/EmployeePortal",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "notifications",
+      "bell",
+      "unread",
+      "all",
+      "action required only",
+      "missing lead alert",
+      "phone push"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-alert-and-automation-settings",
+      "guide-field-assigned-work",
+      "guide-field-tasks"
+    ],
+    "source_files": [
+      "src/components/shared/EnhancedNotificationCenter.jsx",
+      "src/lib/notificationLinks.js",
+      "supabase/migrations/20261003220500_role_based_notifications.sql",
+      "supabase/migrations/20261004031303_lead_created_notifications.sql"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-alert-and-automation-settings",
+    "feature_area": "Settings",
+    "question": "Set document alert preferences and follow-up schedules",
+    "answer_short": "Save supported communication preferences and automation schedules without assuming delivery is guaranteed.",
+    "answer_long": "## Keep three kinds of setting separate\nThe personal notification bell has its own action-only preference. **Settings → Notifications** stores company document-alert email/SMS choices. **Settings → Automations** stores follow-up timing. A saved switch or schedule is configuration; it is not proof that a particular email or text was delivered.\n\nOwners, administrators, and managers can open these Settings sections. Office staff should request changes through a permitted manager or administrator.\n\n## Configure document alerts\n1. Open Settings → Notifications.\n2. In **Alert Preferences**, review quote, invoice, change-order, and purchase-order event rows.\n3. Set the available **Email** and **SMS** switches for the intended events.\n4. Select **Save Preferences** and wait for confirmation.\n5. Verify the actual next relevant document event and its send result.\n\nQuote events include **Quote Viewed**, **Quote Approved**, and **Changes Requested**. Invoice events include viewed and paid actions. Change-order preferences are gated by the plan; a Professional plan or higher provides the relevant access. These switches are distinct from the notification bell's role-based in-app feed.\n\n## Configure follow-up timing\nOpen Settings → Automations. Quote follow-ups have **First Check-in** and **Final Push** timing. Invoice reminders expose **Pre-Due Reminder**, **Late Notice #1**, and **Late Notice #2**. Change-order automation exposes an **Urgent Check-in** and is plan-gated. Set the available enable switches and day values, then select **Save Automations**.\n\nMatch timing to your business process and check the document's saved status and dates before expecting a reminder. The settings page describes pausing follow-ups after relevant completion actions, but a stored schedule still depends on the running delivery workflow. Do not repeatedly send a manual reminder without checking whether one was already delivered.\n\n## Troubleshooting\nIf a reminder is absent, check the saved switch, timing, document state, recipient contact information, and any dispatch error. If the bell is empty, check its All filter and action-only preference; email/SMS switches are a different layer. A change-order upgrade warning indicates plan access, not a missing document. Capture the document number, expected event, date, and error when asking support to investigate delivery. Never treat a phone icon or SMS preference as confirmation of browser or lock-screen push notifications.",
+    "route": "/AdminSettings",
+    "audience": "office",
+    "requires_admin": false,
+    "search_terms": [
+      "alert preferences",
+      "SMS",
+      "email alerts",
+      "automation",
+      "follow up",
+      "reminder",
+      "save preferences"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-notifications",
+      "guide-message-templates",
+      "guide-stripe-and-subscription"
+    ],
+    "source_files": [
+      "src/components/settings/NotificationSettings.jsx",
+      "src/components/settings/AutomationSettings.jsx",
+      "src/components/shared/EnhancedNotificationCenter.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/lib/planConfig.js"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-support-and-ai",
+    "feature_area": "Help & Support",
+    "question": "Use help articles, AI Help, and contact support effectively",
+    "answer_short": "Find written instructions, ask a specific AI question, follow article sources, or prepare a support email.",
+    "answer_long": "## Start with the written help\nOpen the **Help** menu in the top navigation and choose **Help Articles** for detailed instructions and troubleshooting. The **Knowledge Base & FAQ** provides shorter answers where available. Search using the page name, action, or exact error instead of only a broad word such as “problem.” Articles you can access are filtered for your role.\n\nUse the guide's steps and troubleshooting section to check prerequisites, saved status, and permissions. A feature described as coming soon or incomplete has no completed workflow to unlock by repeated clicking.\n\n## Ask AI Help a useful question\n1. Select the yellow AI Help button.\n2. Name the page and the action you are trying to complete.\n3. Include the relevant status or error, without passwords or full payment details.\n4. Send the question and read the formatted answer.\n5. Open its **Related help** article links to review the source instructions and limitations.\n\nAI Help uses the shared help content and the page context. It explains the documented workflow; an answer is not confirmation that the app performed an action, changed a record, sent a message, or approved a document. Review the actual application's saved result when completing the steps.\n\n## Prepare a support request\nOpen **Contact support** from Help or AI Help. Enter **Subject** and **Message**, then select **Open email app**. This creates a draft addressed to **support@fuzedflow.com**. Review it and select **Send** in your email application. The website does not submit a support ticket or send the email itself.\n\nIf no email application opens, use **Copy email address** and compose the message manually. The page also lists **1-855-400-3000** and support hours of Monday–Friday, 8 AM–5 PM Mountain Time.\n\n## Include enough information\nDescribe the company, page, attempted action, relevant document or record identifier, approximate time, and exact error. State what you already checked. A screenshot can help if it excludes sensitive information. Never send login passwords or card numbers.\n\n## Availability and troubleshooting\nVideo Tutorials currently displays **Coming Soon** rather than playable lessons. Use written articles and AI Help for current guidance. If AI reports an expired session, sign in again. If it cannot connect, the help portal and Contact support remain available. Verify you actually sent the prepared email before waiting for a reply.",
+    "route": "/Contact",
+    "audience": "all",
+    "requires_admin": false,
+    "search_terms": [
+      "help articles",
+      "AI help",
+      "support email",
+      "contact",
+      "email draft",
+      "tutorials",
+      "related help"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-account-sign-in",
+      "guide-notifications"
+    ],
+    "source_files": [
+      "src/components/shared/AIHelpWidget.jsx",
+      "src/components/shared/HelpMenu.jsx",
+      "src/pages/Contact.jsx",
+      "src/pages/Tutorials.jsx",
+      "supabase/functions/ai-help/index.ts"
+    ],
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  }
+]

@@ -1,0 +1,279 @@
+[
+  {
+    "slug": "delete-paid-milestone",
+    "feature_area": "Invoices",
+    "audience": "contractor",
+    "question": "Can I delete a payment milestone after it has been paid?",
+    "answer_short": "The current invoice builder does not protect paid milestones from removal. Do not remove paid milestones without reviewing the payment ledger and allocation.",
+    "answer_long": "The current **Invoice Builder → Payment Schedule** shows a remove action for milestones, including paid ones. Do not rely on a paid milestone being protected from deletion.\n\nBefore changing the schedule, review **Payments History** and which payments are allocated to each milestone. Removing a milestone is not a refund and can make the schedule inconsistent with its payment history. Ask the authorized billing user or support to review the invoice if a paid milestone needs correction.",
+    "route": "/Invoices",
+    "search_terms": [
+      "paid milestone",
+      "delete",
+      "payment schedule",
+      "paid payment",
+      "allocation",
+      "refund"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-10-04",
+    "priority": 50,
+    "is_active": true,
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/pages/InvoiceBuilder.jsx",
+      "src/components/invoices/RecordPaymentDialog.jsx",
+      "src/components/invoices/PaymentScheduleDialog.jsx"
+    ]
+  },
+  {
+    "slug": "payment-schedule-balance",
+    "feature_area": "Invoices",
+    "audience": "contractor",
+    "question": "Why can't I confirm an invoice payment schedule?",
+    "answer_short": "In the current invoice builder, add or edit milestones with Save Item and then save the invoice; there is no separate Confirm Schedule action in that screen.",
+    "answer_long": "In the current **Invoice Builder**, use **Payment Schedule → Add Milestone**, enter the name, event and amount, and select **Save Item**. Then save the invoice and verify the stored schedule.\n\nReview the sum of the milestone amounts against the invoice contract total. The builder rejects a new or edited milestone that would exceed the available total and can adjust an unpaid milestone after the contract total changes. Recheck every amount after scope or price edits.\n\nDo not assume paid milestones are protected from removal in the current builder. Preserve their allocation and ledger history. If invoice saving fails, keep your entered details and inspect the invoice list before retrying; contact support if it remains unresolved.",
+    "requires_admin": false,
+    "search_terms": [
+      "payment schedule",
+      "balanced",
+      "invoice total",
+      "save item",
+      "remaining",
+      "milestone",
+      "save failure"
+    ],
+    "route": "/Invoices",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/pages/InvoiceBuilder.jsx",
+      "src/components/invoices/PaymentScheduleDialog.jsx"
+    ]
+  },
+  {
+    "slug": "convert-lead-client",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "What happens when I convert a lead to a client?",
+    "answer_short": "Conversion creates a client and marks the lead Won. Lead Detail and the tracker’s Won confirmation transfer different information, so review the resulting client.",
+    "answer_long": "From **Lead Detail**, choose **Convert to Client** when the prospect should become a client. That workflow creates a client, marks the lead **Won**, copies lead notes and files, and attempts to link the lead’s quotes to the new client. Review the resulting client’s contact details, addresses, attachments and quotes.\n\nThe **Lead Tracker → Won** confirmation also creates a client, but its transfer is more limited: it copies contact/address information and a description-or-notes field rather than the full detail history. Do not assume the two routes transfer identical data.\n\nConversion does not merge into an existing client. Search Clients first, and inspect the result before repeating a failed conversion so you do not create duplicates.",
+    "requires_admin": false,
+    "search_terms": [
+      "lead",
+      "convert",
+      "client",
+      "won",
+      "lead detail",
+      "notes transfer",
+      "duplicate client"
+    ],
+    "route": "/LeadTracker",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/pages/LeadDetail.jsx",
+      "src/pages/LeadTracker.jsx"
+    ]
+  },
+  {
+    "slug": "lead-notes-transfer",
+    "feature_area": "Leads",
+    "audience": "contractor",
+    "question": "Do lead notes transfer when I convert a lead to a client?",
+    "answer_short": "Lead Detail conversion copies dedicated lead-note records. The tracker’s Won confirmation transfers only limited description/notes information.",
+    "answer_long": "It depends on the conversion route.\n\n- **Lead Detail → Convert to Client** copies the lead’s dedicated note records to the new client, along with its description/internal notes and other transferred information.\n- The **Lead Tracker → Won** confirmation copies a description-or-notes value into the new client; it does not perform the same dedicated-note history transfer.\n\nAfter conversion, open **Client Detail** and verify the notes and attachments you need. Keep the original lead while resolving an incomplete transfer, and do not repeat conversion solely to recover a missing note because it can create another client.",
+    "route": "/LeadTracker",
+    "search_terms": [
+      "lead",
+      "notes",
+      "convert",
+      "client",
+      "won",
+      "transfer history",
+      "lead detail"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-10-04",
+    "priority": 50,
+    "is_active": true,
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/pages/LeadDetail.jsx",
+      "src/pages/LeadTracker.jsx"
+    ]
+  },
+  {
+    "slug": "quote-followups",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can FuzedFlow automatically follow up on sent quotes?",
+    "answer_short": "Quote reminders are configured for the company under Admin Settings → Automations, not by a per-quote reminder control in the current builder.",
+    "answer_long": "Company quote-reminder settings are under **Admin Settings → Automations → Quote Follow-ups**. An authorized user can enable the company setting, review **First Check-in** and **Final Push**, and select **Save Automations**.\n\nThe implemented reminder process considers **Sent** or **Viewed** quotes linked to a client with an email address. Its timing uses the quote’s creation date, not the date you most recently sent it. Approved or Declined quotes are outside those reminder statuses.\n\nThe current Quote Builder does not offer per-quote reminder intervals, maximum-reminder settings, or a follow-up enable switch. Sending also depends on the deployed scheduled process and email setup; saving company settings alone is not proof that a reminder was delivered. Ask the administrator or support to verify reminder operation if needed.",
+    "route": "/Quotes",
+    "search_terms": [
+      "follow up",
+      "automatic",
+      "quote",
+      "reminder",
+      "company automations",
+      "first check-in",
+      "final push",
+      "sent viewed"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-10-04",
+    "priority": 50,
+    "is_active": true,
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/pages/QuoteBuilder.jsx",
+      "src/pages/AdminSettings.jsx",
+      "src/components/settings/AutomationSettings.jsx",
+      "src/components/quotes/QuoteFollowUpSection.jsx",
+      "supabase/functions/quote-reminder-cron/index.ts"
+    ]
+  },
+  {
+    "slug": "quote-followup-template",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I customize the automatic quote follow-up email?",
+    "answer_short": "The current quote reminder process does not provide a subscriber-editable per-quote follow-up subject or body template.",
+    "answer_long": "The current **Quote Builder** does not include a follow-up email-template editor. **Admin Settings → Automations** configures company reminder timing, while the implemented quote-reminder process uses its own reminder subject and message.\n\nFor a manually sent quote email, use **Actions → Send via Email** and edit its subject, message and signature before sending. That manual message editor is separate from automatic follow-ups. Ask support about a required reminder customization rather than assuming the ordinary quote email template changes the automated reminder.",
+    "route": "/Quotes",
+    "search_terms": [
+      "follow up",
+      "template",
+      "quote",
+      "automatic reminder",
+      "subject",
+      "message",
+      "manual email"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-10-04",
+    "priority": 50,
+    "is_active": true,
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/pages/QuoteBuilder.jsx",
+      "src/components/settings/AutomationSettings.jsx",
+      "src/components/quotes/QuoteFollowUpSection.jsx",
+      "src/components/quotes/FollowUpSettings.jsx",
+      "supabase/functions/quote-reminder-cron/index.ts"
+    ]
+  },
+  {
+    "slug": "quote-followup-history",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I see a history of automatic quote follow-ups?",
+    "answer_short": "The current Quote Builder does not display a per-quote automatic follow-up history or delivery-status panel.",
+    "answer_long": "The current **Quote Builder** does not show an automatic follow-up history panel with reminder number, recipient, subject, or delivery status.\n\nCompany reminder settings can be reviewed in **Admin Settings → Automations**, but a configured schedule or a quote’s **Sent** status is not proof that a specific reminder was delivered. Quote view tracking is a separate feature and should not be treated as reminder-delivery history.\n\nIf you need to confirm whether a reminder went out, ask the administrator or support to check the scheduled reminder process and email delivery using the quote number and approximate time. Do not repeatedly send a manual reminder before checking whether the customer already received one.",
+    "route": "/Quotes",
+    "search_terms": [
+      "follow up history",
+      "sent",
+      "failed",
+      "bounced",
+      "delivery",
+      "reminder",
+      "quote viewed"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-10-04",
+    "priority": 50,
+    "is_active": true,
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/pages/QuoteBuilder.jsx",
+      "src/components/quotes/QuoteFollowUpSection.jsx",
+      "src/components/quotes/FollowUpHistory.jsx",
+      "src/components/settings/AutomationSettings.jsx",
+      "supabase/functions/quote-reminder-cron/index.ts"
+    ]
+  },
+  {
+    "slug": "resource-library",
+    "feature_area": "Resource Library",
+    "audience": "contractor",
+    "question": "What can I store in the Resource Library?",
+    "answer_short": "Use the Resource Library page for reusable company files such as flyers, licenses and blank forms; it is separate from Pricebook.",
+    "answer_long": "Open **Client Forms** in company navigation to reach the page headed **Resource Library**. It is separate from the Products/Pricebook page.\n\nUse **Upload File** to store a clearly named flyer, license, certificate or blank form, with an optional project link. Confirm the uploaded file opens with **View**.\n\nIn Quote Builder, use the resource picker under **Attached Documents** to open **Company Resources**, select **Attach**, and save the quote. Attaching a form does not create a general electronic-signature workflow, and uploading a warranty document does not enable warranty claims. Project drawings belong in the project’s Plans & Elevations workflow.",
+    "requires_admin": false,
+    "search_terms": [
+      "resource library",
+      "client forms",
+      "flyer",
+      "license",
+      "form",
+      "upload file",
+      "company resources",
+      "attach"
+    ],
+    "route": "/ClientForms",
+    "priority": 75,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/Layout.jsx",
+      "src/pages/ClientForms.jsx",
+      "src/pages/QuoteBuilder.jsx"
+    ]
+  },
+  {
+    "slug": "quote-internal-notes",
+    "feature_area": "Quotes",
+    "audience": "contractor",
+    "question": "Can I add notes to a quote that the client cannot see?",
+    "answer_short": "Use quote-level or phase-level internal notes for saved private reminders, and verify them after saving. Do not rely on line-item notes persisting.",
+    "answer_long": "Use the quote’s **Internal Notes** or the phase’s private notes field under **Settings** for saved team reminders. These fields are separate from the client-facing scope and message. Save and reopen the quote to confirm the notes you need are retained.\n\nThe line-item editor also displays an internal-notes field, but the current quote-save workflow does not retain that field with the saved line item. Copy important line-item reminders into the quote or phase internal notes before saving. Do not put private information in the item description, which is shown to the client.",
+    "route": "/Quotes",
+    "search_terms": [
+      "internal notes",
+      "hidden",
+      "client",
+      "quote",
+      "phase notes",
+      "private",
+      "line item notes",
+      "not saved"
+    ],
+    "requires_admin": false,
+    "last_verified_at": "2026-10-04",
+    "priority": 50,
+    "is_active": true,
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/pages/QuoteBuilder.jsx",
+      "src/components/quotes/PhaseCard.jsx",
+      "src/components/quotes/LineItemRow.jsx",
+      "src/pages/QuoteView.jsx",
+      "src/pages/PublicQuoteView.jsx"
+    ]
+  }
+]

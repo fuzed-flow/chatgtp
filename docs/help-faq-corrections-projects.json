@@ -1,0 +1,150 @@
+[
+  {
+    "slug": "send-change-order",
+    "feature_area": "Change Orders",
+    "audience": "contractor",
+    "question": "Can I send a change order to a client for approval?",
+    "route": "/ChangeOrders",
+    "requires_admin": false,
+    "answer_short": "Open the saved change order builder and use Actions → Send via Email. The list-level Send to Client action is a coming-soon placeholder.",
+    "answer_long": "1. Open **Change Orders** and select the saved change order's number to open its builder.\n2. Review the linked project, client, scope, line items, and totals, then save.\n3. Use **Actions → Client Preview** to check the client document.\n4. Choose **Actions → Send via Email**, review the client address, subject, message, signature, and optional PDF attachment, then select **Send Email**.\n5. Wait for the send result before assuming the message was dispatched.\n\nThe builder also has **Send via Text Message** and a client review link. The list-level **Send to Client** action currently displays a coming-soon notice. **Mark as Sent** changes status without sending a message; Sent alone does not prove delivery to the recipient's inbox.\n\nApproval and request changes are separate client actions. After approval, check project-budget synchronization separately.",
+    "search_terms": [
+      "change order",
+      "send",
+      "approval",
+      "change order send email",
+      "send to client placeholder",
+      "mark as sent"
+    ],
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/pages/ChangeOrders.jsx",
+      "src/pages/ChangeOrderBuilder.jsx",
+      "src/components/change-orders/SendChangeOrderEmailDialog.jsx",
+      "src/components/change-orders/SendChangeOrderTextDialog.jsx"
+    ]
+  },
+  {
+    "slug": "change-order-statuses",
+    "feature_area": "Change Orders",
+    "audience": "contractor",
+    "question": "What statuses are available for change orders?",
+    "route": "/ChangeOrders",
+    "requires_admin": false,
+    "answer_short": "The change-order list can filter Draft, Sent, Approved, Declined, and Invoiced records.",
+    "answer_long": "The **Change Orders** list offers status filters for **Draft**, **Sent**, **Approved**, **Declined**, and **Invoiced**, plus **All Statuses**.\n\nReview status separately from financial totals and document delivery. The builder's **Mark as Sent** action changes the record's status without sending an email. Use the builder's send action when you need to contact the client.\n\nPublic client approval saves Approved status and the selected items/totals. It uses a different path from the builder's project synchronization action, so verify the project's budget and work records separately after a decision.",
+    "search_terms": [
+      "change order",
+      "status",
+      "draft",
+      "sent",
+      "approved",
+      "invoiced change order",
+      "change order status filters"
+    ],
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/pages/ChangeOrders.jsx",
+      "src/pages/ChangeOrderBuilder.jsx",
+      "src/pages/PublicChangeOrderView.jsx"
+    ]
+  },
+  {
+    "slug": "post-client-update",
+    "feature_area": "Client Timeline",
+    "audience": "contractor",
+    "question": "Can I post a manual project update for the client?",
+    "route": "/PMProjects",
+    "requires_admin": false,
+    "answer_short": "Yes. Use Post Update in the project Client View to save a dated title, details, and client-visibility choice.",
+    "answer_long": "1. Open **PM Projects**, select **Open** on the project, and choose **Client View**.\n2. Select **Post Update**, or **Post First Update** when the feed is empty.\n3. Enter **Event Title / Summary**, **Event Date**, and **Details & Notes**.\n4. Review **Visible to Client** and select **Post Update** to save.\n\nThe dialog does not include a category selector; manual posts use the Update category. Updates with client visibility switched off are not shown in the client-visible feed. Saving an update does not itself confirm delivery of an email or text.",
+    "search_terms": [
+      "post update",
+      "client update",
+      "timeline",
+      "client update fields",
+      "visible to client"
+    ],
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/components/pm/PMClientTimelineTab.jsx"
+    ]
+  },
+  {
+    "slug": "phase-client-visible",
+    "feature_area": "Project Phases",
+    "audience": "contractor",
+    "question": "Can I hide a project phase from the client?",
+    "route": "/PMProjects",
+    "requires_admin": false,
+    "answer_short": "Yes. Expand the phase and switch Visible in Client Portal off; the visibility change saves directly.",
+    "answer_long": "1. Open **PM Projects**, select **Open** on the project, and choose **Phases**.\n2. Expand the required phase with its chevron.\n3. Change **Visible in Client Portal**. The switch saves the visibility change directly; there is no separate Save Phase button for this update.\n4. Check **Client View** to review the visible phase feed.\n\nOnly make phases visible when their information is appropriate for the client. The feed displays phase name, progress, and status; Internal Phase Notes and Micro-Costing are separate operational sections.",
+    "search_terms": [
+      "client visible",
+      "hide phase",
+      "client portal",
+      "phase visibility switch",
+      "save phase visibility"
+    ],
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/components/pm/PMPhasesTab.jsx",
+      "src/components/pm/PMClientTimelineTab.jsx"
+    ]
+  },
+  {
+    "slug": "inventory-tracking",
+    "feature_area": "Inventory",
+    "audience": "contractor",
+    "question": "What can FuzedFlow track in Inventory?",
+    "route": "/Inventory",
+    "requires_admin": false,
+    "answer_short": "Warehouse Inventory tracks physical items, quantity, unit, cost, location, reorder threshold, and supplier details; Usage Report shows saved movements.",
+    "answer_long": "**Inventory → Warehouse Inventory** tracks physical stock records including item name, SKU, category, unit, unit cost, current quantity, physical location, reorder threshold, supplier, description, and image.\n\nThe **Low Stock Alerts** filter is calculated from quantity at or below the reorder threshold. It is not a separate editable purchasing-status field.\n\nUse **Usage Report** to inspect saved **Consume** and **Receive** transactions and filter by project, employee, or type. A direct Current Qty edit is different from recording a project-specific usage transaction.\n\nProject **Materials** has separate purchasing states such as To Order, Ordered, and Received. Saving project materials or a purchase order does not automatically change warehouse stock.",
+    "search_terms": [
+      "inventory",
+      "quantity",
+      "location",
+      "status",
+      "movement",
+      "warehouse stock fields",
+      "low stock calculated",
+      "inventory usage report"
+    ],
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/pages/Inventory.jsx",
+      "src/components/pm/PMMaterialsTab.jsx"
+    ]
+  },
+  {
+    "slug": "vendors-location",
+    "feature_area": "Vendors",
+    "audience": "all",
+    "question": "Where do I manage vendors and subcontractors?",
+    "route": "/Vendors",
+    "requires_admin": false,
+    "answer_short": "Vendors is the company subcontractor/supplier directory; the project Subcontractors area manages project assignments. Directory access is restricted.",
+    "answer_long": "Open **Vendors** for the **Subcontractors Directory**, including contact information, categories, preferred status, project history, supporting files, and internal notes.\n\nFor a specific job, open **PM Projects → Open → Subcontractors** to create or review a project assignment. A directory record or project-history tag does not itself schedule a subcontractor for a job. Phase-level assignment is available under the project's **Phases** area.\n\nThe global directory has an access check. If your account shows **Access Denied**, ask a company administrator to review that access rather than assuming the directory is empty. On mobile, directory creation and import actions are in the top **Actions** menu.",
+    "search_terms": [
+      "vendor",
+      "subcontractor",
+      "supplier",
+      "directory",
+      "vendors access denied",
+      "subcontractor directory actions"
+    ],
+    "article_type": "faq",
+    "last_verified_at": "2026-10-04",
+    "source_files": [
+      "src/pages/Vendors.jsx",
+      "src/components/pm/PMSubcontractorsTab.jsx",
+      "src/components/pm/PMPhasesTab.jsx"
+    ]
+  }
+]

@@ -1,0 +1,745 @@
+[
+  {
+    "slug": "guide-project-workspace",
+    "feature_area": "Projects",
+    "question": "Find your project and navigate the project workspace",
+    "answer_short": "Locate a project, open its workspace, and choose the right area for scheduling, staff, materials, documents, and client updates.",
+    "answer_long": "## Before you begin\nSign in to your company's workspace with a role that can manage projects. Project management pages show the company's projects; field team members use their assigned work in Employee Portal. Have the project name, client, or site address ready so you can distinguish similarly named jobs.\n\n## Open and navigate a project\n1. Open **PM Projects**. Each project card shows its name, status, and any saved client, address, dates, or budget.\n2. Select **Open** on the correct project card. Check the project heading and site address before making changes.\n3. Use the dropdown underneath the project heading to select a workspace area. The selected area is shown on the button, which also works on phones.\n4. Choose **Overview** for project health, milestones, linked documents, status, and quick additions. Choose **Phases** to maintain phase details and **Phase Timeline** to review the phase schedule.\n5. Choose **Staff & Tasks** for assignments, task editing, and the assignee filter. Use **Materials**, **Subcontractors**, or **Permits** for the related project records.\n6. Choose **Client View** for client-visible timeline updates, **Client Notes** for the notes feed, and **Project Notes** for the project diary. These areas serve different purposes.\n7. Choose **Quotes & Docs**, **Plans & Elevations**, or **Contractor Portal** when working with project files. Use the back arrow to return to PM Projects.\n\n## Create a project from an existing quote\nOpen the saved quote and select **Convert Quote**, then **Project Only** or **Project & Invoice** as appropriate. Review the resulting project rather than converting the same quote repeatedly. A conversion may first open the Project Detail page; you can return to PM Projects and open the project workspace for the PM tools.\n\n## Troubleshooting\n**Project not found** usually means the URL is missing its project identifier, the project was deleted, or your account cannot read it. Return to PM Projects and open the record from its card. Do not replace an inaccessible record by creating duplicates. On mobile, use the workspace dropdown rather than looking for a wide row of tabs.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "project workspace",
+      "PM projects",
+      "open project",
+      "project tabs",
+      "convert quote"
+    ],
+    "priority": 85,
+    "related_slugs": [
+      "guide-project-overview",
+      "guide-project-import-quote"
+    ],
+    "source_files": [
+      "src/pages/PMProjects.jsx",
+      "src/pages/PMProjectWorkspace.jsx",
+      "src/pages/QuoteView.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-overview",
+    "feature_area": "Projects",
+    "question": "Understand project health, progress, and linked documents",
+    "answer_short": "Read project overview metrics correctly and use project status, Quick Add, milestones, and linked document cards.",
+    "answer_long": "## What the Overview shows\nOpen a project from **PM Projects** and select **Overview** in the workspace dropdown. This area brings together phases, tasks, issues, materials, milestones, client information, and linked commercial documents. Check the project heading first; updates apply to the open project.\n\n## Review the project\n1. Read the project status beside its name. Select the status dropdown to choose **Planning**, **Active**, **On Hold**, **Completed**, or **Cancelled** when your team has agreed to that change.\n2. Review progress. The overview percentage is the average of the phases' saved completion percentages. It is not calculated from paid invoices or the number of tasks alone.\n3. Compare completed tasks with the total task count. Tasks contribute to the completed count when their status is **Done**.\n4. Review open issues. Issues that are neither **Resolved** nor **Closed** remain in this count.\n5. Check days remaining when a target end date is available. An old or missing target date can make this figure unhelpful even when the job is progressing normally.\n6. Review the material-cost figure alongside the project's budget. This overview uses actual material cost when present, otherwise estimated cost; it is a project indicator rather than a complete accounting ledger.\n7. Open the linked quote, change order, invoice, or purchase order cards to inspect the underlying document. Linking a document is different from creating one or recording payment.\n\n## Add work without leaving Overview\nSelect **Quick Add** and choose **New Task**, **New Phase**, **New Material**, **New Milestone**, or **Project Note**. Complete the required fields and wait for the save confirmation. For detailed task assignment, due dates, and edits, use **Staff & Tasks** afterward. For material purchasing details, use **Materials**.\n\n## Review the company dashboard\nOpen **PM Dashboard** for **Active Projects**, **At Risk**, and **Upcoming — Next 14 Days**. Active Projects includes projects in Active, In Progress, or Planning states. Its progress bar also uses saved phase percentages. At Risk lists overdue incomplete tasks/milestones and open critical issues. Upcoming combines dated milestones, tasks, and materials within the next two weeks. These lists are capped, so they are summaries rather than complete work lists. Open the related project to review its records, and use **All Projects** to see the project cards.\n\n## Troubleshooting and mobile use\nAn unchanged overview percentage can reflect stored phase completion values. The Phases area's task bar is calculated separately from Done tasks, so the two displays can differ. Use the phase status and actual dates to review the job rather than assuming the overview automatically follows task completions. A missing document card can mean the document is not linked to this project or you cannot read it. On a phone, scroll through the overview sections and use the same Quick Add menu; review the selected project before saving. Refresh once after a successful update if another area still shows old values.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "project overview",
+      "progress percentage",
+      "project status",
+      "project budget",
+      "quick add",
+      "PM dashboard",
+      "at risk",
+      "upcoming next 14 days"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-project-milestones",
+      "guide-project-phases",
+      "guide-project-materials"
+    ],
+    "source_files": [
+      "src/components/pm/PMProjectOverview.jsx",
+      "src/pages/PMProjectWorkspace.jsx",
+      "src/pages/PMDashboard.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-import-quote",
+    "feature_area": "Projects",
+    "question": "Import quote phases and tracked materials into a project",
+    "answer_short": "Use the linked quote to populate project phases and material planning without repeatedly importing existing names.",
+    "answer_long": "## Before you begin\nThe project must have a linked quote. The quote needs saved phases for phase import and line items flagged as materials for tracked-material import. Open **PM Projects**, select **Open** on the project, and choose **Overview**. Review existing phases and materials first so you understand what is already planned.\n\n## Run the import\n1. Select **Import Data** in Overview. If the app says **No Quote Attached**, stop and confirm the project's quote link with the person who created or converted the project.\n2. In **Import Linked Data**, select **Import Project Phases**, **Import Tracked Materials**, or both. The options control which records are added.\n3. Select **Run Import** and wait for the result. The success message reports inserted phases and materials, and any names skipped as duplicates.\n4. Open **Phases** and verify the phase names and order. Imported phases start as **Not Started** and are marked client-visible, so review visibility before sharing updates with a client.\n5. Open **Materials** and verify quantities, units, suppliers, product information, notes, and phase assignments. Tracked materials start as **To Order**.\n6. Set or review planning dates and assignments separately. Importing the quote does not complete the project schedule or purchase the listed materials.\n\n## Import from the Materials area\nThe **Import Quote** button in Materials imports only quote line items flagged as materials. It carries descriptions, available supplier/product references, and images, and attempts to match the quote phase name to an existing project phase. Import the phases first when you want that mapping to succeed.\n\n## Understand duplicate handling\nThe import skips phases whose names already exist and materials whose names already exist in the project. It does not merge later quantity, price, or description changes into an existing imported record. Edit the project record intentionally when the quote has changed; repeated import is not a synchronization service.\n\n## Troubleshooting\n**No phases or tracked materials found** means the linked quote lacks the eligible source records. **No items flagged as materials** means the quote lines need the material flag set before import. An unassigned material usually needs its phase selected manually or the matching phase created. If an import fails, inspect what was already added before retrying; some records may have been saved before the error.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "import quote",
+      "import phases",
+      "tracked materials",
+      "duplicate import",
+      "no quote attached"
+    ],
+    "priority": 82,
+    "related_slugs": [
+      "guide-project-phases",
+      "guide-project-materials"
+    ],
+    "source_files": [
+      "src/components/pm/PMProjectOverview.jsx",
+      "src/components/pm/PMMaterialsTab.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-phases",
+    "feature_area": "Project Phases",
+    "question": "Create and maintain project phases",
+    "answer_short": "Set phase order, dates, progress, leadership, subcontractors, budget, visibility, and internal notes.",
+    "answer_long": "## Before you begin\nOpen the project workspace and choose **Phases**. A phase is a distinct section of work, such as demolition or rough-in. Use clear names and an agreed order so the overview and schedule remain understandable. Quote phases can also be added through Overview's **Import Data** action.\n\n## Add a phase\n1. Select **Add Phase**, or **Add First Phase** when the list is empty.\n2. Enter the required **Phase Name** and **Order / Sequence**. The list sorts by the sequence number.\n3. Enter **Phase Budget**, **Target Start Date**, and **Target End Date** when known.\n4. Choose a subcontractor if this phase belongs to a trade. Select **+ Create New Subcontractor** only when the existing directory does not already contain the company.\n5. Save the phase. New phases begin as **Not Started**.\n\n## Maintain progress and details\nExpand a phase with its chevron to see its detailed controls. Select **Not Started**, **In Progress**, **Blocked**, or **Completed** to describe its state. The task bar on this screen is calculated from the phase's linked tasks: Done tasks divided by total linked tasks. The overview separately reads saved phase completion percentages, so these two indicators may differ.\n\nUse **Target Start** and **Target End** for planned dates, and **Actual Start** and **Actual End** for what happened. Choose **Assigned Lead / Foreman** for the internal person responsible. Select the subcontractor when relevant and review **Phase Budget** as the scope changes. Enter **Internal Phase Notes** for operational context, then leave the field so the current value is saved.\n\nReview **Visible in Client Portal** before sharing a phase. This visibility setting controls whether the phase contributes to the client-visible feed; it does not publish every internal note or make your whole project public.\n\n## Troubleshooting and safe removal\nIf a phase is absent from the schedule, confirm it has usable planning dates and that the schedule window includes those dates. If a name appears twice after import, check the spelling because duplicate handling is based on existing names. Deleting a phase requires confirmation and can unlink its tasks; review affected work first. On mobile, expand one phase at a time and allow each update to finish before switching fields or leaving the page.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "phase",
+      "phase progress",
+      "phase dates",
+      "foreman",
+      "client visible",
+      "phase order"
+    ],
+    "priority": 83,
+    "related_slugs": [
+      "guide-project-phase-timeline",
+      "guide-project-client-updates"
+    ],
+    "source_files": [
+      "src/components/pm/PMPhasesTab.jsx",
+      "src/components/pm/PMProjectOverview.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-milestones",
+    "feature_area": "Projects",
+    "question": "Track project milestones and target dates",
+    "answer_short": "Create milestone checkpoints, maintain their status, and understand how they appear in the dashboard and client feed.",
+    "answer_long": "## What a milestone is\nA milestone is a checkpoint such as an inspection, delivery deadline, or project handover. It has a title, target date, and status. It is separate from a phase, which describes a body of work, and from a task, which describes an actionable assignment.\n\nOpen the project from **PM Projects** and select **Overview**. Check the project heading and confirm which checkpoints the team expects to track before adding records.\n\n## Add and maintain milestones\n1. Select **Quick Add**, then **New Milestone**. You can also use the add button in the overview's milestone section.\n2. Enter the required **Milestone Title**. Use a name that explains the outcome, such as “Rough-in inspection,” rather than a vague reminder.\n3. Set **Target Date** if known. A missing target date prevents the milestone from contributing a dated upcoming deadline.\n4. Select **Pending**, **In Progress**, or **Completed** according to its actual state, then save.\n5. Review the saved milestone in Overview. Use its edit control to adjust the target date or status when the plan changes.\n6. Mark the milestone **Completed** after the checkpoint is reached. Changing the milestone status does not automatically complete the project's tasks or phases.\n\n## How the date is used\nThe PM Dashboard considers incomplete milestones with target dates when building its upcoming and overdue lists. The next milestone on a project's dashboard card is the earliest dated milestone that has not been completed. A past date therefore remains relevant until the checkpoint is completed or the target is intentionally revised.\n\nThe client timeline can include milestones unless they are explicitly marked not client-visible. Review the client feed before assuming a milestone is internal, especially when the title includes private project context.\n\n## Troubleshooting and mobile use\nIf a checkpoint is missing from upcoming work, inspect its target date and status. The upcoming list covers approximately the next two weeks and is capped, so it is not the full project plan. Duplicate milestones are separate records; creating another will not replace the old one. If you must remove a milestone, use its delete control and review the confirmation carefully. On a phone, scroll to the milestone section or use Quick Add, then verify the saved record.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "milestone",
+      "checkpoint",
+      "inspection",
+      "target date",
+      "upcoming deadline"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-project-overview",
+      "guide-project-client-updates",
+      "guide-project-phase-timeline"
+    ],
+    "source_files": [
+      "src/components/pm/PMProjectOverview.jsx",
+      "src/pages/PMDashboard.jsx",
+      "src/components/pm/PMClientTimelineTab.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-phase-timeline",
+    "feature_area": "Project Phases",
+    "question": "Read the project phase timeline and Gantt schedule",
+    "answer_short": "Use the phase schedule to compare phase dates, subcontractor assignments, and material deadlines across a 60-day view.",
+    "answer_long": "## Before you begin\nOpen the project workspace and choose **Phase Timeline**. The page is titled **Project Gantt Schedule**. It displays saved project planning data; moving around the chart does not reschedule records.\n\nCreate phases in **Phases**, assign subcontractors in **Subcontractors**, and maintain materials in **Materials**. A row needs suitable dates to show a bar or date marker. The schedule is a visual review of those source records.\n\n## Navigate the schedule\n1. Review the date range at the top and locate today's position in the grid.\n2. Use the left and right arrow buttons to move the schedule window backward or forward in fourteen-day increments. Each window contains sixty days.\n3. Select **Today** when that button is visible to return the range to the current date.\n4. Expand a phase using its chevron to see related subcontractor assignments and materials. The phase rows follow their saved phase order.\n5. Compare phase bars with subcontractor scheduled start/end dates and the material needed-by dates. A material associated with another phase will appear under that phase.\n6. On desktop, drag the divider at the edge of the label column to make long names easier to read. On a phone, scroll the date grid horizontally while the names remain in the label area.\n7. Select **Print** to open the browser's print workflow when you need a schedule copy.\n\n## Change the underlying plan\nTo alter a phase's target dates, return to **Phases**. For a subcontractor's saved scheduling information, review its assignment in **Subcontractors**. Review the material record when a material deadline or phase association is wrong. Chart navigation and tapping a bar do not save new dates.\n\n## Troubleshooting\n**No phases scheduled yet** can mean the project has no phases, even when tasks exist elsewhere. A phase without dates may have a name row but no visible bar. A valid bar outside the current sixty-day window will be hidden until you navigate to its dates. Check whether end dates precede start dates before interpreting an empty or unexpected bar. Material status labels can differ between planning views, so use the underlying material record to verify the current purchasing state.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "gantt",
+      "phase timeline",
+      "project schedule",
+      "timeline dates",
+      "print schedule"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-project-phases",
+      "guide-project-subcontractors",
+      "guide-project-materials"
+    ],
+    "source_files": [
+      "src/components/pm/PMScheduleTrackerTab.jsx",
+      "src/components/pm/PMPhasesTab.jsx",
+      "src/components/pm/PMSubcontractorsTab.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-projects-timeline",
+    "feature_area": "Projects",
+    "question": "Compare projects in Timeline and Calendar views",
+    "answer_short": "Review planned project date ranges in the company-wide timeline or monthly calendar and open the related workspace.",
+    "answer_long": "## Choose the right schedule\n**Projects Timeline** compares whole projects across the company. **Phase Timeline** inside a project compares the phases, subcontractors, and materials of that one project. Use Projects Timeline for a portfolio view and the project workspace for detailed work planning.\n\nThe project range comes from its saved start date and target end date. This view reads those dates; it does not provide drag-and-drop project rescheduling or automatically resolve staffing conflicts.\n\n## Review the Timeline view\n1. Open **Projects Timeline** and select **Timeline**.\n2. Find the project in the name column. Projects are ordered using their saved start dates.\n3. Compare the project bar with the date header. A bar is drawn when at least one of the project dates is available; one date alone may appear as a single-day range.\n4. Use the arrow buttons to move backward or forward fourteen days. The timeline displays a sixty-day window.\n5. Select **Today** when visible to return to the current window.\n6. Open the project from its displayed link when you need the workspace, phases, tasks, or material records.\n\n## Review the Calendar view\nSelect **Calendar** to see project ranges across a month. Use the arrows to choose the preceding or following month. The same project may appear on several dates because it spans multiple days; those appearances are not duplicate project records. Use **Today**, when visible, to return to the current month.\n\n## Troubleshooting and phone use\nA project without either planning boundary cannot appear as a dated bar or calendar range. If you cannot find an old project, change the visible window or month before concluding it is missing. Completely cancelled projects without a start date are excluded from this view. A project whose target end precedes its start can display unexpectedly; confirm the saved dates in the project record.\n\nOn mobile, swipe the timeline horizontally to inspect later dates and use Calendar when a monthly overview is easier to scan. Opening **All Projects** or returning to PM Projects gives you the project cards even when their scheduling dates are missing.",
+    "route": "/PMTimeline",
+    "search_terms": [
+      "projects timeline",
+      "calendar",
+      "portfolio schedule",
+      "project dates"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-project-workspace",
+      "guide-project-phase-timeline",
+      "guide-project-overview"
+    ],
+    "source_files": [
+      "src/pages/PMTimeline.jsx",
+      "src/pages/PMProjects.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-staff",
+    "feature_area": "Team",
+    "question": "Assign company staff and manage project tasks",
+    "answer_short": "Add company members to a project, create tasks, and maintain assignees, priority, dates, hours, and completion.",
+    "answer_long": "## Before you begin\nOpen the project workspace and choose **Staff & Tasks**. The page contains **Task Board** and **Assigned Team** views. Assigning someone to the team and assigning a specific task are separate actions: a team member is not automatically responsible for every project task.\n\n## Add staff to the project\n1. Select **Assigned Team**.\n2. Select **Assign Staff** and choose the **Company User**. Only available company members can be selected; a person must exist in your company directory first.\n3. Confirm the assignment and check that the member appears in the team's cards.\n4. Use a card's remove control only when the person should be removed from the project. Read the confirmation; removing a staff membership does not explain how every task should be reassigned.\n\n## Create and edit tasks\n1. Return to **Task Board** and select **Add Task**.\n2. Enter a clear task title and description. Review the client and project choices so the task is attached to the intended job.\n3. Set priority, assignee, due date, and estimated hours where applicable, then save.\n4. Open an existing task's menu and choose **Edit** to review **Project Phase**, **Priority**, **Status**, **Due Date**, **Est. Hours**, and **Assign Staff (Select Multiple)**.\n5. Choose **To Do**, **Doing**, **Blocked**, or **Done** to describe the task's current state. Record enough description to make a blocked task actionable for another person.\n6. Save changes and check the task card. The completion control can switch a task between **Done** and **To Do**.\n\n## Troubleshooting and mobile use\nIf someone is missing from Assign Staff, they may already be assigned or absent from the company user list. If a task seems missing, clear the **Assigned to** filter and verify its linked project. A task moved to another project will no longer appear in this project's list. Due dates and estimated hours are planning fields; entering them does not record worked time. On phones, use the two view buttons and scroll through the dialog to reach its save action. Avoid deleting a task merely to fix an assignee; edit the existing record instead.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "assign staff",
+      "project team",
+      "task board",
+      "edit task",
+      "multiple assignees"
+    ],
+    "priority": 82,
+    "related_slugs": [
+      "guide-project-task-filter",
+      "guide-project-phases",
+      "guide-project-workspace"
+    ],
+    "source_files": [
+      "src/components/pm/PMStaffTab.jsx",
+      "src/components/tasks/CreateTaskDialog.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-task-filter",
+    "feature_area": "Tasks",
+    "question": "Filter a project task list by assigned user",
+    "answer_short": "Find tasks for a specific person or show unassigned work, then clear the filter without changing any task assignments.",
+    "answer_long": "## Where the filter is located\nOpen **PM Projects**, choose **Open** on the project, select **Staff & Tasks** from the workspace dropdown, and choose **Task Board**. The **Assigned to** selector is above the project tasks.\n\nThis filter changes what you see in the current project's task list. It does not assign work, remove tasks, or filter the entire company's project portfolio. Use **Edit** on an individual task when you need to change the assignees.\n\n## Filter the tasks\n1. Select **Assigned to**. The default is **All users**, which shows every task available in the project.\n2. Choose a company member by name or email to show tasks assigned to that person.\n3. Choose **Unassigned** when you want tasks without an assignee, such as newly created work that still needs an owner.\n4. Read the heading count. While filtering, it shows the number of matching tasks against the total project task count, helping you distinguish a narrow result from a project with no tasks.\n5. Open or edit a matching task as usual. If you change its assignees, it may leave the currently filtered results after saving.\n6. Select **Clear filter** or choose **All users** to restore the full list. Opening a different project resets this filter to All users.\n\n## Understand shared assignments\nA task can have multiple assignees. It appears when any of its saved assignees matches the selected person. The filter also recognizes older assignments stored as the person's email, so a task is not excluded merely because it uses an older assignment format.\n\n## Troubleshooting and mobile use\n**No tasks match this filter** means there are project tasks but none match the selection. Clear the filter before creating new tasks or reporting lost work. **No tasks created** means the project has no task records in this list. If a person is missing, confirm they belong to the current company and are represented in its directory.\n\nOn a phone, the selector and Clear filter button remain available above the cards; they may stack vertically. Selecting a user is a viewing choice, so you can safely switch between users while reviewing workload.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "filter tasks by user",
+      "assigned to",
+      "unassigned",
+      "clear filter",
+      "assignee filter"
+    ],
+    "priority": 85,
+    "related_slugs": [
+      "guide-project-staff",
+      "guide-project-workspace"
+    ],
+    "source_files": [
+      "src/components/pm/PMStaffTab.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-client-updates",
+    "feature_area": "Client Timeline",
+    "question": "Post client-visible project updates and review the client feed",
+    "answer_short": "Create dated client updates and understand which phases, milestones, and issues appear in the Client View feed.",
+    "answer_long": "## Before you begin\nOpen the project workspace and choose **Client View**. This subscriber-side view is the **Client Timeline Feed**. It helps your team review information marked for clients; it is different from the Client Notes feed and does not itself send a support ticket or invite a new subscriber.\n\nCheck the linked client and ensure the wording is appropriate to share. Avoid placing private pricing discussions, employee matters, or internal troubleshooting in an update that will be client-visible.\n\n## Post an update\n1. Select **Post Update**, or **Post First Update** when the feed is empty.\n2. Enter the required **Event Title / Summary**. Use a concise description of the work or checkpoint.\n3. Set **Event Date** to the date the update relates to, rather than relying on the date when you happen to type it.\n4. Enter **Details & Notes** with the context the client needs, such as what was completed, what comes next, and any decisions required.\n5. Review **Visible to Client** before saving. Leave it on only when the update is intended for the client feed.\n6. Save the update and review its placement in the dated feed.\n\n## What else appears\nThe feed combines manual updates marked client-visible, milestones that have not been explicitly hidden, phases marked client-visible, and issues marked client-visible. It groups entries by date and presents the most recent dates first. Phase progress and milestone status are read from their underlying records.\n\nA client-invisible manual update will not appear in this visible feed, even though it may be saved. Phase dates use actual start when available, otherwise target start or the record's creation date. This explains why an old phase may appear on a different date than expected.\n\n## Troubleshooting and mobile use\nIf an entry is missing, check visibility and the relevant date in the source record. If the status or progress looks wrong, update the phase or milestone rather than posting a contradictory manual update. Saving an update does not prove an email or text was delivered. On phones, scroll the feed by date and review the visibility switch in the posting dialog before tapping Save.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "client view",
+      "client timeline",
+      "post client update",
+      "visible to client"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-project-phases",
+      "guide-project-milestones",
+      "guide-project-notes"
+    ],
+    "source_files": [
+      "src/components/pm/PMClientTimelineTab.jsx",
+      "src/pages/PMProjectWorkspace.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-notes",
+    "feature_area": "Daily Logs",
+    "question": "Use Client Notes and Project Notes for the right purpose",
+    "answer_short": "Record conversation context in the notes feed and keep structured daily site information in Project Notes.",
+    "answer_long": "## Choose the appropriate record\nThe project workspace has **Client Notes** and **Project Notes**. Client Notes opens the shared notes feed for the project, allowing your team to record an update, email summary, or call note. Project Notes opens the structured project diary for dates, weather, crew, work completed, delays, safety concerns, materials, and photos.\n\nNeither label alone means a note has been emailed to a client or automatically published in the client-visible timeline. Use **Client View** when you need an explicitly client-visible update.\n\n## Post a conversation note\n1. Open the project and select **Client Notes**.\n2. Enter the update in **Log an update, email summary, call notes...**. Include the decision, responsible person, and next step so someone else can understand it later.\n3. Choose a category appropriate to the note. Use a mention only for a relevant available team member.\n4. Select the pin option when you need the note easy to find on this browser.\n5. Select **Post Note**, or use Control+Enter / Command+Enter while editing. Wait for the save to finish.\n6. Use the note's edit action when correcting the existing summary rather than adding a contradictory duplicate.\n\n## Record a site diary entry\nChoose **Project Notes** and add a daily log, or use Overview's **Quick Add → Project Note**. Enter **Date**, **Weather**, **Crew on Site**, **Work Completed Today**, **Issues / Delays**, **Safety Concerns**, and **Materials Used** as applicable. Save the record, then review it in the diary. The detailed Project Notes area supports reviewing and editing saved entries.\n\n## Troubleshooting and access\nPinned-note choices are saved in local browser storage, so a pin may not appear on another device. A missing mention option can mean the person is not in the relevant company/project team. The project feed is associated with the current project; confirm the project heading if you cannot find a note.\n\nOn phones, the posting controls wrap below the text box. Scroll the daily-log dialog to check all fields and the save action. A safety concern should also be communicated through your company's immediate reporting process; entering a diary field alone does not guarantee someone has seen it.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "client notes",
+      "project notes",
+      "site diary",
+      "pin note",
+      "project conversation"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-project-client-updates",
+      "guide-project-overview"
+    ],
+    "source_files": [
+      "src/pages/PMProjectWorkspace.jsx",
+      "src/components/shared/NotesFeed.jsx",
+      "src/components/pm/PMDailyLogsTab.jsx",
+      "src/components/pm/PMProjectOverview.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-plans",
+    "feature_area": "Plans & Elevations",
+    "question": "Upload and organize project plans, elevations, and drawing revisions",
+    "answer_short": "Save drawing files with their type, title, revision, and notes, then preview or download the correct plan.",
+    "answer_long": "## Before you begin\nOpen the project workspace and select **Plans & Elevations**. Keep the latest approved drawing files ready on your device. A plan in this area is a project drawing record with an uploaded file; it is not automatically a published contractor bid package or a signed approval.\n\nUse descriptive titles and revision labels so site staff can distinguish a current sheet from an older version. The available drawing types include Floor Plan, Elevation, Site Plan, Electrical, Plumbing, Mechanical, Structural, Detail Drawing, As-Built, and Other.\n\n## Upload and save a drawing\n1. Select **Upload Plan / Elevation**, or **Upload First File** when the area is empty.\n2. Choose the drawing type and enter a meaningful title.\n3. Enter the revision and notes when applicable. A revision label is descriptive; uploading another revision does not automatically replace an older saved record.\n4. Select the file from your device and wait for the upload to finish. The file name can fill the title when no title was entered.\n5. Save the record after the upload completes. Selecting a file and saving the drawing record are separate parts of the workflow.\n6. Confirm that the drawing appears under the correct type heading and that the revision label is visible.\n\n## Preview and download\nSelect an image thumbnail to open the image viewer. Other file types open in a new browser tab. Use the open/download controls on the card to access the file. If a download cannot be handled directly, the app may open the file URL so the browser's own save controls can be used.\n\n## Troubleshooting and sharing\nIf a file uploaded but no card appears, confirm the record was saved. A storage error and a record-save error are separate failures; note which message appears before retrying. Re-select the original file if the upload failed.\n\nTo share a drawing in the Contractor Portal, choose it using that portal's **Share Existing Project Files** flow. Saving it here alone does not add it to the portal's document list. On mobile, verify the full drawing title and revision before downloading. Removing a drawing record requires confirmation; download anything your team still needs before removal.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "upload plan",
+      "elevation",
+      "drawing revision",
+      "floor plan",
+      "download drawing"
+    ],
+    "priority": 82,
+    "related_slugs": [
+      "guide-project-documents",
+      "guide-project-contractor-portal"
+    ],
+    "source_files": [
+      "src/components/pm/PMPlansElevationsTab.jsx",
+      "src/components/pm/PMContractorPortalTab.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-documents",
+    "feature_area": "Projects",
+    "question": "Store supplier quotes and documents in a project",
+    "answer_short": "Upload supporting files, classify them, and keep vendor, amount, and internal notes alongside the document.",
+    "answer_long": "## Before you begin\nOpen the project workspace and select **Quotes & Docs**. This area stores supporting project files such as supplier quotes, contractor quotes, contracts, and specification sheets. These uploaded documents are different from the app's editable sales quotes, invoices, and purchase orders.\n\nHave the file ready and decide what information belongs in its record. If it contains confidential information, review whether it should remain internal before sharing it through any external portal.\n\n## Upload a document\n1. Select **Upload Document**, or **Upload First Document** when the area is empty.\n2. Choose **Document Type** and fill **Vendor / Company** if applicable.\n3. Enter **Amount ($)** when the document represents an amount you want to reference. This metadata does not create a payment or automatically update the project's accounting totals.\n4. Add **Internal Notes** that explain the document, its version, or a decision associated with it.\n5. Choose the required **File** and wait for upload confirmation.\n6. Select **Save** to create the document record. The upload confirmation explicitly asks you to finish the details and save; closing the dialog beforehand does not finish the record workflow.\n7. Confirm the saved file appears in its document-type group.\n\n## Read and share files\nUse **Open in new tab** to inspect a document and **Download file to device** to save a copy. Documents can be selected separately in **Contractor Portal → Share Existing Project Files**. A file saved in Quotes & Docs is not automatically included in every contractor's bid package.\n\n## Troubleshooting and mobile use\nIf the Save button is disabled, check that a file URL is available and the upload has finished. A file can upload successfully while saving its metadata fails, so inspect the exact message before retrying. A failed direct download may open the file in a browser tab; use the browser's download or share controls there.\n\nDo not interpret an uploaded contract as a completed digital signature. This file catalog does not provide a general document-signing workflow. On phones, scroll the upload dialog through the file and save controls. Use the delete action only for records your team intentionally wants removed; the confirmation describes permanent document deletion.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "project documents",
+      "supplier quote",
+      "spec sheet",
+      "upload document",
+      "contracts"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-project-plans",
+      "guide-project-contractor-portal"
+    ],
+    "source_files": [
+      "src/components/pm/PMQuotesDocsTab.jsx",
+      "src/components/pm/PMContractorPortalTab.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-permits",
+    "feature_area": "Projects",
+    "question": "Record project permits and attached approval documents",
+    "answer_short": "Track permit type, number, issuing authority, dates, status, scope, and a digital copy in the project.",
+    "answer_long": "## Before you begin\nOpen the project workspace and select **Permits**. The section is titled **Building Permits**, but it supports building, electrical, plumbing, mechanical, gas, demolition, grading, sign, and other permit types. Have the actual permit information ready so the record reflects the authority's document.\n\nThis area is a tracking tool. Adding a permit record does not submit an application, obtain approval from an authority, book an inspection, or establish that your project meets regulatory requirements.\n\n## Add a permit\n1. Select **Add Permit**, or **Add First Permit** when the list is empty.\n2. Choose the required **Permit Type** and the appropriate **Status**. The options include **Pending**, **Approved**, **Active**, **Expired**, **Closed**, and **Rejected**.\n3. Enter **Permit Number** and **Issued By (City/County)** when available.\n4. Enter **Issue Date** and **Expiry Date** from the permit document. These dates support the expired indication shown in the project.\n5. Fill **Scope of Work / Description** so your team can understand what the permit covers.\n6. Under **Digital Copy (PDF/Image)**, select the permit's PDF, JPG, JPEG, or PNG file. Wait for the file-upload confirmation.\n7. Save the permit record, then open the saved document to check that the correct file is attached.\n\n## Update and review\nUse the permit's edit control when the authority supplies new information or the permit changes state. A permit with a past expiry date can be highlighted as expired unless it is **Closed**. This date check is a visual cue, not evidence that an authority has cancelled or extended the permit.\n\n## Troubleshooting and mobile use\nA successful file upload still needs the permit form saved. If saving fails, keep the actual document and inspect the error rather than creating several incomplete permit records. If the expiry cue seems wrong, check the saved date and whether the permit is closed.\n\nOn phones, scroll the dialog through the dates, scope, file, and save controls. The delete action requires confirmation; removing the tracking record does not revoke the actual permit and may remove information your team needs for the project's history.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "permit",
+      "building permit",
+      "permit expiry",
+      "approval document",
+      "permit upload"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-project-documents",
+      "guide-project-milestones"
+    ],
+    "source_files": [
+      "src/components/projects/PermitsTab.jsx",
+      "src/pages/PMProjectWorkspace.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-materials",
+    "feature_area": "Project Materials",
+    "question": "Plan and track project materials from quote to receipt",
+    "answer_short": "Create material records, group them by phase, search them, and update purchasing status without confusing them with warehouse stock.",
+    "answer_long": "## Before you begin\nOpen the project workspace and select **Materials**. This is the project's purchasing and material-planning list. Warehouse **Inventory** is a separate record of physical stock, and a **Purchase Order** is a separate supplier document. Adding a project material does not by itself place an order or change warehouse quantities.\n\n## Add and maintain a material\n1. Select **Material** at the top, or **Add** in a phase group.\n2. Enter the required **Material Name**, **Quantity**, and **Unit**. Use a name that will be easy to recognize when searching supplier information later.\n3. Choose **Assign to Phase**, or leave it **General / Unassigned** when it does not belong to one phase.\n4. Enter **Estimated Unit Cost**. The material's displayed estimated total is quantity multiplied by this unit cost.\n5. Choose **To Order**, **Ordered**, or **Received On-Site**. Received is the saved state for material received on site.\n6. Fill **Supplier** and **Notes / Details (Optional)** with relevant SKU, product specifications, or delivery context.\n7. Select **Save Material**, then verify the record under its phase. Use the material's actions to edit or remove an existing record rather than adding duplicates.\n\n## Search and review purchasing progress\nUse **Search materials...** to find material names or notes. Combine it with **All Statuses**, **To Order**, **Ordered**, or **Received** to focus on work still required. Purchasing Overview totals are calculated from the full material list; a search narrows visible rows but does not redefine all project totals. The received percentage is based on material record count, not quantity or spending.\n\nUse **Import Quote** when the linked quote contains line items flagged as materials. Existing material names are skipped rather than overwritten. Review imported unit costs, quantities, supplier details, and phase mappings before using the totals.\n\n## Troubleshooting and mobile use\nAn empty list may result from a search or status filter. Clear both before reporting missing materials. A material in General / Unassigned needs a phase selected if you expect it elsewhere. Inconsistent wording in another schedule view can reflect older planning statuses; inspect the material's saved record. On a phone, controls may wrap above the phase groups; review the unit cost and quantity separately before saving.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "project material",
+      "estimated unit cost",
+      "received on site",
+      "material supplier",
+      "import material"
+    ],
+    "priority": 82,
+    "related_slugs": [
+      "guide-project-import-quote",
+      "guide-inventory-manage",
+      "guide-purchase-order-create"
+    ],
+    "source_files": [
+      "src/components/pm/PMMaterialsTab.jsx",
+      "src/components/pm/PMProjectOverview.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-subcontractors",
+    "feature_area": "Vendors",
+    "question": "Assign subcontractors to a project and phase",
+    "answer_short": "Connect a subcontractor to project work with status, dates, agreed amount, and role notes.",
+    "answer_long": "## Before you begin\nOpen the project workspace and choose **Subcontractors**. The area has assigned-project records and a directory. A directory contact is separate from an assignment: adding a company to the directory does not automatically book it for this project.\n\nReview the existing directory before creating a new entry. The project picker combines the company's vendor contacts and PM subcontractor contacts, so similarly named records can exist in different sources.\n\n## Create an assignment\n1. Select the assigned view and choose **Assign Sub**, or **Assign Subcontractor** when the list is empty.\n2. Choose the required **Subcontractor**. Confirm the company and contact details before assigning it.\n3. Choose a **Phase**, or **General / Unassigned** for work that does not belong to one phase.\n4. Set **Status** to **Proposed**, **Approved**, **Scheduled**, **On Site**, **Completed**, or **Removed** as appropriate.\n5. Set **Scheduled Start** and **Scheduled End** when the trade's booking has been agreed.\n6. Enter **Agreed Amount ($)** and **Role Notes** describing the expected scope, then save.\n7. Review the assignment card and change its status as the work progresses.\n\n## Add a missing contact\nIn the directory view, choose **New Sub**. The form includes Company Name, Trade Focus, contact details, WCB policy, insurance expiry, and notes. Complete what your team has actually verified. Saving an insurance date records information; it does not validate coverage with an insurer.\n\nThe phase editor also has a **+ Create New Subcontractor** option that creates a vendor contact. Use the appropriate directory and check for an existing contact so the company is not duplicated.\n\n## Troubleshooting and invitations\nA subcontractor missing from a phase schedule may be assigned to another phase, General / Unassigned, or have no scheduled dates. Review the assignment record first. Removing an assignment is different from deleting the directory contact.\n\nThe project's quote-invitation controls currently use an older integration, so an invitation or attachment failure should not be treated as a confirmed send. Use the Contractor Portal's copied link in your own verified communication channel when needed. On phones, scroll the assignment dialog to reach dates, amount, notes, and the save control.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "assign subcontractor",
+      "trade assignment",
+      "agreed amount",
+      "subcontractor dates",
+      "WCB"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-project-contractor-portal",
+      "guide-vendors-directory",
+      "guide-project-phase-timeline"
+    ],
+    "source_files": [
+      "src/components/pm/PMSubcontractorsTab.jsx",
+      "src/components/pm/PMPhasesTab.jsx",
+      "src/components/pm/PMScheduleTrackerTab.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-project-contractor-portal",
+    "feature_area": "Contractor Portal",
+    "question": "Prepare and share a contractor bid package",
+    "answer_short": "Maintain project scope, select external-facing files, copy the portal link, and verify the package before sharing.",
+    "answer_long": "## Before you begin\nOpen the project workspace and choose **Contractor Portal**. This subscriber-side area prepares a project bid package. It is separate from a subcontractor's Employee Portal account and from the general Help Articles portal.\n\nReview exactly which documents and scope information should be shared outside your company. The portal's document list is controlled separately from your internal Quotes & Docs and Plans & Elevations catalogs.\n\n## Prepare the package\n1. Review **Scope of Work**. Choose its edit control, enter the intended scope, then save. The portal uses this scope field; a project's internal notes or quote scope are not necessarily the same text.\n2. To add a new file, enter **New File Description (Optional)** and choose **Click to upload a brand new file**. Multiple files can be selected; wait for the upload/save result.\n3. To reuse an existing file, choose **Share Existing Project Files**, select the appropriate documents or plans, and choose **Share to Portal**.\n4. Inspect **Files Visible to Contractors**. Open the files to verify the correct version and check that no internal-only file was included.\n5. Use **Copy** in the **Public Contractor Portal Link** card, then **Open** to inspect the package before sharing it with a recipient.\n6. Provide the correct company bid contact and submission instructions in your own message. The current outside portal can show legacy Pro-Trades contact information, so do not assume its displayed recipient matches your company.\n\n## Remove and update shared files\nUse a file's remove control to take its record out of the portal list. An internal drawing revision does not automatically replace a separately shared portal record. Review the external list again after document changes.\n\n## Troubleshooting and access\nIf a recipient sees **No project specified in the link**, copy the complete generated URL including its project identifier. **Project not found or link has expired** can also indicate access restrictions; contact your company administrator rather than bypassing permissions. File downloads may fall back to opening the document in a browser tab.\n\nCopying the link does not send an invitation or confirm a bid submission. On a phone, use the full-width Copy/Open controls and scroll the shared-file list; verify the external package's scope, file names, and recipient instructions before sending it through your chosen channel.",
+    "route": "/PMProjects",
+    "search_terms": [
+      "contractor portal",
+      "bid package",
+      "share existing files",
+      "contractor scope",
+      "copy portal link"
+    ],
+    "priority": 82,
+    "related_slugs": [
+      "guide-project-documents",
+      "guide-project-plans",
+      "guide-project-subcontractors"
+    ],
+    "source_files": [
+      "src/components/pm/PMContractorPortalTab.jsx",
+      "src/pages/ContractorPortal.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-vendors-directory",
+    "feature_area": "Vendors",
+    "question": "Maintain the subcontractor and supplier directory",
+    "answer_short": "Keep searchable company contacts, trade categories, ratings, project history, notes, and supporting files.",
+    "answer_long": "## Before you begin\nOpen **Vendors**, which is titled **Subcontractors Directory**. The directory contains company subcontractors and suppliers. Access is restricted, and some accounts may see **Access Denied**; ask a company administrator to review access rather than creating another account.\n\nA directory record provides reusable contact information. It does not automatically create a project assignment, purchase order, user login, insurance verification, or payment record.\n\n## Add or update a contact\n1. Select **New Subcontractor**. On a phone, open **Actions** to find this option.\n2. Enter the required **Subcontractor / Company Name** and fill **Contact Name**, **Trade / Category**, **Email**, **Phone**, and **Physical Address** as applicable.\n3. Review the internal rating and preferred setting based on your company's assessment. These are internal tracking choices.\n4. Under **Projects Worked On**, tag saved projects relevant to the contact's history. A history tag is different from scheduling that company on a live project.\n5. Add relevant supporting files in **Invoices & Files from Subcontractor** and record useful **Internal Notes**.\n6. Save the contact, then review its row or card. Choose **Edit** from its actions menu to correct details later.\n\n## Find an existing contact\nUse **Search name, contact, or email...** and the category/preferred filters. Choose the list or card view that is easiest to scan. Sorting can be **Newest First**, **A-Z**, or **Z-A**. Check the contact's name and email before creating a duplicate or preparing a request.\n\n## Import and project use\nThe **Import Excel** control currently parses a CSV-style file; save spreadsheet data as CSV and review the dialog's header guidance rather than uploading an arbitrary spreadsheet format. Imports add records, so inspect existing contacts first. Directory export can help review saved details.\n\nTo assign someone to a project, open that project's **Subcontractors** area and create an assignment there. For supplier orders, create a purchase order with the vendor selected.\n\n## Troubleshooting and mobile use\nIf the directory appears empty, clear search and filters and confirm the correct company account. If access is denied despite your expected role, provide that message to the company administrator. On phones, key actions are under the top Actions menu. Deletion removes the directory record; edit inaccurate details instead of deleting a contact that other records may reference.",
+    "route": "/Vendors",
+    "search_terms": [
+      "vendor",
+      "supplier",
+      "subcontractor directory",
+      "preferred vendor",
+      "vendor CSV"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-project-subcontractors",
+      "guide-purchase-order-create"
+    ],
+    "source_files": [
+      "src/pages/Vendors.jsx",
+      "src/components/pm/PMSubcontractorsTab.jsx",
+      "src/pages/PurchaseOrders.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-inventory-manage",
+    "feature_area": "Inventory",
+    "question": "Manage warehouse stock and review material usage",
+    "answer_short": "Create physical inventory records, set low-stock alerts, adjust quantities, and inspect the usage ledger.",
+    "answer_long": "## Distinguish stock from project planning\nOpen **Inventory**, titled **Warehouse Inventory**, to track physical shop stock. Project **Materials** is a separate purchasing plan, and the product catalog is used for quote/PO line items. Adding stock does not automatically fulfill a purchase order or update every project material status.\n\n## Add and maintain a stock item\n1. Select **Add Material**.\n2. Enter the required **Material / Item Name** and a useful **Physical Location**, such as a warehouse or truck.\n3. Choose **Unit**, enter **Unit Cost**, and record **Current Qty** in that unit.\n4. Set **Low Stock Alert At** to your reorder threshold. Items with quantity at or below the threshold qualify for the low-stock filter.\n5. Add categories, **SKU / Item #**, supplier details, optional supplier URL, description, and image where useful.\n6. Save, then verify the item's quantity, location, and unit in the list. Open its details to inspect or edit the full record later.\n\n## Find and adjust stock\nSearch item name or SKU and combine the category, location, and **Low Stock Alerts** filters. Clear filters before deciding an item is missing. The plus/minus controls make one-unit shop adjustments, with additions recorded as **Receive** and removals as **Consume**. For larger corrections, inspect the item carefully and use its edit form to change Current Qty.\n\nEditing a quantity field is not the same as recording a project-specific usage transaction. Manual shop adjustments use a shop-adjustment note and may have no project attached. Field users can use their Inventory tools in Employee Portal for the workflows available to their role.\n\n## Review the usage report\nSelect **Usage Report** to open the transaction ledger. Search by item or notes, then filter **Project**, **Employee**, and **Type**. The type options distinguish consumed/taken from received/added. **Export Ledger** exports the filtered transactions; it does not change stock.\n\n## Troubleshooting and mobile use\nAn **Unknown Item** in an old ledger entry can mean its inventory record was removed. A changed quantity with no expected project history may have come from a direct edit or shop adjustment. On phones, keep the unit visible while checking quantities, and use Usage Report to inspect history before making another correction.",
+    "route": "/Inventory",
+    "search_terms": [
+      "warehouse inventory",
+      "physical stock",
+      "low stock",
+      "usage report",
+      "receive consume"
+    ],
+    "priority": 82,
+    "related_slugs": [
+      "guide-inventory-csv",
+      "guide-project-materials"
+    ],
+    "source_files": [
+      "src/pages/Inventory.jsx",
+      "src/components/employee/EPInventory.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-inventory-csv",
+    "feature_area": "Inventory",
+    "question": "Import and export warehouse inventory with CSV",
+    "answer_short": "Prepare a compatible stock spreadsheet, avoid duplicate imports, and understand which fields the importer reads.",
+    "answer_long": "## Before you begin\nUse **Warehouse Inventory** for this workflow. The current **Import CSV** and **Export** buttons are shown on wider screens, so use a desktop or tablet with a suitable viewport for bulk file work. Field stock usage is available separately in Employee Portal.\n\nCSV import adds new inventory records. It does not match an existing item by SKU, update existing quantities, or offer an automatic undo. Check existing stock and prepare only the new records you intend to add.\n\n## Prepare the file\nCreate a CSV file with a header row and at least one data row. Use clear columns such as **Name**, **SKU**, **Category**, **Unit**, **Location**, **Quantity**, **Cost**, and **Supplier**. Name is required; the importer also recognizes common headers containing item/product, quantity/qty, vendor/supplier, and location/bin.\n\nKeep each row's values aligned with its headers. Use plain numeric quantities and costs, and a consistent unit such as ea, ft, sqft, bag, or box. If omitted, quantity and cost become zero, unit defaults to ea, and location defaults to Main Storage. The importer does not carry every field available in the full item editor, so review reorder thresholds and subcategories afterward.\n\n## Import and verify\n1. Open Inventory and select **Import CSV**.\n2. Choose the prepared CSV file and wait for the result.\n3. Review the imported-item count and inspect several saved items for names, SKU, quantities, units, costs, and locations.\n4. Use the item editor to complete fields not supplied by the importer.\n5. If an import fails, inspect the inventory before retrying. Large imports are saved in batches, so earlier batches can already exist.\n\n## Export a review copy\nSet the inventory search and filters, then select **Export**. The CSV contains the currently filtered inventory rows. The export includes additional fields such as Sub Category, Alert Point, and Vendor URL, but those fields are not all restored by this importer; an export-and-reimport is not a full backup restoration.\n\n## Troubleshooting\n**File is empty or missing headers** means a proper header and data row are needed. **Could not find a Name column** means the item-name header was not recognized. **No valid items found** means data rows lacked usable names or columns. Avoid importing the same file twice when checking an error; find the already saved records first.",
+    "route": "/Inventory",
+    "search_terms": [
+      "import inventory",
+      "CSV inventory",
+      "stock spreadsheet",
+      "export inventory",
+      "duplicate inventory"
+    ],
+    "priority": 75,
+    "related_slugs": [
+      "guide-inventory-manage"
+    ],
+    "source_files": [
+      "src/pages/Inventory.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-purchase-order-create",
+    "feature_area": "Purchase Orders",
+    "question": "Create and complete a purchase order",
+    "answer_short": "Select a vendor and project, enter delivery details, add catalog or custom line items, and review calculated totals.",
+    "answer_long": "## Before you begin\nOpen **Purchase Orders** with a company account that can manage supplier orders. Have the supplier, item quantities, costs, delivery address, and expected date ready. A purchase order documents an order; creating a draft does not send it to the vendor or add physical stock.\n\n## Create the draft\n1. Select **New Purchase Order**. On smaller screens the create action may be displayed as a plus icon.\n2. Choose **Select Vendor**. Use the create-new-vendor option only after checking the existing list. The new-vendor form checks similar company names to help avoid duplicates.\n3. Set **Link to Project (Optional)** or choose **General Order (No Project)**.\n4. Enter **Order Date**, **Expected Delivery**, **Shipping Address**, and **Delivery Instructions / Notes** as needed.\n5. Select **Create PO Draft** and wait for the draft to open. The company PO prefix/counter provides its document number.\n\n## Add items and finish details\n1. Select **Add Item** in the line-item section.\n2. Optionally choose **Select Product from Catalog** to fill item information, or enter a custom **Item Name** and **Description**.\n3. Enter **Quantity** and **Unit Cost**, then save the item. Repeat for each order line.\n4. Review the subtotal, configured tax amounts, and total. Totals are recalculated after line items are added or removed using the company's tax settings.\n5. Review **Shipping Address**, **Vendor Quote Attachment**, **Delivery Instructions / Notes**, and **Terms & Conditions**. Detail fields save when their editing interaction finishes; **Save Draft** confirms the automatic-save behavior rather than acting as a separate bulk submit.\n6. Use **Vendor Preview** from Actions to inspect the document before sending it.\n\n## Troubleshooting and mobile use\nA vendor is required to create the draft. A project is optional. If a newly created vendor is selected but the order is not created, finish the main PO form rather than creating the vendor again. If the total seems wrong, inspect quantity, unit cost, and company tax settings; a project budget does not set PO pricing.\n\nOn phones, scroll through the draft and line-item dialog carefully, then confirm the saved rows before opening Send via Email. Do not mark an incomplete draft as Sent merely to make it appear finished.",
+    "route": "/PurchaseOrders",
+    "search_terms": [
+      "create purchase order",
+      "PO vendor",
+      "PO line item",
+      "shipping address",
+      "unit cost"
+    ],
+    "priority": 83,
+    "related_slugs": [
+      "guide-purchase-order-send",
+      "guide-project-materials",
+      "guide-vendors-directory"
+    ],
+    "source_files": [
+      "src/pages/PurchaseOrders.jsx",
+      "src/pages/PurchaseOrderDetail.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-purchase-order-send",
+    "feature_area": "Purchase Orders",
+    "question": "Preview, send, and track purchase orders",
+    "answer_short": "Share a vendor-facing PO link or email with an optional PDF and understand manual status changes.",
+    "answer_long": "## Before you begin\nOpen the saved purchase order from **Purchase Orders**. Confirm the vendor, shipping details, item quantities, costs, and total. Resolve errors while it is a draft; a supplier-facing document should accurately describe the intended order.\n\nSending a purchase order is a real communication to the selected recipient. Review the email address and message before selecting the final send action.\n\n## Preview and send\n1. Open **Actions** on the purchase-order detail page.\n2. Select **Vendor Preview** to review the document in a new tab. Return to the detail page to correct any problem.\n3. Select **Download PDF** if you need a local copy. The vendor-facing view also offers a PDF download.\n4. Choose **Send via Email** to open the **Send PO** dialog.\n5. Confirm **Vendor Email**, subject, message, and signature. The address starts from the vendor record and can be corrected for this send.\n6. Review the optional PDF attachment setting. The email also includes a **View Purchase Order** link.\n7. Use **Copy Link** in the Vendor Portal Link section when you want to share the generated link through your own verified channel instead.\n8. Submit the email only after review and wait for the send result. A successful send flow marks the purchase order **Sent**.\n\n## Understand status actions\n**Mark as Sent** changes the saved status without sending a new email. **Mark as Approved** is an internal action and currently also records today's date as Actual Delivery. Use it according to your team's process, and do not assume that it represents a vendor's separate acknowledgement or a physical stock receipt.\n\nThe public PO page displays the document and allows a PDF download. It is a vendor-facing view, not a full vendor account or an automated warehouse receiving workflow.\n\n## Troubleshooting and mobile use\nA send error may come from email dispatch, PDF generation, or saving the status. Inspect the error before retrying, and ask the vendor whether they received a message when duplicate sending would be confusing. A saved Sent status alone does not prove inbox delivery. If a link will not open, copy the complete generated URL and have the company administrator review document access. On phones, scroll through all email fields and the attachment option before sending.",
+    "route": "/PurchaseOrders",
+    "search_terms": [
+      "send purchase order",
+      "vendor preview",
+      "PO PDF",
+      "mark as sent",
+      "PO approval"
+    ],
+    "priority": 82,
+    "related_slugs": [
+      "guide-purchase-order-create",
+      "guide-inventory-manage"
+    ],
+    "source_files": [
+      "src/pages/PurchaseOrderDetail.jsx",
+      "src/components/purchase-orders/SendPODialog.jsx",
+      "src/pages/PublicPOView.jsx",
+      "src/pages/PurchaseOrderView.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-change-order-draft",
+    "feature_area": "Change Orders",
+    "question": "Create and send a clear change order",
+    "answer_short": "Document a project scope change with phases, line items, cost/revenue impact, and a client-facing preview before sending.",
+    "answer_long": "## Before you begin\nOpen **Change Orders**. Access depends on your company's plan; an upgrade wall means the feature is unavailable on the current plan. Have an existing project and the proposed change ready. A change order should explain the difference from the original scope, its cost, and any decisions the client needs to make.\n\n## Prepare a draft\n1. Select **New Change Order**; the create action may show as a plus icon on a phone.\n2. Enter the required **Change Order Title** and select **Linked Project**. Review the resolved client and **Issue Date**.\n3. Fill **Reason for Change / Scope** with the reason and overall change description.\n4. Add a phase and its line items. Review names, descriptions, quantities, units, internal costs, client prices, tax choices, and any optional items before relying on the total.\n5. Use **Cost vs Revenue Impact** to distinguish your costs from the amount being proposed to the client.\n6. Review **Client Message** and **Terms & Conditions**, then save the draft. The app assigns its CO number; it is not entered manually.\n\n## Preview and share\nOpen **Actions → Client Preview** to inspect the client document. Check optional selections, photos, scope, and totals. Use **Actions → Send via Email** to review the client email, subject, message, signature, and optional PDF attachment. **Send via Text Message** uses the client phone and a message containing the public review link. Submit only after checking the recipient and wait for the result.\n\nThe list-level **Send to Client** action currently announces a coming-soon module. Use the saved builder's email/text actions instead. **Mark as Sent** changes document status without sending a message.\n\n## Troubleshooting and mobile use\nIf no project is available, confirm that you are in the correct company and have access to the project. If saving fails, retain the entered scope and inspect the error before creating another draft. A Sent status is not proof that a recipient received an email or text; check the actual send result.\n\nOn a phone, the bottom Actions button includes its text label while the top button may show only a menu icon. Scroll through phases and the totals before sending. Do not treat sending or approval as a general document-signature workflow.",
+    "route": "/ChangeOrders",
+    "search_terms": [
+      "create change order",
+      "scope change",
+      "CO email",
+      "change order draft",
+      "cost revenue impact"
+    ],
+    "priority": 84,
+    "related_slugs": [
+      "guide-change-order-approval",
+      "guide-project-overview"
+    ],
+    "source_files": [
+      "src/pages/ChangeOrders.jsx",
+      "src/pages/ChangeOrderBuilder.jsx",
+      "src/components/change-orders/SendChangeOrderEmailDialog.jsx",
+      "src/components/change-orders/SendChangeOrderTextDialog.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  },
+  {
+    "slug": "guide-change-order-approval",
+    "feature_area": "Change Orders",
+    "question": "Review change order approval, change requests, and invoice conversion",
+    "answer_short": "Understand the client decision flow and verify project-budget synchronization and invoicing as separate steps.",
+    "answer_long": "## Before you begin\nOpen the saved change order and choose **Client Preview**, or use the public review link sent to the client. Review the scope, selected optional phases/items, and calculated total before an approval decision. Approval records a document decision; it is not a general electronic-signature process.\n\n## Client review and change requests\n1. The client opens the full generated review link and checks the scope, prices, selections, and photos.\n2. Optional choices can alter the displayed total before approval. Verify that the intended choices are selected.\n3. The client can select **Download PDF** for a copy of the displayed change order.\n4. To ask for clarification, select **Request Changes**, enter a meaningful description, and submit. The request flow notifies the team; it does not automatically rewrite the change order's line items.\n5. When ready, use the approval action and wait for confirmation. The saved record contains Approved status, selected items, and the recalculated document total.\n6. Your team should open the saved record afterward to verify the decision and address any requested revisions.\n\n## Project-budget updates\nThe builder's **Actions → Mark as Approved** includes a project synchronization step that adds the change's budget impact and attempts to create related project work. Public approval uses a separate save path. Therefore, check the project budget and related work explicitly; an Approved badge alone does not prove every phase, task, or material was synchronized.\n\nDo not repeat Mark as Approved to troubleshoot a sync error. Repeated use can add the budget impact again. Ask the responsible project administrator to inspect the saved document, budget, and any records already created before attempting another operation.\n\n## Invoice conversion\nThe builder's **Convert to Invoice...** menu currently shows a coming-soon notice. The separate internal Change Order View has a **Convert to Invoice** action when the document is Sent or Approved. Use it only after the required approval and review its confirmation; it creates a new draft invoice that must be checked. Conversion is not a payment record and should not be repeated to refresh an existing invoice.\n\n## Troubleshooting and mobile use\nIf a public link says the change order was not found, check the complete URL and document access with the company administrator. A failed approval or change request should be retried only after checking its error and saved state. On phones, review the full scope and totals before using the bottom decision controls.",
+    "route": "/ChangeOrders",
+    "search_terms": [
+      "approve change order",
+      "request changes",
+      "budget sync",
+      "change order invoice",
+      "optional items"
+    ],
+    "priority": 85,
+    "related_slugs": [
+      "guide-change-order-draft",
+      "guide-project-overview",
+      "guide-project-materials"
+    ],
+    "source_files": [
+      "src/pages/ChangeOrderBuilder.jsx",
+      "src/pages/ChangeOrderView.jsx",
+      "src/pages/PublicChangeOrderView.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-04",
+    "is_active": true
+  }
+]

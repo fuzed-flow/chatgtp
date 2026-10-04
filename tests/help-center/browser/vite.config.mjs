@@ -5,6 +5,7 @@ const path = value => fileURLToPath(new URL(value, import.meta.url));
 export default defineConfig({
   root: path('./'), plugins: [react()],
   resolve: { alias: [
+    { find: './components/shared/EnhancedNotificationCenter', replacement: path('./mockNotification.jsx') },
     { find: '@/api/supabaseClient', replacement: path('./mockDb.js') },
     { find: '@/lib/AuthContext', replacement: path('./mockAuth.jsx') },
     { find: '@', replacement: path('../../../src') },

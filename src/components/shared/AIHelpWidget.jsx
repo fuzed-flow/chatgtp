@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import * as Dialog from "@radix-ui/react-dialog";
 import AIHelpAnswer from "./AIHelpAnswer";
+import { isPublicHelpRoute } from "@/lib/helpPortal";
 
 export default function AIHelpWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,8 +47,7 @@ export default function AIHelpWidget() {
   }, [isOpen]);
 
   // 2. Hide widget on specific portal pages
-  const hiddenRoutes = ["/client", "/contractor", "/public"];
-  const isHidden = hiddenRoutes.some(route => location.pathname.toLowerCase().includes(route));
+  const isHidden = isPublicHelpRoute(location.pathname);
 
   // 👈 If they are on a hidden route, render nothing
   if (isHidden) return null; 
@@ -67,7 +67,7 @@ export default function AIHelpWidget() {
         body: { 
           query: userText,
           // 👇 NEW: Send the current page context to the AI
-          currentPath: location.pathname,
+          currentPath: location.pathname + location.search,
           history: messages.slice(1).slice(-6).map(message => ({ role: message.role === "ai" ? "assistant" : "user", content: message.text }))
         },
       });
@@ -77,7 +77,7 @@ export default function AIHelpWidget() {
       setMessages(prev => [...prev, { role: "ai", text: data.reply || "I couldn't process that request.", sources: Array.isArray(data.sources) ? data.sources.filter(source => /^[a-zA-Z0-9_-]+$/.test(source.slug) && typeof source.question === "string").slice(0, 3) : [] }]);
     } catch (error) {
       console.error("AI Help Error:", error);
-      setMessages(prev => [...prev, { role: "ai", text: error.context?.status === 401 ? "Your session has expired. Please sign in again to use AI Help." : "AI Help couldn't connect. You can still use the Knowledge Base & FAQ or contact support below." }]);
+      setMessages(prev => [...prev, { role: "ai", text: error.context?.status === 401 ? "Your session has expired. Please sign in again to use AI Help." : "AI Help couldn't connect. You can still use the Help Articles or contact support below." }]);
     } finally {
       setIsLoading(false);
     }
@@ -93,10 +93,10 @@ export default function AIHelpWidget() {
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-slate-950/40" />
+        <Dialog.Overlay className="fixed inset-0 z-[120] bg-slate-950/40" />
         <Dialog.Content
           style={viewport ? { "--help-viewport-height": `${viewport.height}px`, "--help-keyboard-inset": `${viewport.inset}px` } : undefined}
-          className="fixed left-3 right-3 bottom-[calc(var(--help-keyboard-inset,0px)+env(safe-area-inset-bottom)+0.75rem)] z-[61] flex h-[min(34rem,calc(var(--help-viewport-height,100dvh)-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem))] min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl focus:outline-none sm:left-auto sm:right-6 sm:bottom-6 sm:w-[400px] sm:h-[min(36rem,calc(var(--help-viewport-height,100dvh)-3rem))]">
+          className="fixed left-3 right-3 bottom-[calc(var(--help-keyboard-inset,0px)+env(safe-area-inset-bottom)+0.75rem)] z-[121] flex h-[min(34rem,calc(var(--help-viewport-height,100dvh)-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem))] min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl focus:outline-none sm:left-auto sm:right-6 sm:bottom-6 sm:w-[400px] sm:h-[min(36rem,calc(var(--help-viewport-height,100dvh)-3rem))]">
             <div className="bg-slate-900 text-white px-3 py-2 flex justify-between items-center gap-2 shrink-0">
               <div className="flex min-w-0 items-center gap-2">
                 <Bot className="h-5 w-5 text-amber-400" />
@@ -117,7 +117,7 @@ export default function AIHelpWidget() {
                     {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                   </div>
                   <div className={`min-w-0 break-words [overflow-wrap:anywhere] p-3 rounded-2xl text-sm ${msg.role === "user" ? "bg-amber-100 text-slate-900 rounded-tr-sm whitespace-pre-wrap" : "bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm"}`}>
-                    {msg.role === "ai" ? <><AIHelpAnswer text={msg.text} />{msg.sources?.length > 0 && <div className="mt-3 border-t border-slate-100 pt-2"><p className="text-xs font-semibold text-slate-500">Related help</p>{msg.sources.map(source => <Link key={source.slug} to={`/FAQ?article=${encodeURIComponent(source.slug)}`} onClick={() => setIsOpen(false)} className="mt-1 flex min-h-11 items-center rounded-lg px-2 py-2 text-xs font-medium text-amber-800 underline-offset-2 hover:bg-amber-50 hover:underline focus-visible:ring-2 focus-visible:ring-amber-500">{source.question}</Link>)}</div>}</> : msg.text}
+                    {msg.role === "ai" ? <><AIHelpAnswer text={msg.text} />{msg.sources?.length > 0 && <div className="mt-3 border-t border-slate-100 pt-2"><p className="text-xs font-semibold text-slate-500">Related help</p>{msg.sources.map(source => <Link key={source.slug} to={`/HelpArticles?article=${encodeURIComponent(source.slug)}`} onClick={() => setIsOpen(false)} className="mt-1 flex min-h-11 items-center rounded-lg px-2 py-2 text-xs font-medium text-amber-800 underline-offset-2 hover:bg-amber-50 hover:underline focus-visible:ring-2 focus-visible:ring-amber-500">{source.question}</Link>)}</div>}</> : msg.text}
                   </div>
                 </div>
               ))}
@@ -142,7 +142,7 @@ export default function AIHelpWidget() {
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </form>
-              <div className="mt-1 grid grid-cols-2 gap-1"><Link to="/FAQ" onClick={() => setIsOpen(false)} className="flex min-h-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-amber-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 touch-manipulation">Knowledge Base</Link><Link to="/Contact" onClick={() => setIsOpen(false)} className="flex min-h-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-amber-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 touch-manipulation">Contact support</Link></div>
+              <div className="mt-1 grid grid-cols-2 gap-1"><Link to="/HelpArticles" onClick={() => setIsOpen(false)} className="flex min-h-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-amber-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 touch-manipulation">Help Articles</Link><Link to="/Contact" onClick={() => setIsOpen(false)} className="flex min-h-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-amber-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 touch-manipulation">Contact support</Link></div>
             </div>
         </Dialog.Content>
       </Dialog.Portal>
