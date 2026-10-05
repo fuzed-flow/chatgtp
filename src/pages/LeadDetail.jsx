@@ -6,11 +6,10 @@ import { Card } from "@/components/ui/card";
 import { 
   Mail, Phone, ArrowLeft, DollarSign, Calendar, Pencil, UserCheck, 
   LayoutTemplate, Plus, MoreVertical, MessageSquare, CheckSquare, 
-  FileText, ChevronDown, ChevronUp, Image as ImageIcon, X, ListChecks, Pin,
-  AlertCircle, Flame, Trash2, Edit2, Upload, Loader2, ChevronLeft, ChevronRight
+  FileText, ChevronDown, ChevronUp, ListChecks, Pin,
+  AlertCircle, Flame, Trash2, Edit2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import LeadFilesSection from "../components/leads/LeadFilesSection";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import StatusBadge from "../components/shared/StatusBadge";
@@ -29,6 +28,7 @@ import CreateTaskDialog from "../components/tasks/CreateTaskDialog";
 import PhotoGallery from "../components/shared/PhotoGallery";
 import DocumentManager from "../components/shared/DocumentManager";
 import CommunicationPanel from "../components/clients/CommunicationPanel";
+import ConfirmDeleteDialog from "../components/shared/ConfirmDeleteDialog";
 
 // --- CONSTANTS & HELPERS ---
 const STATUSES = ["To Do", "Doing", "Blocked", "Done", "Pending", "Active", "Under Review", "Completed"];
@@ -86,6 +86,7 @@ export default function LeadDetail() {
   // UI States
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [editTaskOpen, setEditTaskOpen] = useState(false);
   const [addNoteOpen, setAddNoteOpen] = useState(false);
@@ -110,10 +111,10 @@ export default function LeadDetail() {
 
   // --- QUERIES ---
   const { data: lead } = useQuery({
-    queryKey: ["lead", leadId],
-    enabled: !!leadId,
+    queryKey: ["lead", companyId, leadId],
+    enabled: !!leadId && !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("leads").select("*").eq("id", leadId).single();
+      const { data, error } = await supabase.from("leads").select("*").eq("id", leadId).eq("company_id", companyId).single();
       if (error) throw error;
       return data;
     },
@@ -157,14 +158,40 @@ export default function LeadDetail() {
   // --- MUTATIONS ---
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const { error } = await supabase.from("leads").update(data).eq("id", id);
+      const { error } = await supabase.from("leads").update(data).eq("id", id).eq("company_id", companyId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["lead", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["lead", companyId, leadId] });
       queryClient.invalidateQueries({ queryKey: ["leads", companyId] }); 
       setEditDialogOpen(false);
     },
+  });
+
+  const deleteLeadMutation = useMutation({
+    mutationFn: async () => {
+      if (!leadId || !companyId) throw new Error("Lead details are still loading.");
+      const { data, error } = await supabase.rpc("delete_lead", { p_lead_id: leadId });
+      if (error) throw error;
+      if (!data?.deleted_lead_id) throw new Error("The lead was not deleted. Reload and try again.");
+      return data;
+    },
+    onSuccess: (result) => {
+      queryClient.removeQueries({ queryKey: ["lead", companyId, leadId] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["leads_lookup"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-performance"] });
+      setDeleteDialogOpen(false);
+
+      const unlinkedCount = Number(result.unlinked_quotes || 0) + Number(result.unlinked_tasks || 0);
+      toast.success(unlinkedCount > 0
+        ? `Lead deleted. ${unlinkedCount} linked ${unlinkedCount === 1 ? "record was" : "records were"} preserved and unlinked.`
+        : "Lead deleted successfully.");
+      navigate("/LeadTracker", { replace: true });
+    },
+    onError: (error) => toast.error(`Unable to delete lead: ${error.message}`),
   });
 
   const convertToClientMutation = useMutation({
@@ -502,6 +529,7 @@ export default function LeadDetail() {
                   <DropdownMenuContent align="end" className="font-medium">
                     <DropdownMenuItem onClick={handleEdit}><Pencil className="h-4 w-4 mr-2"/> Edit Lead</DropdownMenuItem>
                     <DropdownMenuItem className="text-emerald-600" onClick={() => convertToClientMutation.mutate(lead)}><UserCheck className="h-4 w-4 mr-2"/> Convert to Client</DropdownMenuItem>
+                    <DropdownMenuItem className="text-red-600 focus:bg-red-50 focus:text-red-700" onClick={() => setDeleteDialogOpen(true)}><Trash2 className="h-4 w-4 mr-2"/> Delete Lead</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -520,6 +548,9 @@ export default function LeadDetail() {
             </Button>
             <Button onClick={handleEdit} variant="outline" className="font-bold text-slate-700 border-slate-300 hover:bg-slate-50">
               <Pencil className="h-4 w-4 mr-2" /> Edit
+            </Button>
+            <Button onClick={() => setDeleteDialogOpen(true)} variant="outline" className="font-bold text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700">
+              <Trash2 className="h-4 w-4 mr-2" /> Delete
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -883,6 +914,17 @@ export default function LeadDetail() {
         users={users}
         isLoading={handleCreateTaskSubmit.isPending}
         onSubmit={(payload) => handleCreateTaskSubmit.mutate(payload)}
+      />
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!deleteLeadMutation.isPending) setDeleteDialogOpen(open);
+        }}
+        title={`Delete ${lead.contact_name || "this lead"}?`}
+        description="This permanently removes the lead and its lead-only history from Lead Tracker. Any linked quotes and tasks will be kept but unlinked. This cannot be undone."
+        onConfirm={() => deleteLeadMutation.mutate()}
+        isLoading={deleteLeadMutation.isPending}
       />
 
       {/* EDIT TASK DIALOG */}
