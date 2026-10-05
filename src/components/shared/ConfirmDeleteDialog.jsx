@@ -20,7 +20,10 @@ export default function ConfirmDeleteDialog({
         <div className="flex justify-end gap-3">
           <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={(event) => {
+              event.preventDefault();
+              onConfirm?.();
+            }}
             disabled={isLoading}
             className={isDangerous ? "bg-red-600 hover:bg-red-700" : ""}
           >

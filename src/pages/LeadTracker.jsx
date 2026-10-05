@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Filter, Kanban, List as ListIcon, Phone, Mail, Calendar, GripVertical, Upload, FileText, MoreVertical, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Search, Filter, Kanban, List as ListIcon, Phone, Mail, GripVertical, Upload, FileText, MoreVertical, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import StatusBadge from "../components/shared/StatusBadge";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -109,14 +109,17 @@ export default function LeadTracker() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase.from("leads").delete().eq("id", id);
+      const { data, error } = await supabase.rpc("delete_lead", { p_lead_id: id });
       if (error) throw error;
+      if (!data?.deleted_lead_id) throw new Error("The lead was not deleted. Reload and try again.");
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads", companyId] });
       setDeleteConfirmId(null);
       toast.success("Lead deleted");
     },
+    onError: (error) => toast.error(`Unable to delete lead: ${error.message}`),
   });
 
   const convertClientMutation = useMutation({
@@ -611,10 +614,10 @@ export default function LeadTracker() {
       <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Delete Lead</DialogTitle></DialogHeader>
-          <p className="text-slate-600">Are you sure you want to delete this lead? This action cannot be undone.</p>
+          <p className="text-slate-600">Are you sure you want to delete this lead? Linked quotes and tasks will be kept but unlinked. This action cannot be undone.</p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => deleteMutation.mutate(deleteConfirmId)}>Delete</Button>
+            <Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(deleteConfirmId)}>{deleteMutation.isPending ? "Deleting..." : "Delete"}</Button>
           </div>
         </DialogContent>
       </Dialog>
