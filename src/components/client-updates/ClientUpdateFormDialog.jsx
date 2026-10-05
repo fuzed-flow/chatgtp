@@ -44,8 +44,11 @@ export default function ClientUpdateFormDialog({ open, onOpenChange, update, pro
 
   return (
     <Dialog open={open} onOpenChange={value => { if (!saving) onOpenChange(value); }}>
-      <DialogContent className="max-h-[92dvh] w-[96vw] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent
+        className="flex max-h-[92dvh] w-[96vw] flex-col gap-0 overflow-hidden rounded-xl p-0 sm:max-w-2xl"
+        closeButtonClassName="right-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 opacity-100 shadow-sm hover:bg-slate-100"
+      >
+        <DialogHeader className="shrink-0 border-b border-slate-200 px-5 py-4 pr-16 text-left sm:px-6 sm:py-5 sm:pr-16">
           <DialogTitle className="flex items-center gap-2 text-xl font-black text-slate-950">
             <CalendarDays className="h-5 w-5 text-amber-600" />
             {update ? "Edit client update" : "Create client update"}
@@ -55,7 +58,7 @@ export default function ClientUpdateFormDialog({ open, onOpenChange, update, pro
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 pt-2">
+        <div className="space-y-5 overflow-y-auto px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
           {!fixedProject && (
             <div className="space-y-2">
               <Label htmlFor="client-update-project">Project</Label>
