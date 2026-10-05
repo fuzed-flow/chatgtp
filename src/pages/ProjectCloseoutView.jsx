@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/AuthContext";
-import { compressDeficiencyPhoto, storagePathFromPublicUrl } from "@/lib/projectCloseouts";
+import { MAX_DEFICIENCY_PHOTOS, compressDeficiencyPhoto, deficiencyPhotoUrls, storagePathFromPublicUrl } from "@/lib/projectCloseouts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -65,7 +65,12 @@ export default function ProjectCloseoutView() {
 
   const content = closeoutQuery.data;
   const vendorById = useMemo(() => Object.fromEntries((content?.vendors || []).map(vendor => [vendor.id, vendor])), [content?.vendors]);
-  const displayItems = useMemo(() => (content?.items || []).map((item, index) => ({ ...item, displayNumber: index + 1, vendor: vendorById[item.assigned_vendor_id] })), [content?.items, vendorById]);
+  const displayItems = useMemo(() => (content?.items || []).map((item, index) => ({
+    ...item,
+    displayNumber: index + 1,
+    photoUrls: deficiencyPhotoUrls(item),
+    vendor: vendorById[item.assigned_vendor_id],
+  })), [content?.items, vendorById]);
   const blockingItems = useMemo(() => displayItems.filter(item => item.status !== "Complete"), [displayItems]);
   const canComplete = displayItems.length > 0 && blockingItems.length === 0;
   const invalidate = () => {
@@ -81,20 +86,28 @@ export default function ProjectCloseoutView() {
   const itemMutation = useMutation({
     mutationFn: async payload => {
       const previous = itemDialog?.item;
-      let photoUrl = previous?.photo_url || "";
-      let uploadedPath = null;
-      if (payload.file) {
-        const photo = await compressDeficiencyPhoto(payload.file);
-        uploadedPath = `${companyId}/${content.project.id}/${closeoutId}/${photo.name}`;
-        const { error: uploadError } = await supabase.storage.from("project-closeouts").upload(uploadedPath, photo, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
-        if (uploadError) throw uploadError;
-        photoUrl = supabase.storage.from("project-closeouts").getPublicUrl(uploadedPath).data.publicUrl;
-      }
-      const values = {
-        photo_url: photoUrl, deficiency_type: payload.deficiency_type || "General", description: payload.description?.trim() || "",
-        assigned_vendor_id: payload.assigned_vendor_id || null, due_date: payload.due_date || null, status: payload.status || "Open",
-      };
+      const previousPhotoUrls = deficiencyPhotoUrls(previous);
+      const retainedPhotoUrls = [...new Set(payload.retainedPhotoUrls || [])];
+      const uploadedPaths = [];
+      let removedPaths = [];
       try {
+        const uploadedPhotoUrls = [];
+        for (const file of payload.files || []) {
+          const photo = await compressDeficiencyPhoto(file);
+          const uploadedPath = `${companyId}/${content.project.id}/${closeoutId}/${photo.name}`;
+          const { error: uploadError } = await supabase.storage.from("project-closeouts").upload(uploadedPath, photo, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
+          if (uploadError) throw uploadError;
+          uploadedPaths.push(uploadedPath);
+          uploadedPhotoUrls.push(supabase.storage.from("project-closeouts").getPublicUrl(uploadedPath).data.publicUrl);
+        }
+        const photoUrls = [...retainedPhotoUrls, ...uploadedPhotoUrls];
+        if (!photoUrls.length) throw new Error("Add at least one photo before saving this deficiency.");
+        if (photoUrls.length > MAX_DEFICIENCY_PHOTOS) throw new Error(`A deficiency can include up to ${MAX_DEFICIENCY_PHOTOS} photos.`);
+        const values = {
+          photo_url: photoUrls[0], photo_urls: photoUrls,
+          deficiency_type: payload.deficiency_type || "General", description: payload.description?.trim() || "",
+          assigned_vendor_id: payload.assigned_vendor_id || null, due_date: payload.due_date || null, status: payload.status || "Open",
+        };
         if (previous?.id) {
           const { error } = await supabase.from("project_closeout_items").update(values).eq("id", previous.id).eq("company_id", companyId);
           if (error) throw error;
@@ -102,13 +115,17 @@ export default function ProjectCloseoutView() {
           const { error } = await supabase.from("project_closeout_items").insert({ ...values, company_id: companyId, project_id: content.project.id, closeout_id: closeoutId, sort_order: content.items.length, created_by: profile.id, updated_by: profile.id });
           if (error) throw error;
         }
+        removedPaths = previousPhotoUrls
+          .filter(url => !retainedPhotoUrls.includes(url))
+          .map(storagePathFromPublicUrl)
+          .filter(Boolean);
       } catch (error) {
-        if (uploadedPath) await supabase.storage.from("project-closeouts").remove([uploadedPath]);
+        if (uploadedPaths.length) await supabase.storage.from("project-closeouts").remove(uploadedPaths);
         throw error;
       }
-      if (previous?.photo_url && payload.file) {
-        const oldPath = storagePathFromPublicUrl(previous.photo_url);
-        if (oldPath) await supabase.storage.from("project-closeouts").remove([oldPath]);
+      if (removedPaths.length) {
+        const { error: cleanupError } = await supabase.storage.from("project-closeouts").remove(removedPaths);
+        if (cleanupError) toast.warning("Deficiency saved, but an old photo file could not be removed.");
       }
       return payload;
     },
@@ -122,10 +139,14 @@ export default function ProjectCloseoutView() {
   });
 
   const deleteItem = async item => {
-    if (!window.confirm("Delete this deficiency and its photo? This cannot be undone.")) return;
+    if (!window.confirm("Delete this deficiency and all of its photos? This cannot be undone.")) return;
     const { error } = await supabase.from("project_closeout_items").delete().eq("id", item.id).eq("company_id", companyId);
     if (error) return toast.error(error.message || "The deficiency could not be deleted.");
-    const path = storagePathFromPublicUrl(item.photo_url); if (path) await supabase.storage.from("project-closeouts").remove([path]);
+    const paths = deficiencyPhotoUrls(item).map(storagePathFromPublicUrl).filter(Boolean);
+    if (paths.length) {
+      const { error: cleanupError } = await supabase.storage.from("project-closeouts").remove(paths);
+      if (cleanupError) toast.warning("Deficiency deleted, but some photo files could not be removed.");
+    }
     invalidate(); toast.success("Deficiency deleted.");
   };
 
@@ -172,7 +193,7 @@ export default function ProjectCloseoutView() {
               </div>
             )}
           </section>
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_310px]"><div className="space-y-4"><div className="flex items-center justify-between"><h2 className="text-lg font-black text-slate-950">Deficiencies ({displayItems.length})</h2></div>{displayItems.length === 0 ? <button type="button" onClick={() => setItemDialog({ mode: "guided", item: null })} className="flex min-h-56 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white p-6 text-center text-slate-600 hover:border-amber-400 hover:bg-amber-50"><ClipboardCheck className="mb-3 h-10 w-10 text-slate-300" /><strong>No deficiencies yet</strong><span className="mt-1 text-sm">Tap to add the first walkthrough item.</span></button> : displayItems.map((item, index) => <article key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="grid sm:grid-cols-[180px_1fr]"><img src={item.photo_url} alt={`Deficiency ${index + 1}`} className="aspect-[4/3] h-full w-full bg-slate-100 object-cover sm:aspect-auto" /><div className="p-4"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-slate-950 px-2.5 py-1 text-xs font-black text-white">#{index + 1}</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">{item.deficiency_type}</span><span className="text-xs font-bold text-slate-500">{item.status}</span></div><p className="mt-3 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{item.description?.trim() || <span className="italic text-amber-700">Needs description</span>}</p><p className="mt-3 text-xs font-semibold text-slate-500">{item.vendor?.name ? `Assigned to ${item.vendor.name}` : "Needs subcontractor assignment"}{item.due_date ? ` · Due ${item.due_date}` : ""}</p><div className="mt-4 flex gap-2"><Button size="sm" variant="outline" onClick={() => setItemDialog({ mode: "guided", item })}><Edit3 className="mr-1.5 h-4 w-4" />Edit</Button><Button size="sm" variant="ghost" onClick={() => deleteItem(item)} className="text-red-600 hover:bg-red-50 hover:text-red-700"><Trash2 className="mr-1.5 h-4 w-4" />Delete</Button></div></div></div></article>)}</div><aside className="lg:sticky lg:top-24 lg:self-start"><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 className="font-black text-slate-950">Walkthrough progress</h3><div className="mt-4 space-y-3 text-sm"><div className="flex justify-between"><span className="text-slate-600">Total deficiencies</span><strong>{displayItems.length}</strong></div><div className="flex justify-between"><span className="text-slate-600">Complete</span><strong className="text-emerald-700">{displayItems.filter(item => item.status === "Complete").length}</strong></div><div className="flex justify-between"><span className="text-slate-600">Need descriptions</span><strong className="text-amber-700">{displayItems.filter(item => !item.description?.trim()).length}</strong></div><div className="flex justify-between"><span className="text-slate-600">Unassigned</span><strong className="text-amber-700">{displayItems.filter(item => !item.assigned_vendor_id).length}</strong></div></div><p className="mt-5 border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500">Quick capture is designed for the job site. Add photos continuously, then complete trade assignments and descriptions from the office.</p></div></aside></div>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_310px]"><div className="space-y-4"><div className="flex items-center justify-between"><h2 className="text-lg font-black text-slate-950">Deficiencies ({displayItems.length})</h2></div>{displayItems.length === 0 ? <button type="button" onClick={() => setItemDialog({ mode: "guided", item: null })} className="flex min-h-56 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white p-6 text-center text-slate-600 hover:border-amber-400 hover:bg-amber-50"><ClipboardCheck className="mb-3 h-10 w-10 text-slate-300" /><strong>No deficiencies yet</strong><span className="mt-1 text-sm">Tap to add the first walkthrough item.</span></button> : displayItems.map((item, index) => <article key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="grid sm:grid-cols-[180px_1fr]"><div className="relative"><img src={item.photoUrls[0]} alt={`Deficiency ${index + 1}`} className="aspect-[4/3] h-full w-full bg-slate-100 object-cover sm:aspect-auto" />{item.photoUrls.length > 1 && <span className="absolute bottom-2 right-2 rounded-full bg-slate-950/90 px-2.5 py-1 text-xs font-black text-white">{item.photoUrls.length} photos</span>}</div><div className="p-4"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-slate-950 px-2.5 py-1 text-xs font-black text-white">#{index + 1}</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">{item.deficiency_type}</span><span className="text-xs font-bold text-slate-500">{item.status}</span></div><p className="mt-3 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{item.description?.trim() || <span className="italic text-amber-700">Needs description</span>}</p><p className="mt-3 text-xs font-semibold text-slate-500">{item.vendor?.name ? `Assigned to ${item.vendor.name}` : "Needs subcontractor assignment"}{item.due_date ? ` · Due ${item.due_date}` : ""}</p><div className="mt-4 flex gap-2"><Button size="sm" variant="outline" onClick={() => setItemDialog({ mode: "guided", item })}><Edit3 className="mr-1.5 h-4 w-4" />Edit</Button><Button size="sm" variant="ghost" onClick={() => deleteItem(item)} className="text-red-600 hover:bg-red-50 hover:text-red-700"><Trash2 className="mr-1.5 h-4 w-4" />Delete</Button></div></div></div></article>)}</div><aside className="lg:sticky lg:top-24 lg:self-start"><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 className="font-black text-slate-950">Walkthrough progress</h3><div className="mt-4 space-y-3 text-sm"><div className="flex justify-between"><span className="text-slate-600">Total deficiencies</span><strong>{displayItems.length}</strong></div><div className="flex justify-between"><span className="text-slate-600">Complete</span><strong className="text-emerald-700">{displayItems.filter(item => item.status === "Complete").length}</strong></div><div className="flex justify-between"><span className="text-slate-600">Need descriptions</span><strong className="text-amber-700">{displayItems.filter(item => !item.description?.trim()).length}</strong></div><div className="flex justify-between"><span className="text-slate-600">Unassigned</span><strong className="text-amber-700">{displayItems.filter(item => !item.assigned_vendor_id).length}</strong></div></div><p className="mt-5 border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500">Quick capture is designed for the job site. Add photos continuously, then complete trade assignments and descriptions from the office.</p></div></aside></div>
           <div className="pt-4"><ProjectCloseoutPreview closeout={content.closeout} items={displayItems} project={content.project} client={content.client} company={company} /></div>
         </>}
       </main>

@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
 import { formatCurrency } from '../utils/formatCurrency';
+import { deficiencyPhotoUrls } from '../../lib/projectCloseouts';
 
 // --- HEX TO RGB CONVERTER ---
 const hexToRgb = (hex) => {
@@ -1430,6 +1431,7 @@ export async function generateProjectCloseoutPDF(closeout, items = [], project, 
 
   for (let index = 0; index < normalizedItems.length; index += 1) {
     const item = normalizedItems[index];
+    const photoUrls = deficiencyPhotoUrls(item);
     const vendorName = item?.vendor_name || item?.vendor?.name || 'Unassigned';
     const description = String(item?.description || 'Description to be completed.').trim();
     doc.setFont('helvetica', 'normal');
@@ -1440,7 +1442,7 @@ export async function generateProjectCloseoutPDF(closeout, items = [], project, 
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(...colors.border);
     doc.roundedRect(margin, yPos, contentWidth, cardHeight, 3, 3, 'FD');
-    const imageAdded = await safelyAddImage(doc, item?.photo_url, 'JPEG', margin + 4, yPos + 4, 58, Math.min(44, cardHeight - 8));
+    const imageAdded = await safelyAddImage(doc, photoUrls[0], 'JPEG', margin + 4, yPos + 4, 58, Math.min(44, cardHeight - 8));
     if (!imageAdded) {
       doc.setFillColor(...colors.surface);
       doc.roundedRect(margin + 4, yPos + 4, 58, Math.min(44, cardHeight - 8), 2, 2, 'F');
@@ -1472,6 +1474,39 @@ export async function generateProjectCloseoutPDF(closeout, items = [], project, 
     doc.setTextColor(...(item?.status === 'Complete' ? colors.success : colors.accent));
     doc.text(item?.status || 'Open', pageWidth - margin - 5, metaY, { align: 'right' });
     yPos += cardHeight + 6;
+
+    if (photoUrls.length > 1) {
+      const photoGap = 3;
+      const photoWidth = (contentWidth - photoGap * 2) / 3;
+      const photoHeight = 42;
+      ensureSpace(photoHeight + 12);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(...colors.muted);
+      doc.text(`ADDITIONAL PHOTOS • ${photoUrls.length - 1}`, margin + 2, yPos);
+      yPos += 5;
+      const additionalPhotos = photoUrls.slice(1);
+      for (let photoIndex = 0; photoIndex < additionalPhotos.length; photoIndex += 3) {
+        ensureSpace(photoHeight + 7);
+        const row = additionalPhotos.slice(photoIndex, photoIndex + 3);
+        for (let column = 0; column < row.length; column += 1) {
+          const x = margin + column * (photoWidth + photoGap);
+          doc.setDrawColor(...colors.border);
+          doc.roundedRect(x, yPos, photoWidth, photoHeight, 2, 2, 'S');
+          const added = await safelyAddImage(doc, row[column], 'JPEG', x + 1, yPos + 1, photoWidth - 2, photoHeight - 2);
+          if (!added) {
+            doc.setFillColor(...colors.surface);
+            doc.roundedRect(x + 1, yPos + 1, photoWidth - 2, photoHeight - 2, 1, 1, 'F');
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(...colors.muted);
+            doc.text('Photo unavailable', x + photoWidth / 2, yPos + photoHeight / 2, { align: 'center' });
+          }
+        }
+        yPos += photoHeight + 4;
+      }
+      yPos += 2;
+    }
   }
 
   ensureSpace(20);
