@@ -35,6 +35,7 @@ import Warranty from './pages/Warranty';
 import DocumentRequests from './pages/DocumentRequests';
 import DocumentResponse from './pages/DocumentResponse';
 import WarrantyResponse from './pages/WarrantyResponse';
+import ClientUpdateView from './pages/ClientUpdateView';
 
 // --- COMPONENTS ---
 import AIHelpWidget from "./components/shared/AIHelpWidget";
@@ -131,6 +132,12 @@ const AuthenticatedApp = () => {
         <Route path="/Settings" element={
           <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <LayoutWrapper currentPageName="Team Settings"><TeamSettings /></LayoutWrapper>
+          </RoleGuard>
+        } />
+
+        <Route path="/ClientUpdateView" element={
+          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
+            <ClientUpdateView />
           </RoleGuard>
         } />
 
