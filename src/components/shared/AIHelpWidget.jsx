@@ -11,6 +11,41 @@ import { useAuth } from "@/lib/AuthContext";
 import { isAllowedHelpLink } from "../../../supabase/functions/_shared/helpLinks.js";
 
 const GREETING = { role: "ai", text: "Hi! I'm the FuzedFlow Helper. What can I help you find today?" };
+const MOBILE_DRAG_QUERY = "(max-width: 767px), ((pointer: coarse) and (max-width: 1023px))";
+const MOBILE_DRAG_HOLD_MS = 350;
+const MOBILE_DRAG_TOLERANCE = 8;
+const MOBILE_DRAG_EDGE = 8;
+const MOBILE_POSITION_KEY = "fuzedflow.ai-help.mobile-position";
+
+const isMobileDragViewport = () => {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia?.(MOBILE_DRAG_QUERY).matches ?? window.innerWidth < 768;
+};
+
+const clampMobilePosition = (position, buttonWidth, buttonHeight) => {
+  const visualViewport = window.visualViewport;
+  const viewportLeft = visualViewport?.offsetLeft ?? 0;
+  const viewportTop = visualViewport?.offsetTop ?? 0;
+  const viewportWidth = visualViewport?.width ?? window.innerWidth;
+  const viewportHeight = visualViewport?.height ?? window.innerHeight;
+  const minX = viewportLeft + MOBILE_DRAG_EDGE;
+  const minY = viewportTop + MOBILE_DRAG_EDGE;
+  const maxX = Math.max(minX, viewportLeft + viewportWidth - buttonWidth - MOBILE_DRAG_EDGE);
+  const maxY = Math.max(minY, viewportTop + viewportHeight - buttonHeight - MOBILE_DRAG_EDGE);
+  return {
+    x: Math.min(maxX, Math.max(minX, position.x)),
+    y: Math.min(maxY, Math.max(minY, position.y)),
+  };
+};
+
+const readSavedMobilePosition = () => {
+  try {
+    const value = JSON.parse(window.sessionStorage.getItem(MOBILE_POSITION_KEY));
+    return Number.isFinite(value?.x) && Number.isFinite(value?.y) ? value : null;
+  } catch {
+    return null;
+  }
+};
 
 export default function AIHelpWidget() {
   const { profile } = useAuth();
@@ -22,7 +57,14 @@ export default function AIHelpWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const messageListRef = useRef(null);
+  const triggerRef = useRef(null);
+  const dragSessionRef = useRef(null);
+  const longPressTimerRef = useRef(null);
+  const suppressOpenRef = useRef(false);
   const [viewport, setViewport] = useState(null);
+  const [canDragOnMobile, setCanDragOnMobile] = useState(isMobileDragViewport);
+  const [mobilePosition, setMobilePosition] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   // 👈 Get the current page URL
   const location = useLocation(); 
@@ -60,6 +102,131 @@ export default function AIHelpWidget() {
       visualViewport?.removeEventListener("scroll", updateViewport);
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia?.(MOBILE_DRAG_QUERY);
+    const updateDragAvailability = () => setCanDragOnMobile(isMobileDragViewport());
+    updateDragAvailability();
+    window.addEventListener("resize", updateDragAvailability);
+    mediaQuery?.addEventListener?.("change", updateDragAvailability);
+    return () => {
+      window.removeEventListener("resize", updateDragAvailability);
+      mediaQuery?.removeEventListener?.("change", updateDragAvailability);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!canDragOnMobile || !triggerRef.current) return;
+    const savedPosition = readSavedMobilePosition();
+    if (!savedPosition) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setMobilePosition(clampMobilePosition(savedPosition, rect.width, rect.height));
+  }, [canDragOnMobile]);
+
+  useEffect(() => {
+    if (!canDragOnMobile) return;
+    const keepTriggerVisible = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMobilePosition(current => current ? clampMobilePosition(current, rect.width, rect.height) : current);
+    };
+    window.addEventListener("resize", keepTriggerVisible);
+    window.visualViewport?.addEventListener("resize", keepTriggerVisible);
+    window.visualViewport?.addEventListener("scroll", keepTriggerVisible);
+    return () => {
+      window.removeEventListener("resize", keepTriggerVisible);
+      window.visualViewport?.removeEventListener("resize", keepTriggerVisible);
+      window.visualViewport?.removeEventListener("scroll", keepTriggerVisible);
+    };
+  }, [canDragOnMobile]);
+
+  useEffect(() => () => window.clearTimeout(longPressTimerRef.current), []);
+
+  const clearLongPressTimer = () => {
+    window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
+
+  const suppressNextOpen = () => {
+    suppressOpenRef.current = true;
+    window.setTimeout(() => { suppressOpenRef.current = false; }, 0);
+  };
+
+  const handleTriggerPointerDown = (event) => {
+    if (!canDragOnMobile || event.button !== 0 || event.isPrimary === false) return;
+    clearLongPressTimer();
+    const element = event.currentTarget;
+    const pointerId = event.pointerId;
+    const rect = element.getBoundingClientRect();
+    dragSessionRef.current = {
+      pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      initialX: rect.left,
+      initialY: rect.top,
+      buttonWidth: rect.width,
+      buttonHeight: rect.height,
+      activated: false,
+      movedBeforeHold: false,
+      position: null,
+      element,
+    };
+    try { element.setPointerCapture?.(pointerId); } catch { /* Pointer capture is optional on older mobile browsers. */ }
+    longPressTimerRef.current = window.setTimeout(() => {
+      const session = dragSessionRef.current;
+      if (!session || session.pointerId !== pointerId || session.movedBeforeHold) return;
+      session.activated = true;
+      suppressOpenRef.current = true;
+      session.position = clampMobilePosition({ x: session.initialX, y: session.initialY }, session.buttonWidth, session.buttonHeight);
+      setMobilePosition(session.position);
+      setIsDragging(true);
+    }, MOBILE_DRAG_HOLD_MS);
+  };
+
+  const handleTriggerPointerMove = (event) => {
+    const session = dragSessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - session.startX;
+    const deltaY = event.clientY - session.startY;
+    if (!session.activated) {
+      if (Math.hypot(deltaX, deltaY) > MOBILE_DRAG_TOLERANCE) {
+        session.movedBeforeHold = true;
+        clearLongPressTimer();
+      }
+      return;
+    }
+    event.preventDefault();
+    session.position = clampMobilePosition({
+      x: session.initialX + deltaX,
+      y: session.initialY + deltaY,
+    }, session.buttonWidth, session.buttonHeight);
+    setMobilePosition(session.position);
+  };
+
+  const finishTriggerPointerInteraction = (event) => {
+    const session = dragSessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    clearLongPressTimer();
+    if (session.activated) {
+      event.preventDefault();
+      setIsDragging(false);
+      try { if (session.position) window.sessionStorage.setItem(MOBILE_POSITION_KEY, JSON.stringify(session.position)); } catch { /* Storage may be unavailable in a private browser context. */ }
+      suppressNextOpen();
+    } else if (session.movedBeforeHold) {
+      suppressNextOpen();
+    }
+    try {
+      if (session.element.hasPointerCapture?.(session.pointerId)) session.element.releasePointerCapture(session.pointerId);
+    } catch { /* The browser may already have released pointer capture. */ }
+    dragSessionRef.current = null;
+  };
+
+  const handleTriggerClick = (event) => {
+    if (!suppressOpenRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    suppressOpenRef.current = false;
+  };
 
   // 2. Hide widget on specific portal pages
   const isHidden = isPublicHelpRoute(location.pathname);
@@ -107,10 +274,20 @@ export default function AIHelpWidget() {
   return (
     <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
       <Dialog.Trigger asChild>
-        <button type="button" aria-label="Open AI help"
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-40 flex h-14 items-center gap-2 rounded-full bg-amber-500 px-4 text-slate-900 shadow-xl touch-manipulation hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6">
+        <button ref={triggerRef} type="button" aria-label="Open AI help" aria-describedby={canDragOnMobile ? "ai-help-drag-instructions" : undefined}
+          data-dragging={isDragging ? "true" : "false"}
+          title={canDragOnMobile ? "Tap for AI Help. Press and hold to move." : "Open AI Help"}
+          style={canDragOnMobile && mobilePosition ? { left: `${mobilePosition.x}px`, top: `${mobilePosition.y}px`, right: "auto", bottom: "auto" } : undefined}
+          onPointerDown={handleTriggerPointerDown}
+          onPointerMove={handleTriggerPointerMove}
+          onPointerUp={finishTriggerPointerInteraction}
+          onPointerCancel={finishTriggerPointerInteraction}
+          onClick={handleTriggerClick}
+          onContextMenu={(event) => { if (canDragOnMobile) event.preventDefault(); }}
+          className={`fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-40 flex h-14 select-none items-center gap-2 rounded-full bg-amber-500 px-4 text-slate-900 shadow-xl transition-[background-color,box-shadow,transform] hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6 ${canDragOnMobile ? "touch-none" : "touch-manipulation"} ${isDragging ? "cursor-grabbing scale-[1.04] shadow-2xl ring-4 ring-amber-200" : canDragOnMobile ? "cursor-grab" : ""}`}>
           <MessageCircle className="h-6 w-6" aria-hidden="true" />
           <span className="text-sm font-semibold">AI Help</span>
+          {canDragOnMobile && <span id="ai-help-drag-instructions" className="sr-only">Tap to open. Press and hold, then drag to move this button.</span>}
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>

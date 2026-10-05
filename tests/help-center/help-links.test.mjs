@@ -251,3 +251,44 @@ test('AI source cards use response metadata, confirmed inline links close the di
     assert.deepEqual(view.errors, []);
   } finally { view.dom.window.close(); }
 });
+
+test('mobile AI Help opens on a tap and moves within the screen after a press and hold', async () => {
+  const view = await browserDom(widgetBundle);
+  try {
+    Object.defineProperty(view.window, 'innerWidth', { configurable: true, value: 390 });
+    Object.defineProperty(view.window, 'innerHeight', { configurable: true, value: 780 });
+    view.window.dispatchEvent(new view.window.Event('resize'));
+    await view.wait(() => view.document.querySelector('[aria-label="Open AI help"]')?.getAttribute('aria-describedby'));
+
+    const trigger = view.document.querySelector('[aria-label="Open AI help"]');
+    trigger.getBoundingClientRect = () => ({ left: 280, top: 700, width: 102, height: 56, right: 382, bottom: 756 });
+    let capturedPointer = null;
+    trigger.setPointerCapture = pointerId => { capturedPointer = pointerId; };
+    trigger.hasPointerCapture = pointerId => capturedPointer === pointerId;
+    trigger.releasePointerCapture = pointerId => { if (capturedPointer === pointerId) capturedPointer = null; };
+    const pointer = (type, clientX, clientY) => {
+      const event = new view.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX, clientY });
+      Object.defineProperties(event, {
+        pointerId: { value: 7 },
+        isPrimary: { value: true },
+      });
+      trigger.dispatchEvent(event);
+    };
+
+    pointer('pointerdown', 330, 730);
+    await view.wait(() => trigger.dataset.dragging === 'true');
+    pointer('pointermove', 20, 30);
+    await view.wait(() => trigger.style.left === '8px' && trigger.style.top === '8px');
+    pointer('pointerup', 20, 30);
+    trigger.click();
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    assert.equal(view.document.querySelector('[role="dialog"]'), null, 'Releasing a drag does not open AI Help.');
+    assert.equal(trigger.dataset.dragging, 'false');
+    assert.deepEqual(JSON.parse(view.window.sessionStorage.getItem('fuzedflow.ai-help.mobile-position')), { x: 8, y: 8 });
+
+    trigger.click();
+    await view.wait(() => view.document.querySelector('[role="dialog"]'));
+    assert.deepEqual(view.errors, []);
+  } finally { view.dom.window.close(); }
+});
