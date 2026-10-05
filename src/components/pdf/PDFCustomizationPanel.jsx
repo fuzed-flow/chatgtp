@@ -3,9 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import PDFTemplateSelector from './PDFTemplateSelector';
 
@@ -357,12 +357,12 @@ export default function PDFCustomizationPanel({ settings, onSettingsChange, show
 
             <div className="pt-4 border-t">
               <Label htmlFor="footer_text" className="text-xs font-medium">Footer Text</Label>
-              <textarea
+              <Textarea
                 id="footer_text"
                 value={settings.footer_text || ''}
                 onChange={(e) => handleChange('footer_text', e.target.value)}
                 placeholder="Add custom footer text (optional)"
-                rows="3"
+                rows={3}
                 className="w-full mt-2 px-3 py-2 border rounded text-xs font-mono resize-none"
               />
             </div>

@@ -1,34 +1,45 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Maximize2, Minimize2, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/api/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { PlainTextarea } from "@/components/ui/textarea-base";
+import { canAttemptAIRewrite, friendlyRetryDelay } from "@/lib/aiRewrite";
+import { useAuthState } from "@/lib/AuthStateContext";
 import { cn } from "@/lib/utils";
 
 async function functionError(error) {
   let message = error?.message || "AI Rewrite is unavailable right now.";
+  let code = "AI_REWRITE_ERROR";
+  let retryAfterSeconds = 0;
   try {
     const payload = await error?.context?.json?.();
     if (payload?.error) message = payload.error;
+    if (payload?.code) code = payload.code;
+    if (payload?.retry_after_seconds) retryAfterSeconds = Number(payload.retry_after_seconds);
   } catch { /* Keep the transport error when no JSON response is available. */ }
-  return new Error(message);
+  const result = new Error(message);
+  result.code = code;
+  result.retryAfterSeconds = retryAfterSeconds;
+  return result;
 }
 
-export default function AIRewriteTextarea({
+const AIRewriteTextarea = forwardRef(function AIRewriteTextarea({
   value,
   onValueChange,
+  onChange,
   rewriteField,
   disabled = false,
   className,
   ...props
-}) {
+}, forwardedRef) {
+  const { user, company } = useAuthState();
   const [rewriting, setRewriting] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [undoValue, setUndoValue] = useState(null);
   const requestId = useRef(0);
   const textareaRef = useRef(null);
+  useImperativeHandle(forwardedRef, () => textareaRef.current);
 
   useEffect(() => () => { requestId.current += 1; }, []);
 
@@ -38,21 +49,32 @@ export default function AIRewriteTextarea({
       toast.error("Add some text before using AI Rewrite.");
       return;
     }
-
+    if (!canAttemptAIRewrite({ user, company })) {
+      toast.info("AI Rewrite is available on Professional and Business plans.");
+      return;
+    }
     const currentRequest = ++requestId.current;
     setRewriting(true);
     try {
+      const { supabase } = await import("@/api/supabaseClient");
       const { data, error } = await supabase.functions.invoke("rewrite-text", {
-        body: { text: source, field: rewriteField },
+        body: {
+          text: source,
+          field: rewriteField || "general_business_text",
+          ...(globalThis.crypto?.randomUUID ? { request_id: globalThis.crypto.randomUUID() } : {}),
+        },
       });
       if (error) throw await functionError(error);
       if (typeof data?.text !== "string" || !data.text.trim()) throw new Error("AI Rewrite returned an empty response. Please try again.");
       if (currentRequest !== requestId.current) return;
       setUndoValue(value);
-      onValueChange(data.text.trim());
+      emitValue(data.text.trim());
       toast.success("Text rewritten. You can undo the change below.");
     } catch (error) {
-      if (currentRequest === requestId.current) toast.error(error.message || "AI Rewrite is unavailable right now.");
+      if (currentRequest === requestId.current) {
+        const retry = error.retryAfterSeconds ? ` Try again in ${friendlyRetryDelay(error.retryAfterSeconds)}.` : "";
+        toast.error(`${error.message || "AI Rewrite is unavailable right now."}${retry}`);
+      }
     } finally {
       if (currentRequest === requestId.current) setRewriting(false);
     }
@@ -60,12 +82,21 @@ export default function AIRewriteTextarea({
 
   const change = event => {
     setUndoValue(null);
-    onValueChange(event.target.value);
+    if (onValueChange) onValueChange(event.target.value);
+    else onChange?.(event);
+  };
+
+  const emitValue = nextValue => {
+    if (onValueChange) onValueChange(nextValue);
+    else onChange?.({
+      target: { value: nextValue, name: props.name, id: props.id },
+      currentTarget: { value: nextValue, name: props.name, id: props.id },
+    });
   };
 
   const undo = () => {
     if (undoValue === null) return;
-    onValueChange(undoValue);
+    emitValue(undoValue);
     setUndoValue(null);
     toast.success("Original text restored.");
   };
@@ -77,7 +108,7 @@ export default function AIRewriteTextarea({
 
   return (
     <div className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm transition focus-within:border-slate-900 focus-within:ring-1 focus-within:ring-slate-900">
-      <Textarea
+      <PlainTextarea
         {...props}
         ref={textareaRef}
         value={value}
@@ -92,7 +123,7 @@ export default function AIRewriteTextarea({
       />
       <div className="flex min-h-11 items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-1.5 py-1">
         <div className="flex min-w-0 items-center gap-1">
-          <Button
+          {user ? <Button
             type="button"
             variant="ghost"
             size="sm"
@@ -102,7 +133,7 @@ export default function AIRewriteTextarea({
           >
             <Sparkles className={cn("mr-1.5 h-4 w-4", rewriting && "animate-pulse")} />
             {rewriting ? "Rewriting…" : "AI Rewrite"}
-          </Button>
+          </Button> : null}
           {undoValue !== null && (
             <Button type="button" variant="ghost" size="sm" className="min-h-9 px-2 text-xs" disabled={disabled || rewriting} onClick={undo}>
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" />Undo
@@ -125,4 +156,7 @@ export default function AIRewriteTextarea({
       <span className="sr-only" aria-live="polite">{rewriting ? "AI is rewriting this text." : ""}</span>
     </div>
   );
-}
+});
+AIRewriteTextarea.displayName = "AIRewriteTextarea";
+
+export default AIRewriteTextarea;

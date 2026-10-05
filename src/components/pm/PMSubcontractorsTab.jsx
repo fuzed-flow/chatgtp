@@ -383,7 +383,7 @@ ${attachmentSection}
               </div>
               <div>
                 <Label>Email Message</Label>
-                <textarea
+                <Textarea
                   className="mt-1 flex min-h-[160px] w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 shadow-sm"
                   value={inviteMsg}
                   onChange={e => setInviteMsg(e.target.value)}
