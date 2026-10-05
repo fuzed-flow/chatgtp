@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, Send } from "lucide-react";
 import { toast } from "sonner";
-import { createPageUrl } from "../../utils";
 import { useDocumentEmailSend } from "@/lib/emailCopy";
 import { buildClientPortalQuoteUrl, buildPublicQuoteUrl, issueQuoteShareToken } from "@/lib/quoteSharing";
 import { readableBrandText } from "@/components/quotes/QuotePresentation";
@@ -175,7 +174,7 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
       const quoteUrl = buildPublicQuoteUrl(baseUrl, quoteId, secureToken);
       const portalUrl = quoteData?.client_id
         ? buildClientPortalQuoteUrl(baseUrl, quoteData.client_id, secureToken)
-        : `${baseUrl}${createPageUrl("ClientPortal")}`;
+        : null;
       
       const companyName = companyData?.name || authSettings?.company_name || authSettings?.name || "Your Contractor";
       const logoUrl = companyData?.logo_url || companyData?.company_logo_url || "https://ochqexofahdssmarnict.supabase.co/storage/v1/object/public/logos/fuzed-flow-logo.png";
@@ -211,11 +210,12 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
                 <a href="${quoteUrl}" target="_blank" style="font-size: 16px; font-weight: 700; font-family: Helvetica, Arial, sans-serif; color: ${buttonTextColor}; background-color: ${buttonColor}; text-decoration: none; border-radius: 999px; padding: 16px 32px; display: inline-block; margin-bottom: 15px; border: 1px solid ${buttonColor};">
                   View & Accept Quote
                 </a>
-                <br/>
-                
-                <a href="${portalUrl}" target="_blank" style="font-size: 14px; font-weight: 600; font-family: Helvetica, Arial, sans-serif; color: #475569; background-color: transparent; text-decoration: none; border-radius: 999px; padding: 12px 24px; border: 1px solid #cbd5e1; display: inline-block;">
-                  Access Client Portal
-                </a>
+                ${portalUrl ? `
+                  <br/>
+                  <a href="${portalUrl}" target="_blank" style="font-size: 14px; font-weight: 600; font-family: Helvetica, Arial, sans-serif; color: #475569; background-color: transparent; text-decoration: none; border-radius: 999px; padding: 12px 24px; border: 1px solid #cbd5e1; display: inline-block;">
+                    Access Client Portal
+                  </a>
+                ` : ""}
               </div>
             </div>
           </div>
