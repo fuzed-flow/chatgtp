@@ -398,12 +398,12 @@ export default function Layout({ children, currentPageName }) {
 
       {moreOpen ? <button type="button" aria-label="Close more navigation" onClick={closeSidebar} className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm lg:hidden" /> : null}
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
-        <DialogContent className="bottom-0 left-0 right-0 top-auto z-[130] max-h-[82dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-b-none rounded-t-3xl border-slate-700 bg-slate-950 p-0 text-white shadow-2xl lg:hidden">
-          <DialogHeader className="border-b border-slate-800 px-5 pb-4 pt-5 pr-14 text-left">
+        <DialogContent className="bottom-0 left-0 right-0 top-auto z-[130] !flex min-h-0 max-h-[82dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col overflow-hidden rounded-b-none rounded-t-3xl border-slate-700 bg-slate-950 p-0 text-white shadow-2xl lg:hidden">
+          <DialogHeader className="shrink-0 border-b border-slate-800 px-5 pb-4 pt-5 pr-14 text-left">
             <DialogTitle className="text-xl font-black text-white">More</DialogTitle>
             <DialogDescription className="text-slate-400">Open another workspace area.</DialogDescription>
           </DialogHeader>
-          <div className="overflow-y-auto px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
+          <div data-mobile-more-scroll className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3" style={{ WebkitOverflowScrolling: "touch" }}>
             {mobileMoreGroups.map(group => <section key={group.section} className="mb-4"><h3 className="px-2 pb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{group.label}</h3><div className="grid grid-cols-2 gap-2">{group.items.map(item => {
               const active = currentPageName === item.page;
               return <Link key={item.page} to={createPageUrl(item.page)} onClick={closeSidebar} aria-current={active ? "page" : undefined} className={`flex min-h-16 items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-bold transition-colors ${active ? "border-amber-300/40 bg-amber-400/15 text-amber-200" : "border-slate-800 bg-slate-900 text-slate-200 active:bg-slate-800"}`}><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${active ? "bg-amber-400 text-slate-950" : "bg-slate-800 text-slate-400"}`}><item.icon className="h-[18px] w-[18px]" aria-hidden="true" /></span><span className="min-w-0 leading-4">{item.name}</span></Link>;

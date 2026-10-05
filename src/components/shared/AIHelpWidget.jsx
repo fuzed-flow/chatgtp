@@ -28,10 +28,15 @@ const clampMobilePosition = (position, buttonWidth, buttonHeight) => {
   const viewportTop = visualViewport?.offsetTop ?? 0;
   const viewportWidth = visualViewport?.width ?? window.innerWidth;
   const viewportHeight = visualViewport?.height ?? window.innerHeight;
+  const viewportBottom = viewportTop + viewportHeight;
+  const mobileNavigationRect = document.querySelector('[aria-label="Primary mobile navigation"]')?.getBoundingClientRect();
+  const unobstructedBottom = Number.isFinite(mobileNavigationRect?.top) && mobileNavigationRect.top > viewportTop
+    ? Math.min(viewportBottom, mobileNavigationRect.top)
+    : viewportBottom;
   const minX = viewportLeft + MOBILE_DRAG_EDGE;
   const minY = viewportTop + MOBILE_DRAG_EDGE;
   const maxX = Math.max(minX, viewportLeft + viewportWidth - buttonWidth - MOBILE_DRAG_EDGE);
-  const maxY = Math.max(minY, viewportTop + viewportHeight - buttonHeight - MOBILE_DRAG_EDGE);
+  const maxY = Math.max(minY, unobstructedBottom - buttonHeight - MOBILE_DRAG_EDGE);
   return {
     x: Math.min(maxX, Math.max(minX, position.x)),
     y: Math.min(maxY, Math.max(minY, position.y)),
@@ -284,7 +289,7 @@ export default function AIHelpWidget() {
           onPointerCancel={finishTriggerPointerInteraction}
           onClick={handleTriggerClick}
           onContextMenu={(event) => { if (canDragOnMobile) event.preventDefault(); }}
-          className={`fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-40 flex h-14 select-none items-center gap-2 rounded-full bg-amber-500 px-4 text-slate-900 shadow-xl transition-[background-color,box-shadow,transform] hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6 ${canDragOnMobile ? "touch-none" : "touch-manipulation"} ${isDragging ? "cursor-grabbing scale-[1.04] shadow-2xl ring-4 ring-amber-200" : canDragOnMobile ? "cursor-grab" : ""}`}>
+          className={`fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-[115] flex h-14 select-none items-center gap-2 rounded-full bg-amber-500 px-4 text-slate-900 shadow-xl transition-[background-color,box-shadow,transform] hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 lg:bottom-6 lg:right-6 ${canDragOnMobile ? "touch-none" : "touch-manipulation"} ${isDragging ? "cursor-grabbing scale-[1.04] shadow-2xl ring-4 ring-amber-200" : canDragOnMobile ? "cursor-grab" : ""}`}>
           <MessageCircle className="h-6 w-6" aria-hidden="true" />
           <span className="text-sm font-semibold">AI Help</span>
           {canDragOnMobile && <span id="ai-help-drag-instructions" className="sr-only">Tap to open. Press and hold, then drag to move this button.</span>}
