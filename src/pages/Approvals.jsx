@@ -36,7 +36,6 @@ import { purchaseOrderStatusUpdate } from "@/lib/costNotificationWorkflows";
 const VIEWS = [
   { id: "action_queue", label: "Action queue" },
   { id: "quotes", label: "Client quotes" },
-  { id: "internal_reviews", label: "Internal reviews" },
   { id: "change_orders", label: "Change orders" },
   { id: "purchase_orders", label: "Purchase orders" },
 ];
@@ -104,7 +103,6 @@ export default function Approvals() {
 
   const [activeView, setActiveView] = useState("action_queue");
   const [searchAction, setSearchAction] = useState("");
-  const [searchReviews, setSearchReviews] = useState("");
   const [searchQuotes, setSearchQuotes] = useState("");
   const [filterQuotes, setFilterQuotes] = useState("all");
   const [searchCO, setSearchCO] = useState("");
@@ -131,7 +129,7 @@ export default function Approvals() {
     ...queryOptions,
     queryFn: async () => {
       const { data, error } = await supabase.from("quotes")
-        .select("id, title, quote_number, site_address, total, issue_date, created_at, updated_at, client_id, status, internal_review_status, internal_reviewed_at, next_follow_up_date, sent_at, viewed_at, signed_at, is_template")
+        .select("id, title, quote_number, site_address, total, issue_date, created_at, updated_at, client_id, status, next_follow_up_date, sent_at, viewed_at, signed_at, is_template")
         .eq("company_id", companyId);
       if (error) throw error;
       return data || [];
@@ -180,7 +178,7 @@ export default function Approvals() {
     ...queryOptions,
     queryFn: async () => {
       const { data, error } = await supabase.from("change_orders")
-        .select("id, project_id, client_id, title, change_order_number, status, issue_date, total, created_at, next_follow_up_date, approval_due_date, internal_review_status, internal_reviewed_at")
+        .select("id, project_id, client_id, title, change_order_number, status, issue_date, total, created_at, next_follow_up_date, approval_due_date")
         .eq("company_id", companyId).order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -213,35 +211,6 @@ export default function Approvals() {
     [quotes, quoteApprovalsQuery.data, quoteViewsQuery.data],
   );
 
-  const internalReviews = useMemo(() => [
-    ...quotes.filter(quote => quote.status === "Pending Review").map(quote => ({
-      id: quote.id,
-      kind: "internal_review",
-      documentType: "quote",
-      number: quote.quote_number,
-      title: quote.title,
-      party: clientById[quote.client_id]?.name,
-      date: quote.issue_date || quote.created_at,
-      amount: quote.total,
-      status: "Pending Review",
-    })),
-    ...changeOrders.filter(order => order.status === "Pending Review").map(order => {
-      const project = projectById[order.project_id];
-      return {
-        id: order.id,
-        kind: "internal_review",
-        documentType: "change_order",
-        number: order.change_order_number,
-        title: order.title,
-        party: clientById[order.client_id || project?.client_id]?.name,
-        project: project?.name,
-        date: order.issue_date || order.created_at,
-        amount: order.total,
-        status: "Pending Review",
-      };
-    }),
-  ], [quotes, changeOrders, clientById, projectById]);
-
   const pendingChangeOrders = useMemo(() => changeOrders.filter(order => order.status === "Pending").map(order => {
     const project = projectById[order.project_id];
     return {
@@ -269,15 +238,12 @@ export default function Approvals() {
     status: order.status,
   })), [purchaseOrders, projectById, vendorById]);
 
-  const actionItems = useMemo(() => [...internalReviews, ...pendingChangeOrders, ...pendingPurchaseOrders]
-    .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)), [internalReviews, pendingChangeOrders, pendingPurchaseOrders]);
+  const actionItems = useMemo(() => [...pendingChangeOrders, ...pendingPurchaseOrders]
+    .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)), [pendingChangeOrders, pendingPurchaseOrders]);
 
   const filteredActionItems = useMemo(() => actionItems.filter(item => matchesApprovalSearch(
     [item.number, item.title, item.party, item.project, item.status], searchAction,
   )), [actionItems, searchAction]);
-  const filteredReviews = useMemo(() => internalReviews.filter(item => matchesApprovalSearch(
-    [item.number, item.title, item.party, item.project], searchReviews,
-  )), [internalReviews, searchReviews]);
   const filteredQuotes = useMemo(() => quoteRows.filter(quote => {
     const client = clientById[quote.client_id];
     return (filterQuotes === "all" || quote.approval_status === filterQuotes)
@@ -285,7 +251,8 @@ export default function Approvals() {
   }), [quoteRows, clientById, filterQuotes, searchQuotes]);
   const filteredChangeOrders = useMemo(() => changeOrders.filter(order => {
     const project = projectById[order.project_id];
-    return (filterCO === "all" || order.status === filterCO)
+    return order.status !== "Pending Review"
+      && (filterCO === "all" || order.status === filterCO)
       && matchesApprovalSearch([order.change_order_number, order.title, project?.name, clientById[order.client_id || project?.client_id]?.name], searchCO);
   }), [changeOrders, projectById, clientById, filterCO, searchCO]);
   const filteredPurchaseOrders = useMemo(() => purchaseOrders.filter(order => (
@@ -293,6 +260,8 @@ export default function Approvals() {
     && matchesApprovalSearch([order.po_number, vendorById[order.vendor_id]?.name, projectById[order.project_id]?.name], searchPO)
   )), [purchaseOrders, vendorById, projectById, filterPO, searchPO]);
 
+  // Keep the guarded transition available to the existing workflow implementation,
+  // while internal-review controls remain hidden from this hub.
   const internalReviewMutation = useMutation({
     mutationFn: async ({ id, documentType, outcome }) => {
       if (!companyId || !profile?.id || !["quote", "change_order"].includes(documentType) || !["Approved", "Changes Required"].includes(outcome)) {
@@ -361,21 +330,18 @@ export default function Approvals() {
   const loadError = allQueries.find(query => query.error)?.error;
   const decisionBusy = !!loadError || internalReviewMutation.isPending || updateCOStatusMutation.isPending || updatePOStatusMutation.isPending;
   const waitingClientQuotes = quoteRows.filter(quote => ["Sent", "Viewed"].includes(quote.approval_status));
-  const actionValue = internalReviews.reduce((sum, item) => sum + Number(item.amount || 0), 0)
-    + pendingTotal(changeOrders, ["Pending"])
+  const actionValue = pendingTotal(changeOrders, ["Pending"])
     + pendingTotal(purchaseOrders, ["Pending Approval"]);
   const counts = {
     action_queue: actionItems.length,
     quotes: quoteRows.length,
-    internal_reviews: internalReviews.length,
-    change_orders: changeOrders.length,
+    change_orders: changeOrders.filter(order => order.status !== "Pending Review").length,
     purchase_orders: purchaseOrders.length,
   };
 
   const openItem = item => {
     if (item.kind === "purchase_order") navigate(`/PurchaseOrderDetail?id=${item.id}`);
-    else if (item.kind === "change_order") navigate(`/ChangeOrderView?id=${item.id}`);
-    else navigate(`/${item.documentType === "quote" ? "QuoteBuilder" : "ChangeOrderBuilder"}?id=${item.id}`);
+    else navigate(`/ChangeOrderView?id=${item.id}`);
   };
 
   const openDecision = (item, outcome) => setDecision({ ...item, outcome });
@@ -447,8 +413,8 @@ export default function Approvals() {
       )}
 
       <section aria-label="Approval summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <ApprovalSummaryCard icon={ClipboardCheck} label="Action required" count={actionItems.length} value={formatCurrency(actionValue)} detail="All internal and financial decisions" tone="amber" onClick={() => setActiveView("action_queue")} />
-        <ApprovalSummaryCard icon={FileCheck} label="Internal review" count={internalReviews.length} value={formatCurrency(internalReviews.reduce((sum, item) => sum + Number(item.amount || 0), 0))} detail="Drafts waiting for your team" tone="blue" onClick={() => setActiveView("internal_reviews")} />
+        <ApprovalSummaryCard icon={ClipboardCheck} label="Action required" count={actionItems.length} value={formatCurrency(actionValue)} detail="Financial decisions awaiting approval" tone="amber" onClick={() => setActiveView("action_queue")} />
+        <ApprovalSummaryCard icon={RefreshCcw} label="Change order decisions" count={pendingChangeOrders.length} value={formatCurrency(pendingTotal(changeOrders, ["Pending"]))} detail="Scope changes awaiting a decision" tone="blue" onClick={() => setActiveView("change_orders")} />
         <ApprovalSummaryCard icon={Send} label="With clients" count={waitingClientQuotes.length} value={formatCurrency(waitingClientQuotes.reduce((sum, quote) => sum + Number(quote.total || 0), 0))} detail="Quotes sent or viewed" tone="emerald" onClick={() => setActiveView("quotes")} />
         <ApprovalSummaryCard icon={ShoppingCart} label="PO approval" count={pendingPurchaseOrders.length} value={formatCurrency(pendingTotal(purchaseOrders, ["Pending Approval"]))} detail="Vendor spend awaiting approval" onClick={() => setActiveView("purchase_orders")} />
       </section>
@@ -483,27 +449,10 @@ export default function Approvals() {
           </div>
           <FilterBar search={searchAction} onSearchChange={setSearchAction} searchLabel="Search action queue" placeholder="Search number, client, vendor or project…" />
           {isLoading ? <LoadingCard label="the action queue" /> : filteredActionItems.length === 0 ? (
-            <EmptyResults icon={CheckCircle2} title={searchAction ? "No matching approvals" : "You’re all caught up"} description={searchAction ? "Try another document number, client, vendor or project." : "New internal reviews and financial approvals will appear here."} />
+            <EmptyResults icon={CheckCircle2} title={searchAction ? "No matching approvals" : "You’re all caught up"} description={searchAction ? "Try another document number, client, vendor or project." : "New financial approvals will appear here."} />
           ) : (
             <div className="grid gap-3">
               {filteredActionItems.map(item => <ApprovalQueueCard key={`${item.kind}:${item.id}`} item={item} busy={decisionBusy} onOpen={openItem} onDecision={openDecision} formatCurrency={formatCurrency} formatDate={formatDate} />)}
-            </div>
-          )}
-        </section>
-      )}
-
-      {activeView === "internal_reviews" && (
-        <section id="approval-panel-internal_reviews" role="tabpanel" className="space-y-4">
-          <div>
-            <h2 className="text-lg font-black text-slate-950">Internal reviews</h2>
-            <p className="mt-1 text-sm text-slate-600">Approval returns the document to Draft, ready for a separate client send.</p>
-          </div>
-          <FilterBar search={searchReviews} onSearchChange={setSearchReviews} searchLabel="Search internal reviews" placeholder="Search document, number, client or project…" />
-          {isLoading ? <LoadingCard label="internal reviews" /> : filteredReviews.length === 0 ? (
-            <EmptyResults icon={FileCheck} title={searchReviews ? "No matching reviews" : "No internal reviews waiting"} description={searchReviews ? "Try another document number, client or project." : "Request internal review from a quote or change order builder."} />
-          ) : (
-            <div className="grid gap-3">
-              {filteredReviews.map(item => <ApprovalQueueCard key={`${item.documentType}:${item.id}`} item={item} busy={decisionBusy} onOpen={openItem} onDecision={openDecision} formatCurrency={formatCurrency} formatDate={formatDate} />)}
             </div>
           )}
         </section>
@@ -541,7 +490,7 @@ export default function Approvals() {
             <h2 className="text-lg font-black text-slate-950">Change orders</h2>
             <p className="mt-1 text-sm text-slate-600">Review scope changes and record pending client decisions.</p>
           </div>
-          <FilterBar search={searchCO} onSearchChange={setSearchCO} searchLabel="Search change orders" placeholder="Search change order, client or project…" status={filterCO} onStatusChange={setFilterCO} statuses={["Draft", "Pending Review", "Pending", "Sent", "Approved", "Rejected", "Declined"]} />
+          <FilterBar search={searchCO} onSearchChange={setSearchCO} searchLabel="Search change orders" placeholder="Search change order, client or project…" status={filterCO} onStatusChange={setFilterCO} statuses={["Draft", "Pending", "Sent", "Approved", "Rejected", "Declined"]} />
           {isLoading ? <LoadingCard label="change orders" /> : filteredChangeOrders.length === 0 ? (
             <EmptyResults icon={RefreshCcw} title="No change orders found" description="Scope changes and price adjustments will appear here." />
           ) : (
@@ -553,8 +502,7 @@ export default function Approvals() {
                 const project = projectById[order.project_id];
                 const item = {
                   id: order.id,
-                  kind: order.status === "Pending Review" ? "internal_review" : "change_order",
-                  documentType: "change_order",
+                  kind: "change_order",
                   number: order.change_order_number,
                   title: order.title,
                   party: clientById[order.client_id || project?.client_id]?.name,
@@ -566,8 +514,8 @@ export default function Approvals() {
                 return (
                   <div className="flex flex-wrap justify-end gap-2">
                     <Button variant="outline" size="sm" className="min-h-9 bg-white" onClick={() => openItem(item)}><Eye className="mr-1.5 h-4 w-4" />Open</Button>
-                    {["Pending", "Pending Review"].includes(order.status) && <Button disabled={decisionBusy} variant="outline" size="sm" className="min-h-9 border-red-200 text-red-700 hover:bg-red-50" onClick={() => openDecision(item, order.status === "Pending Review" ? "Changes Required" : "Rejected")}><XCircle className="mr-1.5 h-4 w-4" />{order.status === "Pending Review" ? "Return" : "Reject"}</Button>}
-                    {["Pending", "Pending Review"].includes(order.status) && <Button disabled={decisionBusy} size="sm" className="min-h-9 bg-amber-500 font-bold text-slate-950 hover:bg-amber-600" onClick={() => openDecision(item, "Approved")}><CheckCircle2 className="mr-1.5 h-4 w-4" />{order.status === "Pending Review" ? "Approve for sending" : "Approve"}</Button>}
+                    {order.status === "Pending" && <Button disabled={decisionBusy} variant="outline" size="sm" className="min-h-9 border-red-200 text-red-700 hover:bg-red-50" onClick={() => openDecision(item, "Rejected")}><XCircle className="mr-1.5 h-4 w-4" />Reject</Button>}
+                    {order.status === "Pending" && <Button disabled={decisionBusy} size="sm" className="min-h-9 bg-amber-500 font-bold text-slate-950 hover:bg-amber-600" onClick={() => openDecision(item, "Approved")}><CheckCircle2 className="mr-1.5 h-4 w-4" />Approve</Button>}
                   </div>
                 );
               }}

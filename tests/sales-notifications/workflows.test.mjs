@@ -131,7 +131,8 @@ function database(result = {data:{id:'document'}, error:null}, pending) {
   const writes=[];
   return {writes, from(table) {
     const record={table, filters:[]};
-    const chain={update(payload) {record.payload=plain(payload);return chain;}, eq(field,value) {record.filters.push([field,value]);return chain;}, select() {return chain;}, single() {writes.push(record);return pending || Promise.resolve(result);}};
+    const resolveSingle=() => {writes.push(record);return pending || Promise.resolve(result);};
+    const chain={update(payload) {record.payload=plain(payload);return chain;}, eq(field,value) {record.filters.push([field,value]);return chain;}, select() {return chain;}, single:resolveSingle, maybeSingle:resolveSingle};
     return chain;
   }};
 }
