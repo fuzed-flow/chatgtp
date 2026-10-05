@@ -1,0 +1,61 @@
+[
+  {
+    "slug": "sales-performance-dashboard",
+    "feature_area": "Reports",
+    "audience": "contractor",
+    "question": "Can I track my live sales funnel and team performance?",
+    "answer_short": "Yes. Professional and Business plans can open Sales Performance from CRM or the Sales Performance tab in Reports.",
+    "answer_long": "Open **Sales Performance** from the CRM menu, or open **Reports & Analytics → Sales Performance**. The page uses saved leads, quotes, payments, follow-ups, and sales activity to show KPIs, a conversion funnel, lead flow, source results, rep performance, forecast scenarios, follow-up health, hot leads, lost reasons, and a monthly target.\n\nUse the date, team member, source, and stage filters before comparing results. KPI trends compare the selected period with an immediately preceding period of equal length. Select a KPI or funnel stage to inspect its leads.\n\nThe feature requires Advanced Reporting, which is available on Professional and Business plans, plus the appropriate role permission. Live sync reflects saved database activity; it does not include unsaved changes. Older opportunities may not have complete stage history because the release does not invent old transition dates. Website visitors are not shown until a verified analytics source is connected. Forecast and hot-lead figures are planning signals rather than guaranteed revenue or customer intent.",
+    "route": "/SalesPerformance",
+    "source_files": [
+      "src/pages/SalesPerformance.jsx",
+      "src/components/reports/SalesPerformanceDashboard.jsx",
+      "src/lib/salesPerformance.js"
+    ],
+    "search_terms": [
+      "sales performance",
+      "sales funnel",
+      "team performance",
+      "pipeline",
+      "forecast",
+      "hot leads",
+      "monthly target",
+      "professional plan"
+    ],
+    "related_slugs": [],
+    "requires_admin": false,
+    "priority": 85,
+    "article_type": "faq",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-05",
+    "is_active": true
+  },
+  {
+    "slug": "mobile-office-navigation",
+    "feature_area": "Help & Support",
+    "audience": "all",
+    "question": "Where is the office menu on mobile?",
+    "answer_short": "The mobile hamburger is replaced by a bottom bar for Dashboard, Leads, Projects, Tasks, and More.",
+    "answer_long": "On a phone, use the bottom bar for one-tap access to **Dashboard**, **Leads**, **Projects**, and **Tasks**. Tap **More** to open every other page allowed by your role, grouped by workspace area. Selecting a destination closes the More sheet.\n\nSearch, notifications, Help, and the account menu remain in the top bar. The full desktop sidebar is unchanged and can still be collapsed. Employees and subcontractors continue to use Employee Portal and its own mobile section navigation.\n\nIf a destination is missing from More, ask a company administrator to check your role and permissions. Changing the URL does not grant access. The bottom bar reserves space below page content, including the device safe area, so it should not cover the last form controls.",
+    "route": "/HelpArticles",
+    "source_files": [
+      "src/Layout.jsx",
+      "src/pages/EmployeePortal.jsx"
+    ],
+    "search_terms": [
+      "mobile menu",
+      "hamburger",
+      "bottom navigation",
+      "More",
+      "Dashboard Leads Projects Tasks",
+      "missing menu"
+    ],
+    "related_slugs": [],
+    "requires_admin": false,
+    "priority": 80,
+    "article_type": "faq",
+    "read_minutes": 1,
+    "last_verified_at": "2026-10-05",
+    "is_active": true
+  }
+]

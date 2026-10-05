@@ -5,12 +5,13 @@ import { useAuth } from "@/lib/AuthContext";
 import {
   LayoutDashboard, Users, Target, FileText,
   CalendarDays, ListChecks, Receipt, Package,
-  Settings, ChevronLeft, ChevronRight, Menu, X,
+  Settings, ChevronLeft, ChevronRight,
   LogOut, HardHat, FileCheck, BarChart3, FileStack,
   Building2, ShoppingCart, DollarSign, FileSignature, MoreVertical, FolderKanban, ChevronDown, File, Contact, Newspaper, ClipboardCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import GlobalSearch from "./components/shared/GlobalSearch";
 import OnboardingTour from "./components/shared/OnboardingTour";
 import AccessibilityEnhancer from "./components/shared/AccessibilityEnhancer";
@@ -20,6 +21,7 @@ import HelpMenu from "./components/shared/HelpMenu";
 const NAV_ITEMS = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard", permissionKey: "dashboard", section: "main" },
   { name: "Leads", icon: Target, page: "LeadTracker", permissionKey: "leads", section: "sales" },
+  { name: "Sales Performance", icon: BarChart3, page: "SalesPerformance", permissionKey: "reports", section: "sales" },
   { name: "Clients", icon: Users, page: "Clients", permissionKey: "clients", section: "sales" },
   { name: "Quotes", icon: FileText, page: "Quotes", permissionKey: "quotes", section: "quotes" },  
   { name: "Templates", icon: FileStack, page: "Templates", permissionKey: "templates", section: "quotes" },
@@ -79,20 +81,8 @@ export default function Layout({ children, currentPageName }) {
   const { profile, signOut } = useAuth(); 
   
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
-  const [openAccordion, setOpenAccordion] = useState(null);
-
-  const toggleAccordion = (section) => {
-    setOpenAccordion(openAccordion === section ? null : section);
-  };
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const userRole = profile?.role || profile?.user_role || "user";
   const isEmployeeRole = ["employee", "subcontractor"].includes(userRole);
@@ -109,7 +99,6 @@ export default function Layout({ children, currentPageName }) {
 
   const hasPermission = (item) => {
     if (isEmployeeRole) return ["EmployeePortal", "Warranty", "DocumentRequests"].includes(item.page);
-    if (isMobile && item.hideOnMobile) return false;
     if (!profile) return false; 
     if (item.allUsers) return true;
     
@@ -132,9 +121,21 @@ export default function Layout({ children, currentPageName }) {
   }, {});
 
   const sectionOrder = ["main", "sales", "quotes", "pm", "financial", "resources", "employee", "more", "settings"];
+  const mobilePrimary = [
+    { page: "Dashboard", label: "Dashboard", activePages: ["Dashboard"] },
+    { page: "LeadTracker", label: "Leads", activePages: ["LeadTracker", "LeadDetail"] },
+    { page: "PMProjects", label: "Projects", activePages: ["PMDashboard", "PMProjects", "PMProjectWorkspace", "ProjectDetail", "PMTimeline", "ClientUpdates", "ProjectCloseouts", "Approvals"] },
+    { page: "Tasks", label: "Tasks", activePages: ["Tasks"] },
+  ].map(primary => ({ ...visibleNavItems.find(item => item.page === primary.page), ...primary })).filter(item => item.icon);
+  const primaryPages = new Set(mobilePrimary.map(item => item.page));
+  const mobileMoreGroups = sectionOrder.map(section => ({
+    section,
+    label: SECTION_LABELS[section] || (section === "main" ? "Workspace" : "More"),
+    items: (groupedItems[section] || []).filter(item => !primaryPages.has(item.page)),
+  })).filter(group => group.items.length);
+  const isMoreActive = !mobilePrimary.some(item => item.activePages.includes(currentPageName));
 
-  // ⚡ HELPER FUNCTION TO CLOSE SIDEBAR
-  const closeSidebar = () => setMobileOpen(false);
+  const closeSidebar = () => setMoreOpen(false);
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 overflow-hidden">
@@ -151,18 +152,12 @@ export default function Layout({ children, currentPageName }) {
         .nav-item { animation: slideIn 0.3s ease-out; }
       `}</style>
 
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-in fade-in duration-200" onClick={closeSidebar} />
-      )}
-
       {/* Sidebar */}
       <aside id="workspace-navigation" className={`
-        fixed lg:relative z-50 h-full flex flex-col
+        relative z-50 hidden h-full flex-col lg:flex
         bg-black text-slate-100 
         transition-all duration-300 ease-in-out shadow-2xl
-        ${collapsed ? "w-[68px]" : "w-[240px] lg:w-[260px]"}
-        ${mobileOpen ? "translate-x-0 animate-in slide-in-from-left duration-300" : "-translate-x-full lg:translate-x-0"}
+        ${collapsed ? "w-[68px]" : "w-[260px]"}
       `}
       style={{ boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 20px 25px rgba(0, 0, 0, 0.15)" }}
       >
@@ -211,54 +206,6 @@ export default function Layout({ children, currentPageName }) {
               const SectionIcon = SECTION_ICONS[sectionKey] || MoreVertical;
               const sectionName = SECTION_LABELS[sectionKey] || "More";
               const hasActiveItem = items.some(item => item.page === currentPageName);
-              const isAccordionOpen = openAccordion === sectionKey;
-              
-              if (isMobile) {
-                return (
-                  <div key={sectionKey} className="mt-2 flex flex-col">
-                    <button
-                      onClick={() => toggleAccordion(sectionKey)}
-                      className={`
-                        w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium 
-                        transition-all duration-200 group relative
-                        ${hasActiveItem
-                            ? "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-yellow-300 border border-slate-700/50"
-                            : "text-slate-900 bg-gradient-to-br from-yellow-300 to-yellow-400 border border-yellow-400"
-                        }
-                      `}
-                    >
-                      {hasActiveItem && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-yellow-300 to-yellow-500 rounded-r-full" />}
-                      <SectionIcon className={`h-[18px] w-[18px] shrink-0 ${hasActiveItem ? "text-yellow-300" : ""}`} />
-                      <span className="truncate flex-1 text-left">{sectionName}</span>
-                      <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isAccordionOpen ? "rotate-180" : ""} ${hasActiveItem ? "text-yellow-300/70" : "opacity-50"}`} />
-                    </button>
-
-                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAccordionOpen ? "max-h-96 opacity-100 mt-2" : "max-h-0 opacity-0"}`}>
-                      <div className="flex flex-col gap-1 p-1.5 bg-white rounded-xl mx-2 shadow-inner">
-                        {items.map((item) => {
-                          const isActive = currentPageName === item.page;
-                          return (
-                            <Link
-                              key={item.page}
-                              to={createPageUrl(item.page)}
-                              onClick={closeSidebar}
-                              className={`flex items-center gap-2.5 w-full py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                                isActive 
-                                  ? "bg-amber-50 text-amber-700" 
-                                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                              }`}
-                            >
-                              <item.icon className={`h-[18px] w-[18px] ${isActive ? "text-amber-500" : "text-slate-400"}`} />
-                              <span>{item.name}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
               return (
                 <DropdownMenu key={sectionKey}>
                   <DropdownMenuTrigger asChild>
@@ -373,24 +320,6 @@ export default function Layout({ children, currentPageName }) {
         {/* Top bar */}
         <header className="relative z-[100] h-14 lg:h-16 bg-black border-b border-slate-700/50 flex items-center justify-between px-3 lg:px-6 shrink-0 shadow-sm">
           <div className="flex items-center gap-2 lg:gap-4 min-w-0 flex-1">
-            
-            {/* ⚡ UPDATED HAMBURGER MENU TOGGLE */}
-            <button
-              type="button"
-              aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
-              aria-expanded={mobileOpen}
-              aria-controls="workspace-navigation"
-              style={{ transform: 'none', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-              className="lg:hidden flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl h-11 w-11 shrink-0 active:bg-slate-800 cursor-pointer -ml-2 transition-all"
-              onClick={() => setMobileOpen(!mobileOpen)}
-            >
-              {mobileOpen ? (
-                <X className="h-7 w-7" style={{ pointerEvents: 'none' }} />
-              ) : (
-                <Menu className="h-7 w-7" style={{ pointerEvents: 'none' }} />
-              )}
-            </button>
-
             <div className="min-w-0 flex-1">
               <h2 className="text-xs lg:text-base font-bold text-white capitalize tracking-tight truncate">
                 {currentPageName?.replace(/([A-Z])/g, ' $1').trim().replace('P M', 'PM') || "Dashboard"}
@@ -452,10 +381,36 @@ export default function Layout({ children, currentPageName }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
           {children}
         </main>
       </div>
+
+      <nav aria-label="Primary mobile navigation" className="fixed inset-x-0 bottom-0 z-[110] border-t border-slate-800 bg-black/95 px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:hidden">
+        <div className="mx-auto grid max-w-lg gap-0.5" style={{ gridTemplateColumns: `repeat(${mobilePrimary.length + 1}, minmax(0, 1fr))` }}>
+          {mobilePrimary.map(item => {
+            const active = item.activePages.includes(currentPageName);
+            return <Link key={item.page} to={createPageUrl(item.page)} onClick={closeSidebar} aria-current={active ? "page" : undefined} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-bold transition-colors ${active ? "bg-amber-400/15 text-amber-300" : "text-slate-400 active:bg-slate-800 active:text-white"}`}><item.icon className="h-5 w-5" aria-hidden="true" /><span className="max-w-full truncate">{item.label}</span></Link>;
+          })}
+          <button type="button" onClick={() => setMoreOpen(true)} aria-expanded={moreOpen} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-bold transition-colors ${isMoreActive || moreOpen ? "bg-amber-400/15 text-amber-300" : "text-slate-400 active:bg-slate-800 active:text-white"}`}><MoreVertical className="h-5 w-5" aria-hidden="true" /><span>More</span></button>
+        </div>
+      </nav>
+
+      {moreOpen ? <button type="button" aria-label="Close more navigation" onClick={closeSidebar} className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm lg:hidden" /> : null}
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
+        <DialogContent className="bottom-0 left-0 right-0 top-auto z-[130] max-h-[82dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-b-none rounded-t-3xl border-slate-700 bg-slate-950 p-0 text-white shadow-2xl lg:hidden">
+          <DialogHeader className="border-b border-slate-800 px-5 pb-4 pt-5 pr-14 text-left">
+            <DialogTitle className="text-xl font-black text-white">More</DialogTitle>
+            <DialogDescription className="text-slate-400">Open another workspace area.</DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
+            {mobileMoreGroups.map(group => <section key={group.section} className="mb-4"><h3 className="px-2 pb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{group.label}</h3><div className="grid grid-cols-2 gap-2">{group.items.map(item => {
+              const active = currentPageName === item.page;
+              return <Link key={item.page} to={createPageUrl(item.page)} onClick={closeSidebar} aria-current={active ? "page" : undefined} className={`flex min-h-16 items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-bold transition-colors ${active ? "border-amber-300/40 bg-amber-400/15 text-amber-200" : "border-slate-800 bg-slate-900 text-slate-200 active:bg-slate-800"}`}><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${active ? "bg-amber-400 text-slate-950" : "bg-slate-800 text-slate-400"}`}><item.icon className="h-[18px] w-[18px]" aria-hidden="true" /></span><span className="min-w-0 leading-4">{item.name}</span></Link>;
+            })}</div></section>)}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Global Components */}
       <OnboardingTour />

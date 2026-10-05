@@ -4024,11 +4024,61 @@
     "related_slugs": []
   },
   {
+    "slug": "sales-performance-dashboard",
+    "feature_area": "Reports",
+    "audience": "contractor",
+    "question": "Can I track my live sales funnel and team performance?",
+    "answer_short": "Yes. Professional and Business plans can open Sales Performance from CRM or the Sales Performance tab in Reports.",
+    "answer_long": "Open **Sales Performance** from the CRM menu, or open **Reports & Analytics → Sales Performance**. The page uses saved leads, quotes, payments, follow-ups, and sales activity to show KPIs, a conversion funnel, lead flow, source results, rep performance, forecast scenarios, follow-up health, hot leads, lost reasons, and a monthly target.\n\nUse the date, team member, source, and stage filters before comparing results. KPI trends compare the selected period with an immediately preceding period of equal length. Select a KPI or funnel stage to inspect its leads.\n\nThe feature requires Advanced Reporting, which is available on Professional and Business plans, plus the appropriate role permission. Live sync reflects saved database activity; it does not include unsaved changes. Older opportunities may not have complete stage history because the release does not invent old transition dates. Website visitors are not shown until a verified analytics source is connected. Forecast and hot-lead figures are planning signals rather than guaranteed revenue or customer intent.",
+    "route": "/SalesPerformance",
+    "search_terms": [
+      "sales performance",
+      "sales funnel",
+      "team performance",
+      "pipeline",
+      "forecast",
+      "hot leads",
+      "monthly target",
+      "professional plan"
+    ],
+    "related_slugs": [],
+    "requires_admin": false,
+    "priority": 85,
+    "article_type": "faq",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-05",
+    "is_active": true
+  },
+  {
+    "slug": "mobile-office-navigation",
+    "feature_area": "Help & Support",
+    "audience": "all",
+    "question": "Where is the office menu on mobile?",
+    "answer_short": "The mobile hamburger is replaced by a bottom bar for Dashboard, Leads, Projects, Tasks, and More.",
+    "answer_long": "On a phone, use the bottom bar for one-tap access to **Dashboard**, **Leads**, **Projects**, and **Tasks**. Tap **More** to open every other page allowed by your role, grouped by workspace area. Selecting a destination closes the More sheet.\n\nSearch, notifications, Help, and the account menu remain in the top bar. The full desktop sidebar is unchanged and can still be collapsed. Employees and subcontractors continue to use Employee Portal and its own mobile section navigation.\n\nIf a destination is missing from More, ask a company administrator to check your role and permissions. Changing the URL does not grant access. The bottom bar reserves space below page content, including the device safe area, so it should not cover the last form controls.",
+    "route": "/HelpArticles",
+    "search_terms": [
+      "mobile menu",
+      "hamburger",
+      "bottom navigation",
+      "More",
+      "Dashboard Leads Projects Tasks",
+      "missing menu"
+    ],
+    "related_slugs": [],
+    "requires_admin": false,
+    "priority": 80,
+    "article_type": "faq",
+    "read_minutes": 1,
+    "last_verified_at": "2026-10-05",
+    "is_active": true
+  },
+  {
     "slug": "guide-getting-started",
     "question": "Getting started with FuzedFlow",
     "feature_area": "Account",
     "answer_short": "Find your workspace, understand your role, and follow your first workflow from the correct starting point.",
-    "answer_long": "## Choose the correct workspace\nIf you are joining an existing company, use the invitation sent by its administrator. Creating a separate company account does not automatically put you on that company's team. Sign in using the same method you used when joining: email and password, or **Sign in with Google**.\n\nOffice and project staff normally begin in the main workspace. Employees and subcontractors use the **Employee Portal**. The menu reflects your role and your company's permissions; a missing menu item does not mean your work was deleted.\n\n## Start with your role\n1. Open the navigation menu. On a phone, use the menu button at the top left.\n2. For office work, start with **Leads**, **Clients**, or **Quotes**. Check the client and site before creating a document.\n3. For project coordination, use **PM Dashboard**, **PM Projects**, or **Project Timeline**.\n4. For field work, open **Employee Portal** and choose the relevant section, such as **Clock In**, **My Projects**, or **My Tasks**.\n5. Owners and administrators can review company branding, financial defaults, notifications, and team access in **Settings** before sending customer documents.\n\n## Follow a complete workflow\nA typical office workflow moves from lead information to a client, then to a quote, project work, and invoicing. These are separate records and actions. Changing a lead stage does not by itself prove that a quote was accepted, a project was created, or an invoice was paid.\n\nBefore sending or approving a document, check its record number, recipient, project, and preview. Return to its list after saving and confirm that the new record or status appears.\n\n## Find help without leaving your task\nUse **Help → Help Articles** in the top navigation. Search for the screen name or the action you need, open a guide, and use its related-page link where available. **Quick answers & FAQ** offers shorter answers. AI Help can explain the same published articles and link you back to a guide.\n\n## If access or records are missing\nConfirm that you signed into the intended company account, clear active list filters, and ask your administrator to check your role or assignments. Keep the page name and any error text when contacting support. Never send passwords or payment card details.",
+    "answer_long": "## Choose the correct workspace\nIf you are joining an existing company, use the invitation sent by its administrator. Creating a separate company account does not automatically put you on that company's team. Sign in using the same method you used when joining: email and password, or **Sign in with Google**.\n\nOffice and project staff normally begin in the main workspace. Employees and subcontractors use the **Employee Portal**. The menu reflects your role and your company's permissions; a missing menu item does not mean your work was deleted.\n\n## Start with your role\n1. On a phone, use the bottom navigation for **Dashboard**, **Leads**, **Projects**, and **Tasks**. Tap **More** for the full role-based menu.\n2. For office work, start with **Leads**, **Clients**, or **Quotes**. Check the client and site before creating a document.\n3. For project coordination, use **PM Dashboard**, **PM Projects**, or **Project Timeline**.\n4. For field work, open **Employee Portal** and choose the relevant section, such as **Clock In**, **My Projects**, or **My Tasks**.\n5. Owners and administrators can review company branding, financial defaults, notifications, and team access in **Settings** before sending customer documents.\n\n## Follow a complete workflow\nA typical office workflow moves from lead information to a client, then to a quote, project work, and invoicing. These are separate records and actions. Changing a lead stage does not by itself prove that a quote was accepted, a project was created, or an invoice was paid.\n\nBefore sending or approving a document, check its record number, recipient, project, and preview. Return to its list after saving and confirm that the new record or status appears.\n\n## Find help without leaving your task\nUse **Help → Help Articles** in the top navigation. Search for the screen name or the action you need, open a guide, and use its related-page link where available. **Quick answers & FAQ** offers shorter answers. AI Help can explain the same published articles and link you back to a guide.\n\n## If access or records are missing\nConfirm that you signed into the intended company account, clear active list filters, and ask your administrator to check your role or assignments. Keep the page name and any error text when contacting support. Never send passwords or payment card details.",
     "route": "/HelpArticles",
     "search_terms": [
       "getting started",
@@ -4057,8 +4107,8 @@
     "slug": "guide-mobile-navigation",
     "question": "Using FuzedFlow on a phone or tablet",
     "feature_area": "Help & Support",
-    "answer_short": "Navigate the mobile menu, read guides, and keep track of work when space is limited.",
-    "answer_long": "## Open the mobile navigation\nUse the menu button at the top left to open the sidebar. Office navigation groups related screens under **CRM**, **Quotes**, **Project Management**, **Financial**, and **Resources**. Tap a group to reveal its pages, then tap the page you want. Selecting a page closes the sidebar so your workspace is visible again.\n\nThe exact options depend on your role. Field users work through **Employee Portal** rather than the office navigation. Turning the device sideways may make a wide table easier to inspect, but does not change your permissions.\n\n## Find help from any supported workspace\n1. Tap **Help** in the top navigation.\n2. Choose **Help Articles** for detailed instructions or **Quick answers & FAQ** for a short answer.\n3. Enter a screen name or a few useful words in the search field.\n4. Narrow the topic or article type if there are many matches.\n5. Open an article and use **Jump to section** to reach the part you need.\n\nThe portal uses large search and filter controls and wraps article text within the screen. Long lists load in groups; use **Show more** rather than expecting every article to appear at once.\n\n## Work with forms and lists\nBefore saving, review fields above and below the keyboard. Close the keyboard when you need more room to inspect a form. Scroll within a table if a screen provides horizontal scrolling, and check that an action belongs to the intended row before tapping it.\n\nIf a list looks empty, clear its search, date, status, project, or assignee filters. A mobile section selector may replace the tabs or sidebar shown on desktop; look for the section name above the content.\n\n## Use AI Help comfortably\nTap the yellow **AI Help** button. Type one task or issue at a time and include the page name. Answers support numbered steps, readable lists, and related article links. Follow a related article to read the longer explanation. Close the helper to return to your work.\n\n## If the page is difficult to use\nSave or copy your unfinished text before refreshing. Try closing an open menu or keyboard, then reopen the section. If a control still cannot be reached, note the page, device/browser, and what you were trying to do when contacting support. A screenshot of the layout can help; leave private customer and payment details out.",
+    "answer_short": "Use the mobile bottom bar for frequent work and open More for every role-based workspace page.",
+    "answer_long": "## Use the bottom navigation\nThe office workspace uses a five-action bottom bar on phones instead of a hamburger drawer. Open **Dashboard**, **Leads**, **Projects**, or **Tasks** with one tap. Tap **More** to open the complete menu, grouped by CRM, Quotes, Project Management, Financial, Resources, Employee Portal, and Settings where your role permits them. Selecting a page closes the sheet.\n\nThe highlighted item shows your current area. A project detail or closeout keeps **Projects** highlighted. Search, notifications, Help, and your account stay in the top bar. The exact options depend on your role and permissions. Employees and subcontractors continue to work through **Employee Portal**, which has its own section controls. Turning the device sideways does not change access.\n\n## Find help from any supported workspace\n1. Tap **Help** in the top navigation.\n2. Choose **Help Articles** for detailed instructions or **Quick answers & FAQ** for a short answer.\n3. Enter a screen name or a few useful words in the search field.\n4. Narrow the topic or article type if there are many matches.\n5. Open an article and use **Jump to section** to reach the part you need.\n\n## Work with forms and lists\nBefore saving, review fields above and below the keyboard. Close the keyboard when you need more room to inspect a form. Scroll within a table if a screen provides horizontal scrolling, and check that an action belongs to the intended row before tapping it.\n\nIf a list looks empty, clear its search, date, status, project, or assignee filters. A mobile section selector may replace desktop tabs; look for the selected section above the content.\n\n## Use AI Help comfortably\nTap the yellow **AI Help** button. On a phone, press and hold the widget, then drag it to a clear part of the screen. A normal tap opens it. Ask about one task at a time and include the page name. Close it to return to your work.\n\n## If the page is difficult to use\nSave or copy unfinished text before refreshing. Close an open More sheet or keyboard, then reopen the section. If a control still cannot be reached, note the page, device/browser, and what you were trying to do when contacting support. Leave private customer and payment details out of screenshots.",
     "route": "/HelpArticles",
     "search_terms": [
       "mobile",
@@ -4079,7 +4129,7 @@
     "priority": 98,
     "article_type": "guide",
     "read_minutes": 2,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "is_active": true,
     "id": "fixture-guide-1"
   },
@@ -6844,5 +6894,38 @@
     "last_verified_at": "2026-10-04",
     "is_active": true,
     "id": "fixture-guide-95"
+  },
+  {
+    "slug": "guide-sales-performance",
+    "feature_area": "Reports",
+    "audience": "office",
+    "requires_admin": false,
+    "question": "Read and use the Sales Performance dashboard",
+    "answer_short": "Filter live CRM results, understand each KPI and funnel stage, set a monthly target, and open the source leads behind the numbers.",
+    "answer_long": "## Open Sales Performance\n\nOpen **Sales Performance** from the CRM menu, or open **Reports & Analytics** and choose the **Sales Performance** tab. The feature requires the company's Advanced Reporting entitlement, which is available on Professional and Business plans. Access also follows your role and report permissions.\n\n## Choose the reporting view\n\nUse the date selector for Today, Yesterday, the last 7 or 30 days, this or last month, this quarter, this year, or a custom range. Use Team Member, Lead Source, and Pipeline Stage filters together when you need a narrower cohort. **Clear filters** restores the company view. The dashboard compares KPI changes with an immediately preceding period of equal length.\n\nThe green **Live** indicator means the page listens for new sales activity and target changes. Use Refresh if you need to request the latest saved records immediately. Live reporting does not include unsaved form changes.\n\n## Understand the KPI strip\n\n**Total Leads** counts leads created in the selected period. **Conversion Rate** is won leads divided by leads in that cohort. **Pipeline Value** totals active opportunities, preferring the strongest linked quote total over the lead estimate so the same opportunity is not counted twice. **Revenue Won** and **Average Deal Value** use approved quote totals. **Appointments Booked** uses recorded appointment dates. **Sales Velocity** measures days from lead creation to a reliably recorded win; older records without a trustworthy win time are excluded. **Close Rate** is won divided by won plus lost.\n\nSelect a KPI or funnel segment to inspect its source leads. Use the source records when a number needs to be verified; the dashboard is an operational view, not an accounting statement.\n\n## Read the funnel and forecasts\n\nThe funnel shows how many selected leads reached each recorded stage. Older leads may have only their current stage because historical timestamps were not invented during migration. New stage changes are timestamped going forward, so conversion and velocity coverage improves over time. Website visitors are not displayed until a verified website-analytics source is connected.\n\nPipeline forecast uses active opportunity value and recorded or stage-default probabilities. Best case, most likely, and conservative figures are planning estimates, not guaranteed revenue. Hot-lead scores are deterministic prioritization signals based on stage, opportunity value, recent movement, and proposal views; they are not promises of client intent.\n\n## Set and use a monthly target\n\nChoose **Edit target**, enter a non-negative revenue target, and save it. The target is stored for the company and current month. Progress uses approved quote value during that month and shows remaining value, days left, and the average daily amount needed. Only authorized office roles in the same company can read or change these targets.\n\n## Troubleshoot unexpected results\n\nConfirm the date and all three filters first. Open the lead or quote behind a value and check its saved stage, total, assignee, source, and dates. Draft, declined, expired, or cancelled quotes do not contribute to active pipeline value. An unassigned lead appears under Unassigned until a current company team member is linked. If Sales Performance cannot load after the release, the production database migration may not yet be applied; give support the visible error and page name rather than repeatedly refreshing.",
+    "route": "/SalesPerformance",
+    "search_terms": [
+      "sales performance",
+      "sales funnel",
+      "conversion rate",
+      "pipeline value",
+      "sales velocity",
+      "close rate",
+      "revenue forecast",
+      "hot leads",
+      "monthly target",
+      "live sales activity"
+    ],
+    "priority": 95,
+    "related_slugs": [
+      "guide-leads-pipeline-find-import",
+      "guide-reports-review-reconcile",
+      "guide-reports-availability-export"
+    ],
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-05",
+    "is_active": true,
+    "id": "fixture-guide-96"
   }
 ]

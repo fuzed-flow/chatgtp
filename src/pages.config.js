@@ -83,6 +83,7 @@ import QuoteBuilder from './pages/QuoteBuilder';
 import QuoteView from './pages/QuoteView';
 import Quotes from './pages/Quotes';
 import Reports from './pages/Reports';
+import SalesPerformance from './pages/SalesPerformance';
 import StrategicGoals from './pages/StrategicGoals';
 import Tasks from './pages/Tasks';
 import Templates from './pages/Templates';
@@ -135,6 +136,7 @@ export const PAGES = {
     "QuoteView": QuoteView,
     "Quotes": Quotes,
     "Reports": Reports,
+    "SalesPerformance": SalesPerformance,
     "StrategicGoals": StrategicGoals,
     "Tasks": Tasks,
     "Templates": Templates,

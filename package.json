@@ -13,7 +13,8 @@
     "test:notifications": "node --test tests/notifications/*.test.mjs",
     "test:help": "node --test tests/help-center/*.test.mjs",
     "test:search": "node --test tests/global-search/*.test.mjs",
-    "test:unsaved": "node --test tests/unsaved-changes/*.test.mjs"
+    "test:unsaved": "node --test tests/unsaved-changes/*.test.mjs",
+    "test:sales-performance": "node --test tests/sales-performance/*.test.mjs"
   },
   "dependencies": {
     "@babel/runtime": "^8.0.0",

@@ -1,9 +1,9 @@
 {
   "verified_at": "2026-10-05",
   "source_commit": null,
-  "guide_count": 96,
-  "guide_words": 38639,
-  "corrected_faq_count": 41,
+  "guide_count": 97,
+  "guide_words": 39156,
+  "corrected_faq_count": 43,
   "topics": [
     "Account",
     "Change Orders",
@@ -923,6 +923,21 @@
         {
           "slug": "guide-reports-availability-export",
           "title": "Understand advanced-report access and current export availability"
+        },
+        {
+          "slug": "guide-sales-performance",
+          "title": "Read and use the Sales Performance dashboard"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "SalesPerformance",
+      "source": "src/pages/SalesPerformance.jsx",
+      "guides": [
+        {
+          "slug": "guide-sales-performance",
+          "title": "Read and use the Sales Performance dashboard"
         }
       ],
       "status": "documented"

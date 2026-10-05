@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { parseRecordDate, paymentDate, withinDateRange, invoiceBalance, csvText } from "@/lib/reporting";
 import { formatCurrencyUSD } from "../components/utils/formatCurrency";
+import SalesPerformanceDashboard from "@/components/reports/SalesPerformanceDashboard";
 
 const TABS = [
-  { id: "sales", label: "Sales & Revenue", icon: TrendingUp },
+  { id: "sales", label: "Sales Performance", icon: TrendingUp },
   { id: "expenses", label: "Expense Report", icon: PieChart },
   { id: "taxes", label: "Tax Summary", icon: Calculator },
   { id: "invoices", label: "Invoice Aging", icon: FileText },
@@ -47,7 +48,7 @@ export default function AdvancedReporting() {
   // --- QUERIES ---
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
     queryKey: ["reports_invoices", companyId],
-    enabled: !!companyId,
+    enabled: !!companyId && activeTab !== "sales",
     queryFn: async () => {
       const { data, error } = await supabase.from("invoices").select("*").eq("company_id", companyId);
       if (error) throw error;
@@ -57,7 +58,7 @@ export default function AdvancedReporting() {
 
   const { data: expenses = [], isLoading: expensesLoading } = useQuery({
     queryKey: ["reports_expenses", companyId],
-    enabled: !!companyId,
+    enabled: !!companyId && activeTab !== "sales",
     queryFn: async () => {
       const { data, error } = await supabase.from("expenses").select("*").eq("company_id", companyId);
       if (error) throw error;
@@ -67,7 +68,7 @@ export default function AdvancedReporting() {
 
   const { data: payments = [], isLoading: paymentsLoading } = useQuery({
     queryKey: ["reports_payments", companyId],
-    enabled: !!companyId,
+    enabled: !!companyId && activeTab !== "sales",
     queryFn: async () => {
       const { data, error } = await supabase.from("payments").select("*").eq("company_id", companyId);
       if (error) throw error;
@@ -75,7 +76,7 @@ export default function AdvancedReporting() {
     }
   });
 
-  const { data: clients = [] } = useQuery({queryKey:["reports_clients",companyId],enabled:!!companyId,queryFn:async()=>{
+  const { data: clients = [] } = useQuery({queryKey:["reports_clients",companyId],enabled:!!companyId && activeTab !== "sales",queryFn:async()=>{
     const {data,error}=await supabase.from("clients").select("id,name").eq("company_id",companyId);if(error)throw error;return data||[];
   }});
   const clientNames = Object.fromEntries(clients.map(client=>[client.id,client.name]));
@@ -213,6 +214,28 @@ export default function AdvancedReporting() {
 
   if (!checkAccess(company?.plan_id, 'hasAdvancedReporting')) {
     return <UpgradeWall featureName="Reports" requiredPlan="Professional" />;
+  }
+
+  if (activeTab === "sales") {
+    return (
+      <div className="min-h-screen bg-[#07090d] flex flex-col font-sans">
+        <div className="sticky top-0 z-30 shrink-0 border-b border-slate-800 bg-slate-950/95 shadow-sm backdrop-blur">
+          <div className="mx-auto max-w-7xl px-4 py-4 md:px-6">
+            <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+              <div>
+                <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-white"><PieChart className="h-6 w-6 text-amber-400" /> Reports & Analytics</h1>
+                <p className="mt-1 text-sm font-medium text-slate-400">Financial and sales insights across your workspace.</p>
+              </div>
+              <div className="hidden gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900 p-1 md:flex">
+                {TABS.map(tab => <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-bold transition-all ${activeTab === tab.id ? "bg-amber-400 text-slate-950 shadow-sm" : "text-slate-400 hover:text-white"}`}><tab.icon className="h-4 w-4 shrink-0" />{tab.label}</button>)}
+              </div>
+              <div className="md:hidden"><Select value={activeTab} onValueChange={setActiveTab}><SelectTrigger className="h-11 w-full border-slate-700 bg-slate-900 font-bold text-white"><SelectValue /></SelectTrigger><SelectContent>{TABS.map(tab => <SelectItem key={tab.id} value={tab.id}>{tab.label}</SelectItem>)}</SelectContent></Select></div>
+            </div>
+          </div>
+        </div>
+        <SalesPerformanceDashboard embedded />
+      </div>
+    );
   }
 
   if (isLoading) {
