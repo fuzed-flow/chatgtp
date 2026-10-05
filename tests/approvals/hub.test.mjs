@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { buildQuoteApprovalRows, matchesApprovalSearch, pendingTotal, quotePublicUrl } from "../../src/lib/approvalHub.js";
 
@@ -30,4 +31,15 @@ test("approval utilities use the live public quote route and safe numeric totals
   assert.equal(quotePublicUrl("https://app.fuzedflow.com", "quote id"), "https://app.fuzedflow.com/PublicQuoteView?id=quote+id");
   assert.equal(matchesApprovalSearch(["LBProjects", "Q-100"], "q-100"), true);
   assert.equal(pendingTotal([{ status: "Pending Approval", total: 10 }, { status: "Draft", total: 90 }], ["Pending Approval"]), 10);
+});
+
+test("internal reviews and document requests stay hidden from workspace navigation", () => {
+  const approvals = readFileSync(new URL("../../src/pages/Approvals.jsx", import.meta.url), "utf8");
+  const layout = readFileSync(new URL("../../src/Layout.jsx", import.meta.url), "utf8");
+  const approvalViews = approvals.match(/const VIEWS = \[([\s\S]*?)\];/)?.[1] || "";
+  const navigationItems = layout.match(/const NAV_ITEMS = \[([\s\S]*?)\];/)?.[1] || "";
+
+  assert.doesNotMatch(approvalViews, /internal_reviews|Internal reviews/);
+  assert.doesNotMatch(approvals, /activeView === "internal_reviews"/);
+  assert.doesNotMatch(navigationItems, /Document Requests|DocumentRequests/);
 });

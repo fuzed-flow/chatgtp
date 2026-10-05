@@ -37,7 +37,6 @@ const NAV_ITEMS = [
   { name: "Inventory", icon: Package, page: "Inventory", permissionKey: "inventory", section: "resources" },
   { name: "Client Forms", icon: FileSignature, page: "ClientForms", permissionKey: "client_forms", section: "resources" },
   { name: "Warranty", icon: FileCheck, page: "Warranty", permissionKey: "projects", section: "resources" },
-  { name: "Document Requests", icon: FileSignature, page: "DocumentRequests", allUsers: true, section: "employee" },
   { name: "Reports", icon: BarChart3, page: "Reports", permissionKey: "reports", section: "resources" },
   { name: "Human Resources", icon: Users, page: "HumanResources", permissionKey: "human_resources", adminOnly: true, section: "resources" },
   { name: "Employee Portal", icon: HardHat, page: "EmployeePortal", allUsers: true, section: "employee" },
