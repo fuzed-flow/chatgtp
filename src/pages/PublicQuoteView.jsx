@@ -1,3 +1,4 @@
+import { notifyDocumentActivity } from '@/lib/documentActivity';
 import React, { useEffect, useState, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -162,7 +163,7 @@ export default function PublicQuoteView() {
       notificationFired.current = true; 
       
       try {
-        await supabase.functions.invoke('company-notifier', {
+        await notifyDocumentActivity( {
           body: {
             event_key: "quote_viewed",
             document_uuid: quote.id,
@@ -322,7 +323,7 @@ export default function PublicQuoteView() {
         const clientName = client?.name || quote?.client_name || "A client";
         const activeCompanyId = company?.id || quote?.company_id;
 
-        await supabase.functions.invoke('company-notifier', {
+        await notifyDocumentActivity( {
           body: { 
             event_key: "quote_approved", 
             document_uuid: quote.id,
@@ -375,7 +376,7 @@ export default function PublicQuoteView() {
     if (!changesMessage.trim()) { toast.error("Please describe the changes you'd like to request"); return; }
     setSubmittingChanges(true);
     try {
-      const { error } = await supabase.functions.invoke('company-notifier', {
+      const { error } = await notifyDocumentActivity( {
         body: { event_key: 'quote_change_requested', document_uuid: quote.id, document_id: quote.id,
           company_id: quote.company_id, message_body: changesMessage.trim().slice(0, 2000) }
       });

@@ -10,15 +10,19 @@ The compatibility migration retains the already deployed company boundaries, pub
 
 ## Prepared infrastructure
 
-The personal delivery schema and service-only provider configuration migration have been applied. VAPID and provider callback secrets are encrypted in Vault. Personal external channels default to off, and the dispatcher cron remains inactive until rollout. The fixed Resend callback is configured; receiving reply routing remains disabled while DNS is pending. The temporary provisioning helper is retired by removing its setup secret. Existing production frontend and payment handlers remain in place until approval.
+The notification workflow, compatibility and Help migrations have been applied. VAPID and provider callback secrets are encrypted in Vault. Personal external channels default to off. Receiving reply routing remains disabled while DNS is pending. The deployment sequence below completes the authorized rollout; provider provisioning is protected by its scoped setup secret.
+
+## Validation and protected document activity
+
+All 578 automated checks pass, and the production bundle builds successfully. Company notifications require a verified company user or trusted server credential. Public document activity uses a narrow RPC that derives the company from an exact saved document UUID, validates event and saved approval status, deduplicates and rate-limits activity, and invokes the notifier with a server-only credential. It cannot submit payment events or arbitrary recipients.
 
 ## Rollout order
 
-1. Apply warranty/documents, costs/assets, sales/finance, people/PM, final-integration and current-release compatibility migrations. Personal delivery/provider configuration already exist. Apply the Help catalog migration last.
+1. Apply warranty/documents, costs/assets, sales/finance, people/PM, final-integration and current-release compatibility migrations. Personal delivery/provider configuration already exist. Apply the Help catalog and protected document notification relay migrations.
 2. Deploy curated Edge handlers with exact shared modules: send-email, send-sms, company-notifier, stripe-webhook, createDepositCheckout, create-checkout, quote/co/invoice reminder crons, send-vendor-request, email-events, sms-events and notification-dispatch.
 3. Extend existing platform Stripe webhook events without changing its URL, API version or secret. Reuse the existing Connect endpoint and its Vault signing key. Configure Twilio incoming callback after the handler exists, then mark SMS replies ready.
 4. Activate the minute-by-minute dispatcher and verify service grants, event triggers/rules and cron configuration without sending synthetic customer messages.
-5. Merge the exact reviewed commit and verify Vercel production is READY for that commit and both production domains. Refresh changed Help embeddings through the authenticated service workflow; lexical retrieval remains available while embeddings refresh.
+5. Merge the exact reviewed commit and verify Vercel production is READY for that commit and both production domains. Updated Help articles are available through lexical retrieval; their stale embeddings are invalidated.
 
 ## Receiving-email DNS
 

@@ -1,3 +1,4 @@
+import { notifyDocumentActivity } from '@/lib/documentActivity';
 import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; 
@@ -345,7 +346,7 @@ export default function QuoteView() {
     if (!changesMessage.trim()) { toast.error("Please describe the changes you'd like to request"); return; }
     setSubmittingChanges(true);
     try {
-      const { error } = await supabase.functions.invoke('company-notifier', {
+      const { error } = await notifyDocumentActivity( {
         body: { event_key: 'quote_change_requested', document_uuid: quote.id, document_id: quote.id,
           company_id: quote.company_id, message_body: changesMessage.trim().slice(0, 2000) }
       });

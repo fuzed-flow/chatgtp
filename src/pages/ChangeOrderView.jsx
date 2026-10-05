@@ -1,3 +1,4 @@
+import { notifyDocumentActivity } from '@/lib/documentActivity';
 import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; 
@@ -271,7 +272,7 @@ export default function ChangeOrderView() {
     if (!changesMessage.trim()) { toast.error("Please describe the changes you'd like to request"); return; }
     setSubmittingChanges(true);
     try {
-      const { error } = await supabase.functions.invoke('company-notifier', {
+      const { error } = await notifyDocumentActivity( {
         body: { event_key: 'change_order_requested', document_uuid: changeOrder.id, document_id: changeOrder.id,
           company_id: changeOrder.company_id, message_body: changesMessage.trim().slice(0, 2000) }
       });

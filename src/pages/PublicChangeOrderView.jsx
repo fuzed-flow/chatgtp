@@ -1,3 +1,4 @@
+import { notifyDocumentActivity } from '@/lib/documentActivity';
 import { getPublicProject } from "@/lib/publicProject";
 import React, { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -157,7 +158,7 @@ export default function PublicChangeOrderView() {
         const viewer_type = session?.user ? 'internal' : 'client';
         
         // ⚡ TEMPORARILY REMOVED THE IF STATEMENT SO IT ALWAYS FIRES
-        await supabase.functions.invoke('company-notifier', {
+        await notifyDocumentActivity( {
           body: {
             event_key: "co_viewed",
             document_uuid: changeOrder.id,
@@ -255,7 +256,7 @@ export default function PublicChangeOrderView() {
         const clientName = client?.name || changeOrder?.client_name || "A client";
         const activeCompanyId = company?.id || changeOrder?.company_id;
 
-        await supabase.functions.invoke('company-notifier', {
+        await notifyDocumentActivity( {
           body: { 
             event_key: "co_approved", 
             document_uuid: changeOrder.id,
@@ -308,7 +309,7 @@ export default function PublicChangeOrderView() {
     if (!changesMessage.trim()) { toast.error("Please describe the changes you'd like to request"); return; }
     setSubmittingChanges(true);
     try {
-      const { error } = await supabase.functions.invoke('company-notifier', {
+      const { error } = await notifyDocumentActivity( {
         body: { event_key: 'change_order_requested', document_uuid: changeOrder.id, document_id: changeOrder.id,
           company_id: changeOrder.company_id, message_body: changesMessage.trim().slice(0, 2000) }
       });

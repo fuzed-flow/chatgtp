@@ -27,17 +27,28 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return respond({ error: "Method not allowed" }, 405);
   try {
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const bearer = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") || "";
+    const relaySecret = req.headers.get("X-Notification-Cron-Secret") || "";
+    if ((!bearer || bearer === Deno.env.get("SUPABASE_ANON_KEY")) && !relaySecret) return respond({error:"Authentication required"},401);
+    const db = createClient(url, key);
+    let service = bearer === key;
+    if (!service && relaySecret) {
+      const {data:config,error} = await db.rpc('notification_delivery_server_config');
+      if(error || !config?.notification_cron_secret) return respond({error:"Relay configuration unavailable"},503);
+      const expected=String(config.notification_cron_secret);
+      let difference=relaySecret.length ^ expected.length;
+      for(let i=0;i<Math.max(relaySecret.length,expected.length);i++) difference|=(relaySecret.charCodeAt(i)||0)^(expected.charCodeAt(i)||0);
+      service=difference===0;
+      if(!service) return respond({error:"Authentication required"},401);
+    }
     const input = await req.json();
     // Historical database webhooks lack event keys. Row triggers now create their in-app alerts.
     if (input.type === "UPDATE" && !input.event_key) return respond({ success: true, skipped: "database event handled by trigger" });
     const event = input.event_key === "quote_change_request" ? "quote_change_requested" : input.event_key;
     const config = documents[event];
     if (!config || !uuid.test(input.company_id || "")) return respond({ error: "Unsupported event" }, 400);
-    const url = Deno.env.get("SUPABASE_URL")!;
-    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const db = createClient(url, key);
-    const bearer = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") || "";
-    const service = bearer === key;
     let actor: { id: string; company_id: string; is_active: boolean; role: string } | null = null;
     if (bearer && !service) {
       const { data: auth } = await db.auth.getUser(bearer);
@@ -47,10 +58,12 @@ serve(async (req) => {
         if (!actor || actor.company_id !== input.company_id || actor.is_active === false) actor = null;
       }
     }
+    if (!service && !actor) return respond({error:"Authentication required"},401);
     if (event.startsWith("payment_") || event === "partial_payment_received") {
       if (!service && (!actor || !["owner", "admin", "office"].includes(actor.role))) return respond({ error: "Finance access required" }, 403);
     }
-    let query = db.from(config.table).select("*").eq("company_id", input.company_id);
+    const reader = service ? db : createClient(url,Deno.env.get('SUPABASE_ANON_KEY') || '',{global:{headers:{Authorization:`Bearer ${bearer}`}}});
+    let query = reader.from(config.table).select("*").eq("company_id", input.company_id);
     if (uuid.test(input.document_uuid || input.document_id || "")) query = query.eq("id", input.document_uuid || input.document_id);
     else {
       // Backwards-compatible relay for already-open portal pages.

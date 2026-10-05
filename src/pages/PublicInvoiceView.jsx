@@ -1,3 +1,4 @@
+import { notifyDocumentActivity } from '@/lib/documentActivity';
 import { getPublicProject } from "@/lib/publicProject";
 import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "@/api/supabaseClient"; 
@@ -111,7 +112,7 @@ export default function PublicInvoiceView() {
     const notifyTeam = async () => {
       notificationFired.current = true; 
       try {
-        await supabase.functions.invoke('company-notifier', {
+        await notifyDocumentActivity( {
           body: {
             event_key: "invoice_viewed",
             document_uuid: invoice.id,
