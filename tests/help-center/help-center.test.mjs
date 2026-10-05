@@ -119,7 +119,7 @@ test('FAQ finds full answers, offers safe links, expands accessible steps and re
   await wait(()=>d.querySelector('#support-subject'));
   input(d.querySelector('#support-subject'),'Help with my task');
   input(d.querySelector('#support-message'),'I cannot find my assignment.');
-  d.querySelector('form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+  d.querySelector('#support-subject').closest('form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
   await wait(()=>d.body.textContent.includes('Review it and tap Send there'));
   assert.ok(d.querySelector('a[href="mailto:support@fuzedflow.com"]'));
   assert.ok(d.querySelector('a[href="tel:+18554003000"]'));

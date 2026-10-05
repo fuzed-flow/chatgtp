@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Package, ClipboardList, Trash2, Calendar, Briefcase, FileText, ArrowDownRight, Check } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { toast } from "sonner";
+import EPEquipmentReservations from "./EPEquipmentReservations";
 
 const safeParseDate = (dateString) => {
   if (!dateString) return null;
@@ -19,34 +20,37 @@ const safeParseDate = (dateString) => {
   return isValid(parsed) ? parsed : null;
 };
 
-export default function EPInventory({ currentUser, companyId }) {
+export default function EPInventory() {
   const qc = useQueryClient();
-  const { profile } = useAuth(); // FORCE GRAB DIRECTLY FROM AUTH SESSION
-  
+  const { profile } = useAuth();
+
   const [open, setOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
 
-  // Bulletproof fallback: Check Auth Profile first, then props, then metadata
-  const activeCompanyId = profile?.company_id || companyId || currentUser?.company_id || currentUser?.user_metadata?.company_id;
-  const employeeName = profile?.full_name || profile?.email || currentUser?.user_metadata?.full_name || currentUser?.email || "Unknown Employee";
+  const activeCompanyId = profile?.company_id;
+  const actorId = profile?.id;
 
-  const defaultForm = { 
-    inventory_id: "", 
-    project_name: "none", 
-    quantity: "", 
-    notes: "" 
+  const defaultForm = {
+    inventory_id: "",
+    project_id: "none",
+    quantity: "",
+    notes: ""
   };
-  
+
   const [form, setForm] = useState(defaultForm);
 
   // 1. Fetch Projects for the dropdown
-  const { data: projects = [] } = useQuery({ 
-    queryKey: ["projects", activeCompanyId], 
+  const { data: projects = [] } = useQuery({
+    queryKey: ["inventory-assigned-projects", activeCompanyId, actorId],
     enabled: !!activeCompanyId,
     queryFn: async () => {
-      const { data } = await supabase.from("projects").select("id, name").eq("company_id", activeCompanyId);
-      return data || [];
-    } 
+      const { data, error } = await supabase.from("projects").select("id, name").eq("company_id", activeCompanyId);
+      if (error) throw error;
+      if (['owner','admin','manager','office'].includes(profile?.role)) return data || [];
+      const { data: assignments, error: assignmentError } = await supabase.from('project_staff').select('project_id').eq('company_id', activeCompanyId).eq('user_id', actorId).neq('is_active', false);
+      if (assignmentError) throw assignmentError;
+      return (data || []).filter(p => assignments?.some(a => a.project_id === p.id));
+    }
   });
 
   // 2. Fetch Actual Warehouse Inventory
@@ -61,70 +65,40 @@ export default function EPInventory({ currentUser, companyId }) {
   });
 
   // 3. Fetch My Inventory Transactions
-  const { data: logs = [], isLoading: logsLoading } = useQuery({
-    queryKey: ["inventory_transactions_mine", profile?.id || currentUser?.id, activeCompanyId],
-    enabled: !!activeCompanyId,
+  const { data: ownLogs = [], isLoading: logsLoading } = useQuery({
+    queryKey: ["inventory_transactions_mine", actorId, activeCompanyId],
+    enabled: !!activeCompanyId && !!actorId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory_transactions")
         .select("*")
         .eq("company_id", activeCompanyId)
-        .eq("employee_name", employeeName)
+        .eq("user_id", actorId)
         .order("created_at", { ascending: false });
-      
-      if (error) {
-        console.error("Inventory Fetch Error:", error.message);
-        return [];
-      }
+
+      if (error) throw error;
       return data || [];
     },
   });
+  // Older name-based records remain visible as read-only history. Only records
+  // with a server-captured user_id can authorize a stock return.
+  const { data: legacyLogs = [] } = useQuery({ queryKey: ['inventory-legacy-history', activeCompanyId, actorId, profile?.full_name, profile?.email], enabled: !!activeCompanyId && !!actorId,
+    queryFn: async () => { const { data, error } = await supabase.from('inventory_transactions').select('*').eq('company_id', activeCompanyId).is('user_id', null).eq('employee_name', profile?.full_name || profile?.email).order('created_at', { ascending: false }); if (error) throw error; return data || []; } });
+  const logs = [...ownLogs, ...legacyLogs].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 
   // 4. Create Mutation (Deducts stock AND logs transaction into inventory_transactions)
   const createMutation = useMutation({
     mutationFn: async (payload) => {
-      if (!activeCompanyId) throw new Error("Missing company profile context. Please re-login.");
-      
-      const invItem = inventory.find(i => String(i.id) === String(payload.inventory_id));
-      if (!invItem) throw new Error("Please select a valid inventory item.");
-
-      const qtyToTake = parseFloat(payload.quantity);
-      if (isNaN(qtyToTake) || qtyToTake <= 0) throw new Error("Quantity must be a valid number greater than 0.");
-
-      // Safely grab current quantity
-      const currentQty = Number(invItem.quantity_on_hand ?? invItem.quantity ?? 0);
-      const newQty = currentQty - qtyToTake;
-
-      // Deduct from Warehouse
-      const updatePayload = {};
-      if ('quantity_on_hand' in invItem) updatePayload.quantity_on_hand = newQty;
-      else if ('quantity' in invItem) updatePayload.quantity = newQty;
-      else updatePayload.quantity_on_hand = newQty;
-
-      const { error: invError } = await supabase.from("inventory").update(updatePayload).eq("id", invItem.id);
-      if (invError) throw invError;
-
-      // Log the usage
-      const dbPayload = {
-        company_id: activeCompanyId,
-        inventory_id: invItem.id,
-        employee_name: employeeName,
-        project_name: payload.project_name === "none" ? null : payload.project_name,
-        quantity_changed: -qtyToTake,
-        transaction_type: 'Consume',
-        notes: payload.notes || null
-      };
-
-      const { data, error } = await supabase.from("inventory_transactions").insert([dbPayload]).select();
+      const { data, error } = await supabase.rpc('consume_inventory_material', { p_inventory: payload.inventory_id, p_quantity: Number(payload.quantity), p_project: payload.project_id === 'none' ? null : payload.project_id, p_notes: payload.notes || null });
       if (error) throw error;
       return data;
     },
-    onSuccess: () => { 
-      qc.invalidateQueries({ queryKey: ["inventory_transactions_mine"] }); 
-      qc.invalidateQueries({ queryKey: ["inventory"] }); 
-      setOpen(false); 
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory_transactions_mine"] });
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      setOpen(false);
       setForm(defaultForm);
-      toast.success("Material usage logged successfully!"); 
+      toast.success("Material usage logged successfully!");
     },
     onError: (err) => {
       console.error("Save Error Details:", err);
@@ -132,34 +106,19 @@ export default function EPInventory({ currentUser, companyId }) {
     }
   });
 
-  // 5. Delete Mutation (Refunds stock AND deletes transaction)
+  // Returns are atomic and preserve the original usage history.
   const deleteMutation = useMutation({
     mutationFn: async (txId) => {
-      const tx = logs.find(l => l.id === txId);
-      if (tx) {
-        const invItem = inventory.find(i => String(i.id) === String(tx.inventory_id));
-        if (invItem) {
-          const currentQty = Number(invItem.quantity_on_hand ?? invItem.quantity ?? 0);
-          const refundedQty = currentQty - tx.quantity_changed; 
-          
-          const updatePayload = {};
-          if ('quantity_on_hand' in invItem) updatePayload.quantity_on_hand = refundedQty;
-          else if ('quantity' in invItem) updatePayload.quantity = refundedQty;
-          else updatePayload.quantity_on_hand = refundedQty;
-
-          await supabase.from("inventory").update(updatePayload).eq("id", invItem.id);
-        }
-      }
-      const { error } = await supabase.from("inventory_transactions").delete().eq("id", txId);
+      const { error } = await supabase.rpc('refund_inventory_material', { p_transaction: txId });
       if (error) throw error;
     },
-    onSuccess: () => { 
-      qc.invalidateQueries({ queryKey: ["inventory_transactions_mine"] }); 
-      qc.invalidateQueries({ queryKey: ["inventory"] }); 
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory_transactions_mine"] });
+      qc.invalidateQueries({ queryKey: ["inventory"] });
       setSelectedLog(null);
-      toast.success("Material log deleted & stock refunded."); 
+      toast.success("Material returned to stock. The usage record has been retained.");
     },
-    onError: (err) => toast.error(`Failed to delete: ${err.message}`)
+    onError: (err) => toast.error(`Could not return materials: ${err.message}`)
   });
 
   const handleFormSubmit = () => {
@@ -190,7 +149,7 @@ export default function EPInventory({ currentUser, companyId }) {
     const item = inventory.find(i => String(i.id) === String(log.inventory_id));
     const dateObj = safeParseDate(log.created_at);
     const displayQty = Math.abs(log.quantity_changed);
-    
+
     return (
       <tr key={log.id} className="border-b last:border-0 border-slate-100 hover:bg-slate-50 transition-colors">
         <td className="px-4 py-3 align-middle whitespace-nowrap">
@@ -210,7 +169,7 @@ export default function EPInventory({ currentUser, companyId }) {
         </td>
 
         <td className="px-4 py-3 align-middle min-w-[150px]">
-          {log.project_name ? (
+          {log.refunded_at ? <Badge variant="outline">Returned to stock</Badge> : log.project_name ? (
             <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] uppercase tracking-wider font-bold">
               <Briefcase className="h-3 w-3 mr-1" /> {log.project_name}
             </Badge>
@@ -221,9 +180,9 @@ export default function EPInventory({ currentUser, companyId }) {
 
         <td className="px-4 py-3 align-middle text-right whitespace-nowrap">
           <div className="flex items-center justify-end gap-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setSelectedLog(log)}
               className="text-slate-500 hover:text-amber-600 hover:bg-amber-50 font-bold"
             >
@@ -237,7 +196,8 @@ export default function EPInventory({ currentUser, companyId }) {
 
   return (
     <div className="space-y-6">
-      
+
+      <EPEquipmentReservations profile={profile} />
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -248,8 +208,8 @@ export default function EPInventory({ currentUser, companyId }) {
             {logs.length} Transactions Logged
           </p>
         </div>
-        <Button 
-          className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md" 
+        <Button
+          className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md"
           onClick={() => setOpen(true)}
         >
           <Plus className="h-4 w-4 mr-1.5" /> Log Material Taken
@@ -303,7 +263,7 @@ export default function EPInventory({ currentUser, companyId }) {
                 </div>
               </div>
             </DialogHeader>
-            
+
             <div className="space-y-6 pt-4">
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Item Taken</p>
@@ -338,13 +298,14 @@ export default function EPInventory({ currentUser, companyId }) {
               )}
 
               <div className="pt-4 border-t border-slate-100">
-                <Button 
-                  variant="destructive" 
+                {!selectedLog.user_id ? <p className="text-sm text-slate-600">This older record was saved by employee name. Ask your office to verify and correct its stock balance.</p> : selectedLog.refunded_at ? <p className="text-sm font-semibold text-slate-600">Returned to stock. This record is retained for your history.</p> : <Button
+                  variant="destructive"
                   className="w-full font-bold bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-100 shadow-none transition-colors"
-                  onClick={() => { if(confirm("Delete this log and return the items to inventory?")) deleteMutation.mutate(selectedLog.id); }}
+                  disabled={deleteMutation.isPending}
+                  onClick={() => deleteMutation.mutate(selectedLog.id)}
                 >
-                  <Trash2 className="h-4 w-4 mr-1.5" /> Delete & Refund Stock
-                </Button>
+                  <Trash2 className="h-4 w-4 mr-1.5" /> Return materials to stock
+                </Button>}
               </div>
             </div>
           </DialogContent>
@@ -360,7 +321,7 @@ export default function EPInventory({ currentUser, companyId }) {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            
+
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
               <div>
                 <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Warehouse Material *</Label>
@@ -369,7 +330,7 @@ export default function EPInventory({ currentUser, companyId }) {
                     <SelectValue placeholder="Select item from storage..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {inventory.map(i => (
+                    {inventory.filter(i => i.item_type !== "Equipment").map(i => (
                       <SelectItem key={i.id} value={String(i.id)} className="font-bold py-2">
                         <div className="flex flex-col items-start">
                           <span>{i.name}</span>
@@ -380,19 +341,19 @@ export default function EPInventory({ currentUser, companyId }) {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Quantity Taken *</Label>
                   <div className="relative">
-                    <Input 
-                      type="number" 
-                      min="0" 
-                      step="0.01" 
-                      value={form.quantity} 
-                      onChange={e => setForm({ ...form, quantity: e.target.value })} 
-                      className="bg-slate-50 font-black h-10 border-slate-300 text-slate-900 pr-16" 
-                      placeholder="0" 
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.quantity}
+                      onChange={e => setForm({ ...form, quantity: e.target.value })}
+                      className="bg-slate-50 font-black h-10 border-slate-300 text-slate-900 pr-16"
+                      placeholder="0"
                     />
                     {selectedInvItem && (
                       <span className="absolute right-3 top-3 text-[10px] font-black text-slate-400 uppercase tracking-wider">
@@ -400,7 +361,7 @@ export default function EPInventory({ currentUser, companyId }) {
                       </span>
                     )}
                   </div>
-                  
+
                   {/* DYNAMIC INVENTORY CALCULATOR FEEDBACK */}
                   {selectedInvItem && (
                     <p className={`text-[10px] font-bold mt-2 flex justify-between items-center ${remainingStock < 0 ? 'text-red-500' : 'text-slate-500'}`}>
@@ -411,36 +372,36 @@ export default function EPInventory({ currentUser, companyId }) {
                 </div>
                 <div>
                   <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Project (Optional)</Label>
-                  <Select value={form.project_name} onValueChange={v => setForm({ ...form, project_name: v })}>
+                  <Select value={form.project_id} onValueChange={v => setForm({ ...form, project_id: v })}>
                     <SelectTrigger className="bg-slate-50 font-bold h-10 border-slate-300 text-slate-900">
                       <SelectValue placeholder="None" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none" className="font-bold text-slate-500">— Shop / Unassigned —</SelectItem>
-                      {projects.map(p => <SelectItem key={p.id} value={p.name} className="font-bold">{p.name}</SelectItem>)}
+                      {projects.map(p => <SelectItem key={p.id} value={p.id} className="font-bold">{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
               <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Notes / Where used?</Label>
-              <Textarea 
-                value={form.notes} 
+              <Textarea
+                value={form.notes}
                 onChange={e => {
                   setForm({ ...form, notes: e.target.value });
-                }} 
-                rows={2} 
-                className="bg-slate-50 border-slate-300 font-medium text-sm text-slate-900 resize-y" 
-                placeholder="E.g., Used for framing the basement..." 
+                }}
+                rows={2}
+                className="bg-slate-50 border-slate-300 font-medium text-sm text-slate-900 resize-y"
+                placeholder="E.g., Used for framing the basement..."
               />
             </div>
-            
+
             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
               <Button variant="outline" className="font-bold" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button 
-                className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md animate-none min-w-[120px]" 
+              <Button
+                className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md animate-none min-w-[120px]"
                 onClick={handleFormSubmit}
                 disabled={createMutation.isPending}
               >

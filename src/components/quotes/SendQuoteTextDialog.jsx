@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,12 +12,13 @@ import { toast } from "sonner";
 import { createPageUrl } from "../../utils";
 
 export default function SendQuoteTextDialog({ open, onOpenChange, quoteId, quoteName, clientName, clientPhone, onSuccess }) {
-  const { settings } = useAuth();
+  const { settings, profile } = useAuth();
   
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [portalLink, setPortalLink] = useState("");
   const [saving, setSaving] = useState(false);
+  const sendIntent = useRef(null);
   const [quoteData, setQuoteData] = useState(null);
 
   useEffect(() => {
@@ -60,18 +61,22 @@ export default function SendQuoteTextDialog({ open, onOpenChange, quoteId, quote
     const finalSmsPayload = `${message}\n\n${portalLink}`;
 
     try {
-      await supabase.from("quotes").update({ status: "Sent" }).eq("id", quoteId);
+
       
       // ⚡ TRIGGER SUPABASE EDGE FUNCTION
-      const { data, error: fnError } = await supabase.functions.invoke('send-sms', { 
-        body: { 
-          phone_number: phone.trim(), 
-          message_body: finalSmsPayload,
-          client_id: quoteData?.client_id || null
-        } 
-      });
-
-      if (fnError) throw new Error(fnError.message || "Failed to trigger SMS function");
+      const signature = JSON.stringify([quoteId, phone.trim(), finalSmsPayload]);
+      if (sendIntent.current?.signature !== signature) sendIntent.current = { signature, requestId: crypto.randomUUID(), accepted: false };
+      if (!sendIntent.current.accepted) {
+        const { data, error: fnError } = await supabase.functions.invoke('send-sms', {
+          body: { phone_number: phone.trim(), message_body: finalSmsPayload, document_type: "quote", document_id: quoteId, request_id: sendIntent.current.requestId }
+        });
+        if (fnError || data?.success !== true) throw new Error(data?.error || fnError?.message || "SMS acceptance could not be confirmed");
+        sendIntent.current.accepted = true;
+      }
+      // Provider acceptance precedes the status change; retries never send another accepted SMS.
+      const { error: statusError } = await supabase.from("quotes").update({ status: "Sent" }).eq("id", quoteId).eq("company_id", profile.company_id).eq("status", "Draft");
+      if (statusError) throw new Error("SMS was sent, but document status could not be saved. Retry to update the status.");
+      sendIntent.current = null;
 
       toast.success(`Quote successfully texted to ${phone}!`, { id: loadingToast });
       onSuccess?.();

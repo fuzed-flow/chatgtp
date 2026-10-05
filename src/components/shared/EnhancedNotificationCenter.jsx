@@ -9,6 +9,8 @@ import { Bell, AlertCircle, Loader2, DollarSign, Hammer, FileText, Settings, AtS
 import { formatDistanceToNow, isValid } from "date-fns";
 import { toast } from "sonner";
 import { notificationLink } from "@/lib/notificationLinks";
+import { useNotificationPreferences, mutedNotificationCategories } from "@/lib/notificationPreferences";
+import PersonalNotificationSettings from "@/components/settings/PersonalNotificationSettings";
 
 const ICONS = { Financial: DollarSign, Projects: Hammer, Documents: FileText, Mentions: AtSign, Scheduling: Calendar, Timesheets: Clock };
 const FILTERS = ["Unread", "All", "Mentions", "Projects", "Financial", "Action Required"];
@@ -26,7 +28,11 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
   const companyId = profile?.company_id;
   const userId = profile?.id;
   const actionOnly = !!profile?.notify_action_required_only;
-  const enabled = !!userId && !!companyId && profile?.is_active !== false;
+  const preferences = useNotificationPreferences(profile);
+  const inAppEnabled = preferences.data?.in_app !== false;
+  const mutedCategories = mutedNotificationCategories(preferences.data);
+  const categoryKey = JSON.stringify(mutedCategories);
+  const enabled = !!userId && !!companyId && profile?.is_active !== false && inAppEnabled;
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("Unread");
   const [page, setPage] = useState(0);
@@ -35,14 +41,15 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
 
   function scopedQuery(query, view) {
     query = query.eq("company_id", companyId).eq("user_id", userId);
+    if (mutedCategories.length) query = query.not("category", "in", `(${mutedCategories.map(category => JSON.stringify(category)).join(",")})`);
     if (actionOnly || view === "Action Required") query = query.eq("severity", "Action Required");
     if (view === "Unread") query = query.eq("is_read", false);
     if (["Mentions", "Projects", "Financial"].includes(view)) query = query.eq("category", view);
     return query;
   }
 
-  const { data: unreadCount = 0, isError: countError } = useQuery({
-    queryKey: [...scope, "count", actionOnly, profile?.role], enabled, refetchInterval: 60000,
+  const { data: fetchedUnreadCount = 0, isError: countError } = useQuery({
+    queryKey: [...scope, "count", actionOnly, profile?.role, categoryKey, inAppEnabled], enabled, refetchInterval: 60000,
     queryFn: async () => {
       const { count, error } = await scopedQuery(supabase.from("notifications").select("id", { count: "exact", head: true }), "Unread");
       if (error) throw error;
@@ -50,7 +57,7 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
     },
   });
   const feed = useQuery({
-    queryKey: [...scope, "feed", actionOnly, profile?.role, filter, page], enabled: enabled && open,
+    queryKey: [...scope, "feed", actionOnly, profile?.role, filter, page, categoryKey, inAppEnabled], enabled: enabled && open,
     refetchInterval: 60000,
     queryFn: async () => {
       const { data, error } = await scopedQuery(supabase.from("notifications").select("*"), filter)
@@ -101,7 +108,8 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
     onError: () => toast.error("Could not save your notification preference."),
   });
 
-  const notifications = feed.data || [];
+  const unreadCount = inAppEnabled ? fetchedUnreadCount : 0;
+  const notifications = inAppEnabled ? (feed.data || []) : [];
   return (
     <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (value) { setPage(0); onCloseSidebar?.(); } }}>
       <DialogTrigger asChild>
@@ -122,20 +130,23 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
           </div>
           <p id="notification-description" className="text-xs text-slate-500">Updates for your role and assigned work.{actionOnly ? " Showing action required only." : ""}</p>
         </DialogHeader>
-        {showSettings && <div className="p-4 border-b bg-slate-50">
+        {showSettings && <div className="max-h-[65vh] overflow-y-auto border-b bg-slate-50">
+          <div className="p-4 border-b">
           <label className="flex items-start justify-between gap-4 text-sm">
             <span><span className="block font-semibold">Notify me only when action is required</span><span className="block text-xs text-slate-500 mt-1">Hide Important and FYI updates. Turn this off to see them again.</span></span>
-            <input type="checkbox" checked={actionOnly} disabled={preference.isPending} onChange={e => preference.mutate(e.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-blue-600" />
+            <input type="checkbox" checked={actionOnly} disabled={preference.isPending} onChange={e => preference.mutate(e.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-amber-500" />
           </label>
+          </div>
+          <PersonalNotificationSettings compact />
         </div>}
-        <div className="flex overflow-x-auto gap-2 p-3 border-b" aria-label="Notification filters">
+        {!showSettings && <div className="flex overflow-x-auto gap-2 p-3 border-b" aria-label="Notification filters">
           {FILTERS.map(value => <button type="button" key={value} aria-pressed={filter === value} onClick={() => { setFilter(value); setPage(0); }}
             className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold focus-visible:ring-2 focus-visible:ring-blue-400 ${filter === value ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
             {value}{value === "Unread" && unreadCount > 0 ? ` (${unreadCount})` : ""}
           </button>)}
-        </div>
-        <div className="max-h-[55vh] overflow-y-auto" aria-live="polite" aria-busy={feed.isFetching}>
-          {feed.isPending ? <div className="py-12 flex justify-center" role="status"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /><span className="sr-only">Loading notifications</span></div>
+        </div>}
+        {!showSettings && <div className="max-h-[55vh] overflow-y-auto" aria-live="polite" aria-busy={feed.isFetching}>
+          {!inAppEnabled ? <div className="p-8 text-center text-sm text-slate-600">Your in-app notifications are paused. Open notification settings to enable them. Your history is retained.</div> : feed.isPending ? <div className="py-12 flex justify-center" role="status"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /><span className="sr-only">Loading notifications</span></div>
             : feed.isError ? <div className="p-8 text-center text-sm text-slate-600"><p role="alert">Could not load your notifications.</p><Button variant="outline" className="mt-3" onClick={() => feed.refetch()}>Retry</Button></div>
             : !notifications.length ? <div className="text-center py-12 px-4"><Bell className="h-9 w-9 text-slate-300 mx-auto mb-3" /><p className="text-sm text-slate-600">No {filter.toLowerCase()} notifications to show.</p>{actionOnly && <p className="text-xs text-slate-500 mt-2">Your action-only preference is on.</p>}</div>
             : <ul className="divide-y divide-slate-100">{notifications.map(n => {
@@ -160,8 +171,8 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
                 </button>
               </li>;
             })}</ul>}
-        </div>
-        {(page > 0 || notifications.length === PAGE_SIZE) && <div className="flex justify-between items-center px-4 py-3 border-t text-xs text-slate-500">
+        </div>}
+        {!showSettings && (page > 0 || notifications.length === PAGE_SIZE) && <div className="flex justify-between items-center px-4 py-3 border-t text-xs text-slate-500">
           <Button variant="outline" size="sm" disabled={page === 0 || feed.isFetching} onClick={() => setPage(p => p - 1)}>Previous</Button>
           <span>Page {page + 1}</span>
           <Button variant="outline" size="sm" disabled={notifications.length < PAGE_SIZE || feed.isFetching} onClick={() => setPage(p => p + 1)}>Next</Button>

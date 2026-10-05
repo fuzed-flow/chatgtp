@@ -15,7 +15,8 @@ import { toast } from "sonner";
 const STATUS_COLORS = { 
   Pending: "bg-amber-100 text-amber-800 border-amber-200", 
   Approved: "bg-emerald-100 text-emerald-800 border-emerald-200", 
-  Rejected: "bg-red-100 text-red-800 border-red-200" 
+  Rejected: "bg-red-100 text-red-800 border-red-200",
+  Cancelled: "bg-slate-100 text-slate-700 border-slate-200"
 };
 
 const TYPE_ICONS = { 
@@ -47,13 +48,14 @@ export default function EPVacationTracker({ currentUser, companyId }) {
 
   // 2. FETCH REQUESTS: Gracefully capture empty array if RLS filters them out
   const { data: requests = [] } = useQuery({
-    queryKey: ["timeoff_mine", currentUser?.full_name],
-    enabled: !!currentUser?.full_name,
+    queryKey: ["timeoff_mine", companyId, currentUser?.id],
+    enabled: !!companyId && !!currentUser?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_off_requests")
         .select("*")
-        .eq("employee_name", currentUser.full_name)
+        .eq("company_id", companyId)
+        .eq("user_id", currentUser.id)
         .order("start_date", { ascending: false });
       
       if (error) {
@@ -86,8 +88,9 @@ export default function EPVacationTracker({ currentUser, companyId }) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase.from("time_off_requests").delete().eq("id", id);
+      const { data, error } = await supabase.from("time_off_requests").update({ status: "Cancelled" }).eq("company_id", companyId).eq("user_id", currentUser.id).eq("status", "Pending").eq("id", id).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("This request has changed. Reload time off before cancelling it.");
     },
     onSuccess: () => { 
       qc.invalidateQueries({ queryKey: ["timeoff_mine"] }); 
@@ -108,14 +111,16 @@ export default function EPVacationTracker({ currentUser, companyId }) {
       return;
     }
 
+    if (!companyId || !currentUser?.id) { toast.error("Your company profile is unavailable. Sign in again to request time off."); return; }
     const days = calcDays(form.start_date, form.end_date);
-    if (days <= 0) {
+    if (form.end_date < form.start_date) {
       toast.error("End date must be on or after start date.");
       return;
     }
     
     createMutation.mutate({
-      company_id: companyId || null,
+      company_id: companyId,
+      user_id: currentUser.id,
       employee_name: currentUser.full_name,
       type: form.type,
       start_date: form.start_date,

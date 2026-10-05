@@ -1,9 +1,9 @@
 {
   "verified_at": "2026-10-04",
-  "source_commit": "9b0c3b75ebd3c2dee3d746069a352c7e7de18da6",
-  "guide_count": 86,
-  "guide_words": 32894,
-  "corrected_faq_count": 22,
+  "source_commit": null,
+  "guide_count": 93,
+  "guide_words": 37387,
+  "corrected_faq_count": 32,
   "topics": [
     "Account",
     "Change Orders",
@@ -11,6 +11,7 @@
     "Clients",
     "Contractor Portal",
     "Daily Logs",
+    "Documents",
     "Employee Portal",
     "HR",
     "Help & Support",
@@ -33,7 +34,8 @@
     "Team",
     "Templates",
     "Timesheets",
-    "Vendors"
+    "Vendors",
+    "Warranty"
   ],
   "pages": [
     {
@@ -83,6 +85,10 @@
         {
           "slug": "guide-alert-and-automation-settings",
           "title": "Set document alert preferences and follow-up schedules"
+        },
+        {
+          "slug": "guide-personal-notification-delivery",
+          "title": "Choose personal notification channels, quiet hours and summaries"
         },
         {
           "slug": "guide-payments-connect-and-refunds",
@@ -254,6 +260,32 @@
       "status": "documented"
     },
     {
+      "page": "DocumentRequests",
+      "source": "src/pages/DocumentRequests.jsx",
+      "guides": [
+        {
+          "slug": "guide-document-recipient",
+          "title": "Review, sign or decline a document shared with you"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "DocumentResponse",
+      "source": "src/pages/DocumentResponse.jsx",
+      "guides": [
+        {
+          "slug": "guide-document-requests",
+          "title": "Request and track a general document review or electronic signature"
+        },
+        {
+          "slug": "guide-document-recipient",
+          "title": "Review, sign or decline a document shared with you"
+        }
+      ],
+      "status": "documented"
+    },
+    {
       "page": "EmployeePortal",
       "source": "src/pages/EmployeePortal.jsx",
       "guides": [
@@ -361,6 +393,10 @@
       "page": "Inventory",
       "source": "src/pages/Inventory.jsx",
       "guides": [
+        {
+          "slug": "guide-equipment-reservations",
+          "title": "Reserve equipment, record checkout and return reusable tools"
+        },
         {
           "slug": "guide-inventory-manage",
           "title": "Manage warehouse stock and review material usage"
@@ -872,6 +908,10 @@
         {
           "slug": "guide-all-tasks",
           "title": "Managing Action Items in the All Tasks screen"
+        },
+        {
+          "slug": "guide-task-discussion-dependencies",
+          "title": "Discuss a task and set prerequisites before work starts"
         }
       ],
       "status": "documented"
@@ -935,6 +975,28 @@
         {
           "slug": "guide-vendors-directory",
           "title": "Maintain the subcontractor and supplier directory"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "Warranty",
+      "source": "src/pages/Warranty.jsx",
+      "guides": [
+        {
+          "slug": "guide-warranty-claims",
+          "title": "Create, assign and resolve warranty claims"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "WarrantyResponse",
+      "source": "src/pages/WarrantyResponse.jsx",
+      "guides": [
+        {
+          "slug": "guide-warranty-claims",
+          "title": "Create, assign and resolve warranty claims"
         }
       ],
       "status": "documented"

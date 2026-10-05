@@ -1,3 +1,4 @@
+import { notifyDocumentActivity } from '@/lib/documentActivity';
 import React, { useRef } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useQuery } from "@tanstack/react-query";
@@ -79,7 +80,7 @@ export default function PublicPOView() {
         
         // ⚡ TEMPORARILY DISABLED THE LOCK: It will now fire 100% of the time
         // if (viewer_type === 'vendor') {
-          await supabase.functions.invoke('company-notifier', {
+          await notifyDocumentActivity( {
             body: {
               event_key: "po_viewed",
               document_uuid: po.id,

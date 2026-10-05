@@ -30,12 +30,12 @@ const bundlePromise = build({
     builder.onLoad({ filter: /.*/, namespace: 'contractor-test' }, args => ({
       loader: 'js', contents: args.path === 'sonner'
         ? 'export const toast={loading:()=>{},dismiss:()=>{}};'
-        : 'export const supabase={from:table=>window.portalDatabase.from(table)};',
+        : 'export const supabase={from:table=>window.portalDatabase.from(table),functions:{invoke:(...args)=>window.portalDatabase.invoke(...args)}};',
     }));
   } }],
 });
 
-async function portalView({ search = '?projectId=project-fixture', projectData = project, files = [], contactResponse = contact } = {}) {
+async function portalView({ search = '?projectId=project-fixture&token=synthetic-token', projectData = project, files = [], contactResponse = contact } = {}) {
   const errors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on('jsdomError', error => errors.push(error.message));
@@ -57,6 +57,11 @@ async function portalView({ search = '?projectId=project-fixture', projectData =
   window.HTMLAnchorElement.prototype.click = function () { downloads.push({ href: this.href, filename: this.download }); };
   window.open = () => { throw new Error('A synthetic document download must not open a fallback window.'); };
   window.portalDatabase = {
+    async invoke(name, {body}) {
+      queries.push({function:name,body:JSON.parse(JSON.stringify(body))});
+      const result=await (typeof contactResponse==='function'?contactResponse():contactResponse);
+      return {data:{project:projectData,files,contact_email:projectData?.company_id?result?.data?.email:null},error:null};
+    },
     from(table) {
       const record = { table, projection: null, filters: [], order: null, terminal: null };
       queries.push(record);
@@ -91,7 +96,7 @@ async function portalView({ search = '?projectId=project-fixture', projectData =
   };
   try {
     window.eval((await bundlePromise).outputFiles[0].text);
-    await wait(() => window.document.body.textContent.trim().length > 0);
+    await wait(() => window.document.body.textContent.trim().length > 0 || window.document.querySelector('.animate-spin'));
     return { window, document: window.document, queries, fetches, downloads, revoked, errors, wait, close };
   } catch (error) { close(); throw error; }
 }
@@ -110,14 +115,7 @@ test('quote contact is fetched only for the project company and produces an esca
     assert.equal(destination.searchParams.get('subject'), `Quote Submission: ${project.name}`);
     assert.deepEqual([...destination.searchParams.keys()], ['subject']);
     assert.ok(view.document.body.textContent.includes('Send to: bids+renovations@builder.example'));
-    assert.deepEqual(view.queries.map(query => query.table).sort(), ['companies', 'contractor_portal_files', 'projects']);
-    const projectQuery = view.queries.find(query => query.table === 'projects');
-    assert.deepEqual(projectQuery.projection.split(',').map(field => field.trim()).sort(), ['company_id', 'description', 'id', 'name', 'site_address']);
-    assert.deepEqual(projectQuery.filters, [['id', 'project-fixture']]);
-    const contactQuery = view.queries.find(query => query.table === 'companies');
-    assert.equal(contactQuery.projection, 'email:settings->>email', 'Only the configured email is projected, not company settings or unrelated records.');
-    assert.deepEqual(contactQuery.filters, [['id', 'company-fixture']]);
-    assert.equal(contactQuery.terminal, 'maybeSingle');
+    assert.deepEqual(view.queries,[{function:'public-project',body:{kind:'contractor',document_id:'project-fixture',token:'synthetic-token'}}]);
     assert.deepEqual(view.fetches, [], 'Rendering the portal does not make any external document requests.');
     assert.deepEqual(view.errors, []);
   } finally { view.close(); }
@@ -128,12 +126,12 @@ test('a pending company contact never creates a fallback or guessed email link',
   const pendingContact = new Promise(resolve => { resolveContact = resolve; });
   const view = await portalView({ contactResponse: () => pendingContact });
   try {
-    await view.wait(() => view.document.querySelector('[role="status"]'));
-    assert.ok(view.document.body.textContent.includes('Loading quote contact...'));
+    await pause(30);
+    assert.equal(view.queries.length,1);
     assert.equal(view.document.querySelector('a[href^="mailto:"]'), null);
     resolveContact(contact);
     await view.wait(() => view.document.querySelector('a[href^="mailto:"]'));
-    assert.equal(view.queries.filter(query => query.table === 'companies').length, 1);
+    assert.equal(view.queries.filter(query => query.function === 'public-project').length, 1);
     assert.deepEqual(view.errors, []);
   } finally { resolveContact(contact); view.close(); }
 });
@@ -166,7 +164,7 @@ test('unavailable company email falls back to the invitation contact without ret
   try {
     await view.wait(() => view.document.body.textContent.includes(replyInstructions));
     assert.equal(view.document.querySelector('a[href^="mailto:"]'), null);
-    assert.equal(view.queries.filter(query => query.table === 'companies').length, 1);
+    assert.equal(view.queries.filter(query => query.function === 'public-project').length, 1);
     assert.deepEqual(view.errors, []);
   } finally { view.close(); }
 });
@@ -204,10 +202,7 @@ test('bid documents retain separate View and Download actions with the correct U
     assert.equal(viewLink.href, file.file_url);
     assert.equal(viewLink.target, '_blank');
     assert.ok(viewLink.rel.includes('noopener') && viewLink.rel.includes('noreferrer'));
-    const fileQuery = view.queries.find(query => query.table === 'contractor_portal_files');
-    assert.deepEqual(fileQuery.filters, [['project_id', 'project-fixture']]);
-    assert.equal(fileQuery.order[0], 'created_at');
-    assert.equal(fileQuery.order[1].ascending, false);
+    assert.equal(view.queries[0].body.token,'synthetic-token');
     downloadButton.click();
     await view.wait(() => view.downloads.length === 1);
     assert.deepEqual(view.fetches, [file.file_url]);

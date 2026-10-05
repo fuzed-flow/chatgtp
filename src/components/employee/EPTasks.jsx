@@ -6,10 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle2, Circle, Calendar, Briefcase, AlertCircle, FileText, AlignLeft, Flag, GitBranch } from "lucide-react";
 import { toast } from "sonner";
+import TaskWorkflowPanel from "@/components/tasks/TaskWorkflowPanel";
+import { useLocation } from "react-router-dom";
 
 export default function EPTasks({ currentUser, companyId }) {
   const qc = useQueryClient();
   const [selectedTask, setSelectedTask] = useState(null);
+  const { search } = useLocation();
+  const notificationTask = new URLSearchParams(search).get("notificationTask");
 
   // 1. Fetch Projects
   const { data: projects = [] } = useQuery({ 
@@ -63,10 +67,10 @@ export default function EPTasks({ currentUser, companyId }) {
   });
 
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("notificationTask");
-    const task = tasks.find(t => t.id === id);
-    if (task) setSelectedTask(task);
-  }, [tasks]);
+    if (!notificationTask) return;
+    const task = tasks.find(t => t.id === notificationTask);
+    setSelectedTask(task || null);
+  }, [tasks, notificationTask]);
 
   // 4. Toggle Task Status Mutation
   const toggleMutation = useMutation({
@@ -264,7 +268,7 @@ export default function EPTasks({ currentUser, companyId }) {
       {/* TASK DETAILS DIALOG (SLIDE OUT) */}
       {selectedTask && (
         <Dialog open={!!selectedTask} onOpenChange={(val) => !val && setSelectedTask(null)}>
-          <DialogContent className="max-w-md bg-white border-slate-200 shadow-xl" aria-describedby={undefined}>
+          <DialogContent className="w-[95vw] max-w-md max-h-[90dvh] overflow-y-auto bg-white border-slate-200 shadow-xl" aria-describedby={undefined}>
             <DialogHeader>
               <div className="flex items-start gap-3 pr-6">
                 <div className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${selectedTask.status === "Done" || selectedTask.status === "Completed" ? "bg-emerald-500" : "bg-amber-500"}`} />
@@ -314,6 +318,7 @@ export default function EPTasks({ currentUser, companyId }) {
                 </div>
               </div>
 
+              <TaskWorkflowPanel task={selectedTask} sourceTable={selectedTask.source_table || "project_tasks"} />
               {/* Action Button */}
               <div className="pt-2 mt-4">
                 <Button 

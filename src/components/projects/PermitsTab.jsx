@@ -36,6 +36,9 @@ const EMPTY_FORM = {
   notes: "",
   file_url: "",
   file_name: "",
+  inspection_date: "",
+  inspection_result: "",
+  inspection_notes: "",
 };
 
 export default function PermitsTab({ projectId }) {
@@ -56,11 +59,12 @@ export default function PermitsTab({ projectId }) {
         .from("project_permits")
         .select("*")
         .eq("project_id", projectId)
+        .eq("company_id", companyId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !!companyId,
   });
 
   // --- 2. CREATE PERMIT ---
@@ -84,7 +88,7 @@ export default function PermitsTab({ projectId }) {
   // --- 3. UPDATE PERMIT ---
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const { error } = await supabase.from("project_permits").update(data).eq("id", id);
+      const { error } = await supabase.from("project_permits").update(data).eq("id", id).eq("company_id", companyId).eq("project_id", projectId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -98,7 +102,7 @@ export default function PermitsTab({ projectId }) {
   // --- 4. DELETE PERMIT ---
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase.from("project_permits").delete().eq("id", id);
+      const { error } = await supabase.from("project_permits").delete().eq("id", id).eq("company_id", companyId).eq("project_id", projectId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -133,6 +137,9 @@ export default function PermitsTab({ projectId }) {
       notes: permit.notes || "",
       file_url: permit.file_url || "",
       file_name: permit.file_name || "",
+      inspection_date: permit.inspection_date || "",
+      inspection_result: permit.inspection_result || "",
+      inspection_notes: permit.inspection_notes || "",
     });
     setDialog(true);
   };
@@ -174,10 +181,11 @@ export default function PermitsTab({ projectId }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const payload = { ...form, issue_date: form.issue_date || null, expiry_date: form.expiry_date || null, inspection_date: form.inspection_date || null, inspection_result: form.inspection_result || null };
     if (editingPermit) {
-      updateMutation.mutate({ id: editingPermit.id, data: form });
+      updateMutation.mutate({ id: editingPermit.id, data: payload });
     } else {
-      createMutation.mutate(form);
+      createMutation.mutate(payload);
     }
   };
 
@@ -259,6 +267,8 @@ export default function PermitsTab({ projectId }) {
                     {permit.description && (
                       <p className="text-xs font-medium text-slate-600 mt-2 bg-slate-50 p-2 rounded border border-slate-100">{permit.description}</p>
                     )}
+                    {(permit.inspection_date || permit.inspection_result) && <p className="text-sm font-medium text-slate-700 mt-2">Inspection{permit.inspection_date ? ` on ${permit.inspection_date}` : ''}: {permit.inspection_result || 'Awaiting result'}</p>}
+                    {permit.inspection_notes && <p className="text-xs text-slate-600 mt-1 whitespace-pre-wrap">{permit.inspection_notes}</p>}
                   </div>
                 </div>
 
@@ -285,7 +295,7 @@ export default function PermitsTab({ projectId }) {
 
       {/* DIALOG FORM */}
       <Dialog open={dialog} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="sm:max-w-lg bg-slate-50 border-slate-200 shadow-xl" aria-describedby={undefined}>
+        <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto bg-slate-50 border-slate-200 shadow-xl" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="font-black text-xl flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-amber-500" /> {editingPermit ? "Edit Permit Details" : "Log New Permit"}
@@ -308,7 +318,7 @@ export default function PermitsTab({ projectId }) {
                 <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
                   <SelectTrigger className="font-bold bg-white"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {["Pending", "Approved", "Active", "Expired", "Closed", "Rejected"].map(s => (
+                    {["Pending", "Information Required", "Approved", "Active", "Expired", "Closed", "Rejected"].map(s => (
                       <SelectItem key={s} value={s} className="font-bold">{s}</SelectItem>
                     ))}
                   </SelectContent>
@@ -342,6 +352,11 @@ export default function PermitsTab({ projectId }) {
               <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Scope of Work / Description</Label>
               <Textarea className="font-medium bg-white text-sm" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder="Brief description of work covered by this permit..." />
             </div>
+            <fieldset className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <legend className="px-1 text-sm font-bold text-slate-900">Inspection tracking</legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><Label htmlFor="permit-inspection-date">Inspection date</Label><Input id="permit-inspection-date" type="date" className="mt-1 bg-white min-h-11" value={form.inspection_date} onChange={e => setForm({ ...form, inspection_date: e.target.value })} /></div><div><Label htmlFor="permit-inspection-result">Result</Label><Select value={form.inspection_result || 'none'} onValueChange={v => setForm({ ...form, inspection_result: v === 'none' ? '' : v })}><SelectTrigger id="permit-inspection-result" className="mt-1 min-h-11 bg-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Awaiting result</SelectItem><SelectItem value="Passed">Passed</SelectItem><SelectItem value="Failed">Failed</SelectItem><SelectItem value="Reinspection required">Reinspection required</SelectItem></SelectContent></Select></div></div>
+              <div><Label htmlFor="permit-inspection-notes">Information requested / inspection notes</Label><Textarea id="permit-inspection-notes" className="mt-1 bg-white" value={form.inspection_notes} onChange={e => setForm({ ...form, inspection_notes: e.target.value })} placeholder="Required corrections, requested documents or inspector's notes" /></div>
+            </fieldset>
 
             <div className="bg-white p-3 rounded-lg border border-slate-200">
               <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Digital Copy (PDF/Image)</Label>

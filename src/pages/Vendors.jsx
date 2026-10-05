@@ -21,7 +21,8 @@ import DownloadButton from "../components/shared/DownloadButton";
 import VendorRequestDialog from "../components/vendors/VendorRequestDialog";
 import { toast } from "sonner";
 import { createPageUrl } from "../utils";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { notificationTargetId } from '@/lib/costNotificationWorkflows';
 import Papa from "papaparse";
 
 const CATEGORIES = ["Cabinets", "Deck Builder", "Drywall", "Electrical", "Fence/Deck", "Flooring", "Framing", "General", "Glass & Mirrors", "HVAC", "Painting", "Plumbing", "Roofing", "Stone Work", "Tile Work", "Other"];
@@ -29,6 +30,8 @@ const CATEGORIES = ["Cabinets", "Deck Builder", "Drywall", "Electrical", "Fence/
 export default function Vendors() {
   const { profile } = useAuth();
   const companyId = profile?.company_id;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetId = notificationTargetId(searchParams, 'id', 'vendorId');
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,7 +42,7 @@ export default function Vendors() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: "", contact_name: "", email: "", phone: "", address: "", notes: "", category: "Other", preferred: false, rating: 0, projects_worked_on: [], invoice_urls: [] });
+  const [form, setForm] = useState({ name: "", contact_name: "", email: "", phone: "", address: "", notes: "", category: "Other", preferred: false, rating: 0, projects_worked_on: [], invoice_urls: [], insurance_expiry: '', certification_expiry: '', wcb_policy: '' });
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -59,7 +62,7 @@ export default function Vendors() {
   };
 
   // Check if user has proper management role
-  const hasAccess = !!profile && ["admin", "office_admin", "project_manager"].includes(profile.role);
+  const hasAccess = !!profile && ["owner", "admin", "manager", "office", "office_admin", "project_manager"].includes(profile.role);
 
   // --- SUPABASE QUERIES ---
   const { data: vendors = [] } = useQuery({ 
@@ -71,6 +74,10 @@ export default function Vendors() {
       return data || [];
     }, 
   });
+  const { data: targetVendor, error: targetError } = useQuery({ queryKey: ['vendor-target', companyId, targetId], enabled: hasAccess && !!companyId && !!targetId,
+    queryFn: async () => { const { data, error } = await supabase.from('vendors').select('*').eq('company_id', companyId).eq('id', targetId).maybeSingle(); if (error) throw error; if (!data) throw new Error('This subcontractor is unavailable.'); return data; } });
+  useEffect(() => { if (!targetVendor) return; setEditing(targetVendor); setForm({ name: targetVendor.name || '', contact_name: targetVendor.contact_name || '', email: targetVendor.email || '', phone: targetVendor.phone || '', address: targetVendor.address || '', notes: targetVendor.notes || '', category: targetVendor.category || 'Other', preferred: targetVendor.preferred || false, rating: targetVendor.rating || 0, projects_worked_on: targetVendor.projects_worked_on || [], invoice_urls: targetVendor.invoice_urls || [], insurance_expiry: targetVendor.insurance_expiry || '', certification_expiry: targetVendor.certification_expiry || '', wcb_policy: targetVendor.wcb_policy || '' }); setDialogOpen(true); }, [targetVendor]);
+  const closeTarget = () => { const next = new URLSearchParams(searchParams); ['id', 'vendorId'].forEach(key => next.delete(key)); setSearchParams(next, { replace: true }); setEditing(null); setDialogOpen(false); };
 
   const { data: projects = [] } = useQuery({ 
     queryKey: ["projects", companyId], 
@@ -85,7 +92,7 @@ export default function Vendors() {
   // --- SUPABASE MUTATIONS ---
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      const { error } = await supabase.from("vendors").insert([{ ...data, company_id: companyId }]);
+      const { error } = await supabase.from("vendors").insert([{ ...data, company_id: companyId, insurance_expiry: data.insurance_expiry || null, certification_expiry: data.certification_expiry || null }]);
       if (error) throw error;
     },
     onSuccess: () => { 
@@ -98,7 +105,7 @@ export default function Vendors() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const { error } = await supabase.from("vendors").update(data).eq("id", id);
+      const { error } = await supabase.from("vendors").update({ ...data, insurance_expiry: data.insurance_expiry || null, certification_expiry: data.certification_expiry || null }).eq("id", id).eq("company_id", companyId);
       if (error) throw error;
     },
     onSuccess: () => { 
@@ -145,7 +152,7 @@ export default function Vendors() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ name: "", contact_name: "", email: "", phone: "", address: "", notes: "", category: "Other", preferred: false, rating: 0, projects_worked_on: [], invoice_urls: [] });
+    setForm({ name: "", contact_name: "", email: "", phone: "", address: "", notes: "", category: "Other", preferred: false, rating: 0, projects_worked_on: [], invoice_urls: [], insurance_expiry: '', certification_expiry: '', wcb_policy: '' });
     setDialogOpen(true);
   };
 
@@ -162,7 +169,7 @@ export default function Vendors() {
       preferred: vendor.preferred || false,
       rating: vendor.rating || 0,
       projects_worked_on: vendor.projects_worked_on || [],
-      invoice_urls: vendor.invoice_urls || []
+      invoice_urls: vendor.invoice_urls || [], insurance_expiry: vendor.insurance_expiry || '', certification_expiry: vendor.certification_expiry || '', wcb_policy: vendor.wcb_policy || ''
     });
     setDialogOpen(true);
   };
@@ -564,7 +571,8 @@ export default function Vendors() {
       )}
 
       {/* CREATE / EDIT DIALOG */}
-      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setEditing(null); }}>
+      {targetError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{targetError.message}</p>}
+      <Dialog open={dialogOpen} onOpenChange={(v) => { if (!v) closeTarget(); else setDialogOpen(true); }}>
         <DialogContent aria-describedby={undefined} className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-50">
           <DialogHeader><DialogTitle className="text-xl font-black">{editing ? "Edit Subcontractor" : "New Subcontractor"}</DialogTitle></DialogHeader>
           <form onSubmit={handleSave} className="space-y-4 pt-2">
@@ -670,6 +678,7 @@ export default function Vendors() {
               )}
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4"><div><Label htmlFor="vendor-insurance-expiry">Insurance expires</Label><Input id="vendor-insurance-expiry" type="date" className="mt-1 min-h-11 bg-white" value={form.insurance_expiry} onChange={e => setForm({ ...form, insurance_expiry: e.target.value })} /></div><div><Label htmlFor="vendor-certification-expiry">Certification expires</Label><Input id="vendor-certification-expiry" type="date" className="mt-1 min-h-11 bg-white" value={form.certification_expiry} onChange={e => setForm({ ...form, certification_expiry: e.target.value })} /></div><div><Label htmlFor="vendor-wcb-policy">WCB / insurance policy reference</Label><Input id="vendor-wcb-policy" className="mt-1 min-h-11 bg-white" value={form.wcb_policy} onChange={e => setForm({ ...form, wcb_policy: e.target.value })} /></div></div>
             <div><Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Internal Notes</Label><Textarea className="mt-1 bg-white" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={3} placeholder="Quality of work, payment terms, unreliability issues..." /></div>
             
             <label className="flex items-center gap-3 text-sm font-bold text-slate-700 bg-amber-50 border border-amber-200 p-4 rounded-xl cursor-pointer shadow-sm">

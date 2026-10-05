@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
+import { useLocation } from "react-router-dom";
 import { 
   ListChecks, Search, Calendar, AlertCircle, ChevronLeft, ChevronRight, 
   Plus, Edit2, Trash2, Flame, CalendarPlus, MoreVertical, Building2, User, Hammer, ClipboardList, Clock
@@ -23,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { format, parseISO, isValid } from "date-fns";
 import CreateTaskDialog from "../components/tasks/CreateTaskDialog"; 
+import TaskWorkflowPanel from "@/components/tasks/TaskWorkflowPanel";
 
 const STATUSES = ["To Do", "Doing", "Blocked", "Done", "Pending", "Active", "Under Review", "Completed"];
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
@@ -74,6 +76,8 @@ export default function Tasks() {
   const { profile } = useAuth();
   const companyId = profile?.company_id;
   const qc = useQueryClient();
+  const { search: notificationSearch } = useLocation();
+  const notificationTask = new URLSearchParams(notificationSearch).get("notificationTask");
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all"); 
@@ -139,10 +143,10 @@ export default function Tasks() {
   const userMap = useMemo(() => Object.fromEntries(users.map(u => [u.id, u.full_name])), [users]);
 
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("notificationTask");
-    const task = allTasks.find(t => t.id === requested);
-    if (task) setViewingTask(task);
-  }, [allTasks]);
+    if (!notificationTask) return;
+    const task = allTasks.find(t => t.id === notificationTask);
+    setViewingTask(task || null);
+  }, [allTasks, notificationTask]);
 
   const safeEditClientId = clients.some(c => String(c.id) === String(editForm.client_id)) ? String(editForm.client_id) : "none";
   const safeEditProjectId = projects.some(p => String(p.id) === String(editForm.project_id)) ? String(editForm.project_id) : "none";
@@ -172,6 +176,9 @@ export default function Tasks() {
          if (payload.assigned_to) {
            payload.assigned_to = [payload.assigned_to]; // Project tasks expect an array
          }
+         delete payload.lead_id;
+         delete payload.vendor_id;
+         delete payload.task_type;
       }
 
       const { error } = await supabase.from(tableName).insert([{ ...payload, company_id: companyId }]);
@@ -188,9 +195,6 @@ export default function Tasks() {
         description: payload.description || null,
         project_id: (!payload.project_id || payload.project_id === "none") ? null : payload.project_id,
         client_id: (!payload.client_id || payload.client_id === "none") ? null : payload.client_id,
-        lead_id: (!payload.lead_id || payload.lead_id === "none") ? null : payload.lead_id,
-        vendor_id: (!payload.vendor_id || payload.vendor_id === "none") ? null : payload.vendor_id,
-        task_type: payload.task_type || "General",
         status: payload.status || "To Do",
         priority: payload.priority || "Medium",
         estimated_hours: payload.estimated_hours ? Number(payload.estimated_hours) : null,
@@ -200,6 +204,9 @@ export default function Tasks() {
          taskPayload.due_date_target = payload.due_date || null;
          taskPayload.assigned_to = (!payload.assigned_to || payload.assigned_to === "none") ? null : [payload.assigned_to];
       } else {
+         taskPayload.lead_id = (!payload.lead_id || payload.lead_id === "none") ? null : payload.lead_id;
+         taskPayload.vendor_id = (!payload.vendor_id || payload.vendor_id === "none") ? null : payload.vendor_id;
+         taskPayload.task_type = payload.task_type || "General";
          taskPayload.due_date = payload.due_date || null;
          taskPayload.assigned_to = (!payload.assigned_to || payload.assigned_to === "none") ? null : payload.assigned_to;
       }
@@ -546,7 +553,7 @@ export default function Tasks() {
 
       {/* VIEW FULL DETAILS DIALOG */}
       <Dialog open={!!viewingTask} onOpenChange={(val) => !val && setViewingTask(null)}>
-        <DialogContent className="sm:max-w-2xl w-[95vw] rounded-xl p-0 overflow-hidden bg-white" aria-describedby={undefined}>
+        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90dvh] overflow-y-auto rounded-xl p-0 bg-white" aria-describedby={undefined}>
           
           <div className="p-6 bg-slate-50 border-b border-slate-200">
             <DialogHeader>
@@ -633,6 +640,7 @@ export default function Tasks() {
               </div>
             </div>
 
+            {viewingTask && <TaskWorkflowPanel task={viewingTask} sourceTable={viewingTask.source_table} />}
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2 mt-4">
               <Button variant="outline" className="w-full sm:w-auto font-bold order-2 sm:order-1" onClick={() => setViewingTask(null)}>Close</Button>
               <Button className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold shadow-sm order-1 sm:order-2" onClick={() => { openEditModal(viewingTask); setViewingTask(null); }}>
@@ -772,6 +780,13 @@ export default function Tasks() {
       <CreateTaskDialog 
         open={createDialogOpen} 
         onOpenChange={setCreateDialogOpen} 
+        clients={clients}
+        projects={projects}
+        leads={leads}
+        vendors={vendors}
+        users={users}
+        onSubmit={payload => handleCreateSubmit.mutate(payload)}
+        isLoading={handleCreateSubmit.isPending}
       />
     </div>
   );

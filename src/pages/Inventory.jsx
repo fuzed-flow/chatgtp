@@ -1,4 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { useSearchParams } from 'react-router-dom';
+import { notificationTargetId } from '@/lib/costNotificationWorkflows';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -13,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { formatCurrencyUSD } from "../components/utils/formatCurrency";
+import InventoryReservations from '@/components/inventory/InventoryReservations';
 
 const UNITS = ["ea", "ft", "sqft", "hr", "lft", "m", "sqm", "bag", "box", "roll", "sheet", "pail"];
 
@@ -32,6 +35,9 @@ const parseCSV = (text) => {
 export default function Inventory() {
   const { profile } = useAuth();
   const companyId = profile?.company_id;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const reservationId = notificationTargetId(searchParams, 'reservation', 'reservationId');
+  const requestedItemId = notificationTargetId(searchParams, 'id', 'inventoryId');
   
   // FIX: Robust fallback to grab the actual user's name for logs
   const employeeName = profile?.full_name || profile?.user_metadata?.full_name || profile?.email || "Admin";
@@ -57,8 +63,15 @@ export default function Inventory() {
   const [reportSearch, setReportSearch] = useState("");
   const [reportFilters, setReportFilters] = useState({ project: "All", employee: "All", type: "All" });
 
-  const defaultForm = { name: "", sku: "", category: "", sub_category: "", unit: "ea", cost: "", quantity_on_hand: "0", reorder_point: "0", location: "Main Storage", supplier: "", vendor_url: "", description: "", image_url: "" };
+  const defaultForm = { name: "", sku: "", category: "", sub_category: "", unit: "ea", cost: "", quantity_on_hand: "0", reorder_point: "0", location: "Main Storage", supplier: "", vendor_url: "", description: "", image_url: "", item_type: "Material", equipment_status: "Available", maintenance_due_date: "" };
   const [form, setForm] = useState(defaultForm);
+  const { data: targetReservation, error: reservationTargetError } = useQuery({ queryKey: ['inventory-reservation-target', companyId, reservationId], enabled: !!companyId && !!reservationId,
+    queryFn: async () => { const { data, error } = await supabase.from('inventory_reservations').select('id,inventory_id').eq('company_id', companyId).eq('id', reservationId).maybeSingle(); if (error) throw error; if (!data) throw new Error('This reservation is unavailable.'); return data; } });
+  const targetItemId = targetReservation?.inventory_id || requestedItemId;
+  const { data: targetItem, error: itemTargetError } = useQuery({ queryKey: ['inventory-target', companyId, targetItemId], enabled: !!companyId && !!targetItemId,
+    queryFn: async () => { const { data, error } = await supabase.from('inventory').select('*').eq('company_id', companyId).eq('id', targetItemId).maybeSingle(); if (error) throw error; if (!data) throw new Error('This inventory item is unavailable.'); return data; } });
+  useEffect(() => { if (targetItem) { setSelectedItem(targetItem); setDetailOpen(true); } }, [targetItem, reservationId]);
+  const closeTarget = () => { const next = new URLSearchParams(searchParams); ['id', 'inventoryId', 'reservation', 'reservationId'].forEach(key => next.delete(key)); setSearchParams(next, { replace: true }); setDetailOpen(false); };
 
   // 1. Fetch Inventory
   const { data: inventory = [], isLoading: invLoading } = useQuery({ 
@@ -140,11 +153,13 @@ export default function Inventory() {
         reorder_point: parseFloat(payload.reorder_point) || 0,
         location: payload.location || 'Main Storage',
         supplier: payload.supplier || null, vendor_url: payload.vendor_url || null,
-        description: payload.description || null, image_url: payload.image_url || null
+        description: payload.description || null, image_url: payload.image_url || null,
+        item_type: payload.item_type, equipment_status: payload.equipment_status,
+        maintenance_due_date: payload.maintenance_due_date || null,
       };
 
       if (editing) {
-        const { error } = await supabase.from("inventory").update(dbPayload).eq("id", editing.id);
+        const { error } = await supabase.from("inventory").update(dbPayload).eq("id", editing.id).eq("company_id", companyId);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("inventory").insert([dbPayload]);
@@ -165,7 +180,7 @@ export default function Inventory() {
 
   // Rapid Stock Adjuster
   const adjustStockMutation = useMutation({
-    mutationFn: async ({ id, newQty, change, name }) => {
+    mutationFn: async ({ id, newQty, change }) => {
       const { error } = await supabase.from("inventory").update({ quantity_on_hand: newQty }).eq("id", id);
       if (error) throw error;
       
@@ -219,6 +234,7 @@ export default function Inventory() {
       unit: item.unit || "ea", cost: item.cost || "", quantity_on_hand: item.quantity_on_hand || "0", reorder_point: item.reorder_point || "0", location: item.location || "",
       supplier: item.supplier || "", vendor_url: item.vendor_url || "",
       description: item.description || "", image_url: item.image_url || "",
+      item_type: item.item_type || "Material", equipment_status: item.equipment_status || "Available", maintenance_due_date: item.maintenance_due_date || "",
     });
     setDialogOpen(true);
   };
@@ -330,7 +346,7 @@ export default function Inventory() {
       const { data } = supabase.storage.from('resources').getPublicUrl(filePath);
       setForm({ ...form, image_url: data.publicUrl });
       toast.success("Image uploaded!");
-    } catch (error) {
+    } catch {
       toast.error("Image upload failed.");
     } finally {
       setUploadingImage(false);
@@ -345,6 +361,7 @@ export default function Inventory() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      {(reservationTargetError || itemTargetError) && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{reservationTargetError?.message || itemTargetError?.message}</p>}
       
       {/* TOP HEADER */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shrink-0 shadow-sm">
@@ -628,6 +645,10 @@ export default function Inventory() {
               <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Description & Notes</Label>
               <Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} className="mt-1" placeholder="Internal notes or material specs..." />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <div><Label htmlFor="inventory-kind">Item type</Label><Select value={form.item_type} onValueChange={item_type => setForm({ ...form, item_type })}><SelectTrigger id="inventory-kind" className="mt-1 min-h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Material">Material</SelectItem><SelectItem value="Equipment">Equipment / reusable tool</SelectItem></SelectContent></Select></div>
+              {form.item_type === 'Equipment' && <><div><Label htmlFor="equipment-condition">Equipment condition</Label><Select value={form.equipment_status} onValueChange={equipment_status => setForm({ ...form, equipment_status })}><SelectTrigger id="equipment-condition" className="mt-1 min-h-11"><SelectValue /></SelectTrigger><SelectContent>{['Available', 'Maintenance', 'Damaged', 'Missing'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div><div><Label htmlFor="equipment-maintenance">Next maintenance date</Label><Input id="equipment-maintenance" type="date" className="mt-1 min-h-11" value={form.maintenance_due_date} onChange={e => setForm({ ...form, maintenance_due_date: e.target.value })} /></div></>}
+            </div>
 
             <div className="flex justify-end pt-4 border-t border-slate-100">
               <div className="flex gap-2">
@@ -644,8 +665,8 @@ export default function Inventory() {
 
       {/* QUICK VIEW DIALOG */}
       {selectedItem && (
-        <Dialog open={detailOpen} onOpenChange={(v) => !v && setDetailOpen(false)}>
-          <DialogContent aria-describedby={undefined} className="max-w-sm bg-white border-slate-200 shadow-xl">
+        <Dialog open={detailOpen} onOpenChange={(v) => !v && closeTarget()}>
+          <DialogContent aria-describedby={undefined} className="max-w-lg max-h-[90dvh] overflow-y-auto bg-white border-slate-200 shadow-xl">
             <DialogHeader>
               <div className="flex items-start gap-4">
                 {selectedItem.image_url ? (
@@ -723,6 +744,8 @@ export default function Inventory() {
                   <Pencil className="h-4 w-4 mr-1.5" /> Edit Full Details
                 </Button>
               </div>
+              {selectedItem.item_type === 'Equipment' && <p className="text-sm font-bold text-slate-700">Condition: {selectedItem.equipment_status || 'Available'}{selectedItem.maintenance_due_date ? ` · Maintenance due ${selectedItem.maintenance_due_date}` : ''}</p>}
+              <InventoryReservations item={selectedItem} companyId={companyId} profile={profile} focusReservationId={reservationId} />
             </div>
           </DialogContent>
         </Dialog>

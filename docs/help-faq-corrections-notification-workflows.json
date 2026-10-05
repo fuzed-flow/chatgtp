@@ -1,0 +1,243 @@
+[
+  {
+    "slug": "warranty-workflow-availability",
+    "question": "Can I manage warranty claims in FuzedFlow?",
+    "feature_area": "Warranty",
+    "audience": "all",
+    "route": "/Warranty",
+    "answer_short": "Yes. Warranty supports saved claims, assignment, response deadlines, repair visits, customer updates, confirmation and reopening.",
+    "answer_long": "Open **Warranty** to create or manage accessible claims. Choose **New claim**, select the project, enter the issue, assign responsibility and set the response deadline. Use **Manage claim** to record a repair visit and resolution. **Email warranty access** shares an expiring customer link for new claims and updates; **Email claim access to customer** shares a single claim. Internal notes remain private unless **Show this update in the customer's warranty link** is checked. The customer can confirm a completed repair or reopen a resolved claim. Assigned field staff can read and add updates to their assigned claim.",
+    "source_files": [
+      "src/pages/Warranty.jsx",
+      "src/pages/WarrantyResponse.jsx"
+    ],
+    "search_terms": [
+      "warranty workflow availability"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "document-signature-availability",
+    "question": "Does document approval capture an electronic signature?",
+    "feature_area": "Documents",
+    "audience": "all",
+    "route": "/HelpArticles",
+    "answer_short": "Quote/change-order approval remains separate. General project documents have a dedicated electronic-signature request with consent and an activity record.",
+    "answer_long": "In the project's **Quotes & Docs → Reviews & signatures**, select **Request review / signature**, choose the saved document and **Electronic signature**, then review the named recipient, expiry and instructions before **Create and email request**. The recipient opens the secure link, reviews the file, enters their full name, confirms electronic consent and selects **Sign document**. The saved response records the name, date, consent version and document reference/checksum where available. Uploading a file or marking a sales document Approved does not itself capture this response.",
+    "source_files": [
+      "src/components/documents/DocumentWorkflows.jsx",
+      "src/pages/DocumentResponse.jsx"
+    ],
+    "search_terms": [
+      "document signature availability"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "phone-push-notifications",
+    "question": "Are in-app notifications the same as phone push notifications?",
+    "feature_area": "Notifications",
+    "audience": "all",
+    "route": "/EmployeePortal",
+    "answer_short": "No. In-app alerts are the bell history; optional device push requires a supported browser, explicit device permission and configured delivery.",
+    "answer_long": "Open the notification bell's personal settings, enable **Device push notifications**, choose **Connect this device**, approve the browser permission and select **Save my preferences**. On iOS/iPadOS 16.4 or later, add Fuzed Flow to the Home Screen and open the installed app before connecting. Each device connects separately. **Disable on this device** and signing out remove that device. Device push, SMS, instant email and digests begin off; configured providers and scheduled delivery are also required. Company document SMS alerts are a separate setting.",
+    "source_files": [
+      "src/components/shared/EnhancedNotificationCenter.jsx",
+      "supabase/migrations/20261004173154_notification_personal_delivery.sql"
+    ],
+    "search_terms": [
+      "phone push",
+      "mobile notification",
+      "browser permission",
+      "home screen",
+      "connect device"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "notification-quiet-hours",
+    "question": "How do I stop external alerts overnight?",
+    "feature_area": "Notifications",
+    "audience": "all",
+    "route": "/EmployeePortal",
+    "answer_short": "Enable Quiet hours for email, SMS and push in My notifications; in-app history remains available.",
+    "answer_long": "Open the bell's settings or **Admin Settings → Notifications → My notifications**, enable **Quiet hours for email, SMS and push**, choose start/end times and the correct timezone, then **Save my preferences**. Eligible external personal alerts wait until quiet hours end. This preference does not delete alerts or mark their work complete.",
+    "source_files": [
+      "supabase/migrations/20261004173154_notification_personal_delivery.sql"
+    ],
+    "search_terms": [
+      "notification quiet hours"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "notification-digests",
+    "question": "Can I get a daily or weekly summary instead of individual emails?",
+    "feature_area": "Notifications",
+    "audience": "all",
+    "route": "/EmployeePortal",
+    "answer_short": "Yes. Choose Daily summary or Weekly summary under Email digest in My notifications.",
+    "answer_long": "Set **Email digest** to **Daily summary** or **Weekly summary**, choose **Send after** and the weekly **Day**, then save. Digests are separate from **Instant email** and contain future eligible updates after opting in, filtered by your category preferences and access. Turning the digest setting Off stops future summaries. Delivery requires the configured email provider and scheduled dispatcher.",
+    "source_files": [
+      "supabase/migrations/20261004173154_notification_personal_delivery.sql"
+    ],
+    "search_terms": [
+      "notification digests"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "notification-actor-date",
+    "question": "Why do notifications show a person, record name and date?",
+    "feature_area": "Notifications",
+    "audience": "all",
+    "route": "/EmployeePortal",
+    "answer_short": "The wording identifies the actor and the actual event, for example Gary Byrne created Lead Tim Rich on Oct 2nd, 2026.",
+    "answer_long": "The notification describes the saved person or customer action, named record and event date where the source workflow records them. Scheduled reminders use a system identity instead of attributing them to an employee. Reading or dismissing an alert does not change the underlying task, lead, document or claim. Check the record itself when a status or payment needs verification.",
+    "source_files": [
+      "src/components/shared/EnhancedNotificationCenter.jsx",
+      "src/lib/notificationLinks.js"
+    ],
+    "search_terms": [
+      "notification actor date"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "document-request-link-expired",
+    "question": "What if a document review or signature link has expired?",
+    "feature_area": "Documents",
+    "audience": "all",
+    "route": "/HelpArticles",
+    "answer_short": "Ask the sender for current access; the sender can create another request or renew a pending request link.",
+    "answer_long": "For a pending request, the sender can use **Renew link & remind** in **Reviews & signatures**. Earlier links stop working. For an expired request, use **Request again** and review the new document/recipient/expiry before sending. The recipient should use the original current secure link rather than an internal builder URL. A completed response remains recorded and cannot be overwritten by replaying its link.",
+    "source_files": [
+      "src/components/documents/DocumentWorkflows.jsx",
+      "src/pages/DocumentResponse.jsx"
+    ],
+    "search_terms": [
+      "document request link expired"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "equipment-reservations",
+    "question": "Can I reserve equipment and receive overdue-return alerts?",
+    "feature_area": "Inventory",
+    "audience": "all",
+    "route": "/Inventory",
+    "answer_short": "Office staff reserve and check out equipment. Assigned field staff use My equipment to request checkout and confirm a physical return; overdue/conflict alerts follow the saved reservation.",
+    "answer_long": "Permitted office/project staff open **Inventory → Reservations and returns**, choose **Reserve**, enter quantity/project/person/start/return due and save. Use **Check out** for the physical handover and **Record return** after handback. Conflicts can warn and alert management while retaining the reservation. Equipment condition and Next maintenance date support maintenance/damaged/missing alerts.\n\nAssigned field staff open **Employee Portal → Inventory → My equipment**. **Request checkout** keeps the reservation Reserved until the office approves the handover with **Check out**. After returning checked-out equipment, choose **Confirm equipment returned**. These actions apply only to your own assigned reservation. A notification opens and highlights its target, including older records.",
+    "source_files": [
+      "src/pages/Inventory.jsx",
+      "supabase/migrations/20261004173132_subscriber_costs_assets_notifications.sql",
+      "src/components/employee/EPEquipmentReservations.jsx",
+      "src/components/inventory/InventoryReservations.jsx"
+    ],
+    "search_terms": [
+      "equipment reservations",
+      "my equipment",
+      "request checkout",
+      "reserved office approval",
+      "confirm equipment returned"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "task-prerequisites",
+    "question": "Does completing a prerequisite automatically complete the next task?",
+    "feature_area": "Tasks",
+    "audience": "all",
+    "route": "/Tasks",
+    "answer_short": "No. Completing all prerequisites creates a readiness alert; the dependent task still needs to be performed and completed.",
+    "answer_long": "For production tasks, a permitted manager adds **Prerequisites → Choose a prerequisite → Add prerequisite** from the same project. Circular dependencies are rejected. Staff can read the prerequisite list on their assigned task. Use **Task discussion → Post comment** for task-specific information. A ready alert does not verify site conditions, material availability or inspection readiness.",
+    "source_files": [
+      "src/pages/Tasks.jsx",
+      "src/components/pm/PMStaffTab.jsx"
+    ],
+    "search_terms": [
+      "task prerequisites"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "field-material-return",
+    "question": "How do I return materials to warehouse stock without deleting the usage history?",
+    "feature_area": "Inventory",
+    "audience": "all",
+    "route": "/EmployeePortal?tab=inventory",
+    "answer_short": "Open your Checkout History record’s Details and choose Return materials to stock. It restores the recorded quantity once and retains the original usage history.",
+    "answer_long": "In **Employee Portal → Inventory → Checkout History**, open **Details** for your own recorded material usage. Verify the material, quantity and project. After physically returning those materials or agreeing a correction with the office, choose **Return materials to stock** and wait for success. The original usage remains in history, marked **Returned to stock**. Repeating the return cannot refund that quantity again.\n\nStock deduction and new usage history are saved together; insufficient warehouse stock is rejected. Only your own saved usage record can authorize a return. Older records saved by employee name remain read-only and require office verification. Reusable equipment uses **My equipment → Confirm equipment returned** after handback, rather than material-stock restoration.",
+    "source_files": [
+      "src/components/employee/EPInventory.jsx",
+      "supabase/migrations/20261004173132_subscriber_costs_assets_notifications.sql"
+    ],
+    "search_terms": [
+      "return materials to stock",
+      "warehouse stock refund once",
+      "retained usage history",
+      "checkout history"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  }
+]

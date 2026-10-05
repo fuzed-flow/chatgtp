@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Camera, BookOpen, Trash2, X, FileText, CloudSun, AlertTriangle, Hammer, Briefcase, AlignLeft, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import DailyLogWorkflowFields from "@/components/pm/DailyLogWorkflowFields";
 
 const WEATHER = ["Sunny", "Cloudy", "Rainy", "Snowy", "Windy", "Hot", "Cold"];
 
@@ -39,6 +40,8 @@ export default function EPDailyLogs({ currentUser, companyId }) {
     safety_concerns: "", 
     materials_used: "", 
     weather: "Sunny", 
+    category: "Work Completed",
+    weather_delay: false,
     photos: [] 
   };
   
@@ -46,18 +49,19 @@ export default function EPDailyLogs({ currentUser, companyId }) {
 
   // 1. Fetch Projects
   const { data: projects = [] } = useQuery({ 
-    queryKey: ["projects", companyId], 
-    enabled: !!companyId,
+    queryKey: ["daily_log_assigned_projects", companyId, currentUser?.id],
+    enabled: !!companyId && !!currentUser?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("projects").select("id, name").eq("company_id", companyId);
-      return data || [];
+      const { data, error } = await supabase.from("project_staff").select("project_id,projects(id,name)").eq("company_id", companyId).eq("user_id", currentUser.id).or("is_active.is.null,is_active.eq.true");
+      if (error) throw error;
+      return [...new Map((data || []).filter(item => item.projects).map(item => [item.project_id, item.projects])).values()];
     } 
   });
 
   // 2. Fetch My Daily Logs
   const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["daily_logs_mine", currentUser?.id],
-    enabled: !!currentUser?.id,
+    queryKey: ["daily_logs_mine", companyId, currentUser?.id],
+    enabled: !!currentUser?.id && !!companyId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_daily_logs")
@@ -77,11 +81,15 @@ export default function EPDailyLogs({ currentUser, companyId }) {
   // 3. Create Mutation
   const createMutation = useMutation({
     mutationFn: async (payload) => {
+      if (!companyId || !currentUser?.id) throw new Error("Your company profile is unavailable. Sign in again before submitting a log.");
       const dbPayload = {
+        company_id: companyId,
         user_id: currentUser.id,
         project_id: payload.project_id, // Directly pass the selected project ID
         date: payload.date,
         weather: payload.weather,
+        category: payload.category || "General",
+        weather_delay: !!payload.weather_delay,
         summary: payload.summary,
         blockers: payload.blockers || null,
         safety_concerns: payload.safety_concerns || null,
@@ -101,7 +109,7 @@ export default function EPDailyLogs({ currentUser, companyId }) {
     },
     onError: (err) => {
       console.error("Save Error:", err);
-      alert(`🚨 DATABASE REJECTED THE SAVE 🚨\n\nError Message: ${err.message}\nError Details: ${err.details}\n\nPlease copy this exact message and paste it to me!`);
+      toast.error(err.message || "Could not save the daily log. Please retry.");
     }
   });
 
@@ -390,6 +398,7 @@ export default function EPDailyLogs({ currentUser, companyId }) {
               </Select>
             </div>
             
+            <DailyLogWorkflowFields value={form} onChange={setForm} disabled={createMutation.isPending} />
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Work Completed Today *</label>
               <Textarea value={form.summary} onChange={e => setForm({ ...form, summary: e.target.value })} rows={3} className="mt-1 bg-white" placeholder="Describe the work done..." />

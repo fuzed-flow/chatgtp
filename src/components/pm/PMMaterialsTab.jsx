@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import ActionMenu from "../shared/ActionMenu";
+import PMCostAlertsPanel from './PMCostAlertsPanel';
 
 export default function PMMaterialsTab({ projectId }) {
   const { profile } = useAuth();
@@ -33,7 +34,7 @@ export default function PMMaterialsTab({ projectId }) {
     cost_estimated: 0,
     supplier: "",
     status: "To Order",
-    photo_url: ""
+    photo_url: "", needed_by_date: '', cost_actual: '', purchase_order_id: 'none', budget_category: ''
   });
 
   // --- QUERIES ---
@@ -45,11 +46,15 @@ export default function PMMaterialsTab({ projectId }) {
         .from("project_materials")
         .select("*")
         .eq("project_id", projectId)
+        .eq("company_id", companyId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     }
   });
+
+  const { data: purchaseOrders = [] } = useQuery({ queryKey: ['project-material-pos', companyId, projectId], enabled: !!companyId && !!projectId,
+    queryFn: async () => { const { data, error } = await supabase.from('purchase_orders').select('id,po_number').eq('company_id', companyId).eq('project_id', projectId); if (error) throw error; return data || []; } });
 
   const { data: phases = [] } = useQuery({
     queryKey: ["project_phases", projectId],
@@ -73,10 +78,14 @@ export default function PMMaterialsTab({ projectId }) {
         company_id: companyId,
         project_id: projectId,
         phase_id: materialData.phase_id === "none" ? null : materialData.phase_id,
+        needed_by_date: materialData.needed_by_date || null,
+        purchase_order_id: materialData.purchase_order_id === 'none' ? null : materialData.purchase_order_id,
+        cost_actual: materialData.cost_actual === '' ? null : Number(materialData.cost_actual),
+        budget_category: materialData.budget_category.trim() || null,
       };
 
       if (editingId) {
-        const { error } = await supabase.from("project_materials").update(payload).eq("id", editingId);
+        const { error } = await supabase.from("project_materials").update(payload).eq("id", editingId).eq('company_id', companyId).eq('project_id', projectId);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("project_materials").insert([payload]);
@@ -193,7 +202,7 @@ export default function PMMaterialsTab({ projectId }) {
     setEditingId(null);
     setForm({ 
       custom_material_name: "", notes: "", phase_id: "none", quantity: 1, 
-      unit: "ea", cost_estimated: 0, supplier: "", status: "To Order", photo_url: "" 
+      unit: "ea", cost_estimated: 0, supplier: "", status: "To Order", photo_url: "", needed_by_date: '', cost_actual: '', purchase_order_id: 'none', budget_category: ''
     });
   };
 
@@ -214,7 +223,7 @@ export default function PMMaterialsTab({ projectId }) {
       cost_estimated: mat.cost_estimated || 0,
       supplier: mat.supplier || "",
       status: mat.status || "To Order",
-      photo_url: mat.photo_url || ""
+      photo_url: mat.photo_url || "", needed_by_date: mat.needed_by_date || '', cost_actual: mat.cost_actual ?? '', purchase_order_id: mat.purchase_order_id || 'none', budget_category: mat.budget_category || ''
     });
     setDialog(true);
   };
@@ -262,6 +271,7 @@ export default function PMMaterialsTab({ projectId }) {
 
   return (
     <div className="max-w-6xl mx-auto">
+      <PMCostAlertsPanel projectId={projectId} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         
         {/* LEFT COLUMN: MAIN CONTENT */}
@@ -435,7 +445,7 @@ export default function PMMaterialsTab({ projectId }) {
 
       {/* ADD / EDIT DIALOG */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialog(open); if(!open) resetForm(); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingId ? "Edit Material" : "Add Material"}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); saveMaterialMutation.mutate(form); }} className="space-y-4 pt-2">
             <div><Label>Material Name *</Label><Input required placeholder="e.g., 2x4x8 Lumber, Delta Faucet..." value={form.custom_material_name} onChange={e => setForm({...form, custom_material_name: e.target.value})} className="mt-1 bg-white font-medium" /></div>
@@ -474,6 +484,7 @@ export default function PMMaterialsTab({ projectId }) {
               </div>
             </div>
             <div><Label>Supplier</Label><Input placeholder="e.g. Home Depot, Build.com" value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} className="mt-1 bg-white" /></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><Label htmlFor="material-needed-date">Needed by</Label><Input id="material-needed-date" type="date" className="mt-1 bg-white min-h-11" value={form.needed_by_date} onChange={e => setForm({ ...form, needed_by_date: e.target.value })} /></div><div><Label htmlFor="material-actual-cost">Actual unit cost</Label><Input id="material-actual-cost" type="number" min="0" step="0.01" className="mt-1 bg-white min-h-11" value={form.cost_actual} onChange={e => setForm({ ...form, cost_actual: e.target.value })} placeholder="Use estimated cost until known" /></div><div><Label htmlFor="material-budget-category">Cost category</Label><Input id="material-budget-category" className="mt-1 bg-white min-h-11" value={form.budget_category} onChange={e => setForm({ ...form, budget_category: e.target.value })} placeholder="e.g. Electrical" /></div><div><Label htmlFor="material-purchase-order">Included in purchase order</Label><Select value={form.purchase_order_id} onValueChange={purchase_order_id => setForm({ ...form, purchase_order_id })}><SelectTrigger id="material-purchase-order" className="mt-1 min-h-11 bg-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">No purchase order</SelectItem>{purchaseOrders.map(po => <SelectItem key={po.id} value={po.id}>{po.po_number}</SelectItem>)}</SelectContent></Select></div></div>
             <div><Label>Notes / Details (Optional)</Label><Input placeholder="Supplier info, SKUs, or specs..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="mt-1 bg-white" /></div>
             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
               <Button type="button" variant="outline" onClick={() => setDialog(false)} className="font-bold">Cancel</Button>

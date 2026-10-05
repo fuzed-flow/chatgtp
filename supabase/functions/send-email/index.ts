@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { savedDeliveryContext, recordSalesOutcome, deliveryFailureEvent, registerDelivery, trackedReplyAddress, providerServerConfig } from "../_shared/salesNotifications.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,6 +93,10 @@ serve(async (req) => {
   }
 
   let originalAttempted = false;
+  let deliveryContext: any = null;
+  let salesDb: any;
+  let actorId: string | null = null;
+  let sendReference: string = "";
   try {
     const body = await req.json();
     const { to_email, subject, html_body, client_id, attachment_url, reply_to, attachments, company_id: payloadCompanyId } = body;
@@ -152,6 +157,10 @@ serve(async (req) => {
     }
     // Resolve and validate all copy details before delivering the client's email.
     const copy = body.send_copy_to_company === true ? await copyContext(supabase, companyId, body) : null;
+    deliveryContext = await savedDeliveryContext(supabase, companyId, body);
+    salesDb = createClient(supabaseUrl, serviceKey);
+    actorId = userId;
+    sendReference = body.request_id || crypto.randomUUID();
     const operationKey = body.request_id ? `fuzedflow/${companyId}/${body.request_id}` : null;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) throw new Error("Email service configuration is unavailable.");
@@ -163,6 +172,17 @@ serve(async (req) => {
       html: html_body,
       reply_to: reply_to
     };
+    let companyReplyTo: string | null = null;
+    if (deliveryContext) {
+      const companyReply = await salesDb.from('companies').select('settings').eq('id', companyId).single();
+      if (!companyReply.error && validCompanyEmail(companyReply.data?.settings?.email)) companyReplyTo = companyReply.data.settings.email.trim();
+      if (!reply_to && companyReplyTo) emailPayload.reply_to = companyReplyTo;
+    }
+    if (body.track_replies === true) {
+      const config = await providerServerConfig(salesDb);
+      const replyAddress = await trackedReplyAddress(salesDb, deliveryContext, config.resend_reply_domain, to_email);
+      if (replyAddress) emailPayload.reply_to = [replyAddress, ...(companyReplyTo ? [companyReplyTo] : [])];
+    }
 
     const finalAttachments = [];
 
@@ -182,12 +202,22 @@ serve(async (req) => {
 
     originalAttempted = true;
     const resendData = await sendViaResend(emailPayload, resendApiKey, operationKey ? `${operationKey}/original` : undefined);
+    try {
+      await registerDelivery(salesDb, deliveryContext, "resend", resendData.id, userId, to_email, emailPayload.from);
+    } catch {
+      console.warn("Email accepted; delivery tracking could not be recorded.");
+    }
+    if (deliveryContext?.kind === "receipt") await recordSalesOutcome(salesDb, deliveryContext, "receipt_sent", `resend:${resendData.id}`, userId);
+    if (deliveryContext?.kind === "followup" && ["quote", "co"].includes(deliveryContext.prefix)) {
+      await recordSalesOutcome(salesDb, deliveryContext, `${deliveryContext.prefix}_followup_sent`, `resend:${resendData.id}`, userId);
+    }
 
     // Provider IDs are trusted UUIDs. Replaying a send must not duplicate outreach.
     // Logging failure never changes an already accepted email into a send failure.
     try {
       const { error } = await supabase.from("client_communications").upsert({
-        id: resendData.id, company_id: companyId, client_id: copy ? copy.clientId : (client_id || null),
+        id: resendData.id, company_id: companyId, client_id: deliveryContext?.clientId || (copy ? copy.clientId : (client_id || null)),
+        lead_id: deliveryContext?.leadId || null, provider: "resend", provider_message_id: resendData.id,
         type: "Email", direction: "outbound", subject, message: html_body,
         status: "sent", sent_by: userId,
       }, { onConflict: "id", ignoreDuplicates: true });
@@ -205,9 +235,12 @@ serve(async (req) => {
           resendApiKey, `${operationKey}/copy`);
         copyStatus = "sent";
         copyResendId = copyData.id;
+        try { await registerDelivery(salesDb, deliveryContext, "resend", copyData.id, userId, copy.recipient, emailPayload.from, true); }
+        catch { console.warn("Company copy accepted; delivery tracking could not be recorded."); }
       } catch {
         copyStatus = "failed";
         copyError = "The client email was sent, but the company copy could not be confirmed. Retry the copy.";
+        await recordSalesOutcome(salesDb, deliveryContext, "document_copy_failed", `${sendReference}:copy`, userId);
       }
     }
 
@@ -217,6 +250,9 @@ serve(async (req) => {
     );
 
   } catch (err: any) {
+    if (originalAttempted && deliveryContext && salesDb) {
+      await recordSalesOutcome(salesDb, deliveryContext, deliveryFailureEvent(deliveryContext), `${sendReference}:original`, actorId);
+    }
     return new Response(
       JSON.stringify({ error: err.message }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: originalAttempted ? 502 : 400 }

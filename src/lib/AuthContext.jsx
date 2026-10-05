@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { clearNotificationPushOnSignOut } from '@/lib/notificationPush';
 
 const AuthContext = createContext({});
 
@@ -83,6 +84,7 @@ export const AuthProvider = ({ children }) => {
     settings: company?.settings,
     loading,
     signOut: async () => {
+      await clearNotificationPushOnSignOut();
       // 1. Instantly destroy the React Query cache before state changes
       queryClient.clear();
       

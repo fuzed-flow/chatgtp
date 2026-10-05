@@ -48,11 +48,17 @@ test('notification centre counts beyond 100, filters, pages, persists preference
     window.document.querySelector('[aria-label="Notification settings"]').click();
     await wait(() => window.document.querySelector('input[type="checkbox"]'));
     window.document.querySelector('input[type="checkbox"]').click();
-    await wait(() => window.document.querySelectorAll('li').length === 1 && window.localStorage.getItem('fixture-action-only') === 'true');
+    await wait(() => window.localStorage.getItem('fixture-action-only') === 'true');
+    window.document.querySelector('[aria-label="Notification settings"]').click();
+    await wait(() => window.document.querySelectorAll('li').length === 1);
     assert.match(window.document.body.textContent, /Task overdue/);
     button('Mark this view read').click();
     await wait(() => !window.document.querySelector('li [aria-label="Unread"]'));
+    window.document.querySelector('[aria-label="Notification settings"]').click();
+    await wait(() => window.document.querySelector('input[type="checkbox"]'));
     window.document.querySelector('input[type="checkbox"]').click();
+    await wait(() => window.localStorage.getItem('fixture-action-only') === 'false');
+    window.document.querySelector('[aria-label="Notification settings"]').click();
     await wait(() => window.document.querySelectorAll('li').length === 30 && window.localStorage.getItem('fixture-action-only') === 'false');
     button('Financial').click();
     await wait(() => window.document.querySelectorAll('li').length === 2);

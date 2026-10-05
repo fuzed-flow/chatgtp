@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import DailyLogWorkflowFields from "@/components/pm/DailyLogWorkflowFields";
 
 const WEATHER = ["Sunny", "Cloudy", "Rainy", "Snowy", "Windy", "Hot", "Cold"];
 
@@ -32,6 +33,10 @@ export default function PMDailyLogsTab({ project }) {
   const defaultCreateForm = {
     date: format(new Date(), "yyyy-MM-dd"),
     weather: "",
+    category: "Work Completed",
+    weather_delay: false,
+    safety_status: "Open",
+    blocker_status: "Open",
     crew_on_site: "",
     summary: "",
     blockers: "",
@@ -140,6 +145,10 @@ export default function PMDailyLogsTab({ project }) {
         project_id: payload.project_id, 
         date: payload.date,
         weather: payload.weather,
+        category: payload.category || "General",
+        weather_delay: !!payload.weather_delay,
+        safety_status: payload.safety_status || "Open",
+        blocker_status: payload.blocker_status || "Open",
         // 👇 Fixed: Added the missing crew_on_site field
         crew_on_site: payload.crew_on_site || null,
         summary: payload.summary,
@@ -419,6 +428,7 @@ export default function PMDailyLogsTab({ project }) {
         <DialogContent aria-describedby={undefined} className="max-w-xl max-h-[90vh] overflow-y-auto bg-slate-50">
           <DialogHeader><DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2"><Plus className="h-5 w-5 text-blue-600"/> Add Daily Log</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
+            <DailyLogWorkflowFields value={createForm} onChange={setCreateForm} canReview disabled={createMutation.isPending} />
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Date *</Label>
@@ -548,6 +558,7 @@ export default function PMDailyLogsTab({ project }) {
               </div>
               
               <div>
+                <DailyLogWorkflowFields value={editForm} onChange={setEditForm} canReview disabled={updateMutation.isPending} />
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Materials Used</Label>
                 <Input className="mt-1 bg-white font-medium" value={editForm.materials_used || ""} onChange={e => setEditForm({ ...editForm, materials_used: e.target.value })} />
               </div>

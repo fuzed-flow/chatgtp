@@ -43,7 +43,8 @@ export default function ChangeOrderBuilder() {
 
   const [form, setForm, hydrateForm] = useDocumentState({
     title: "", project_id: projectId || "", status: "Draft", 
-    issue_date: format(new Date(), "yyyy-MM-dd"), notes: "", 
+    issue_date: format(new Date(), "yyyy-MM-dd"), next_follow_up_date: "", approval_due_date: "", notes: "",
+    internal_review_status: null, internal_reviewed_at: null, internal_reviewed_by: null,
     client_message: "Please review the proposed changes to the project scope and cost below.", 
     terms: "These changes will be incorporated into the main project upon approval.",
     overall_scope: "", show_overall_scope: true,
@@ -156,6 +157,10 @@ export default function ChangeOrderBuilder() {
       hydrateForm({
         title: existingCO.title || "", project_id: existingCO.project_id || "", 
         status: existingCO.status || "Draft", issue_date: existingCO.issue_date || format(new Date(), "yyyy-MM-dd"), 
+        next_follow_up_date: existingCO.next_follow_up_date || "", approval_due_date: existingCO.approval_due_date || "",
+        internal_review_status: existingCO.internal_review_status || null,
+        internal_reviewed_at: existingCO.internal_reviewed_at || null,
+        internal_reviewed_by: existingCO.internal_reviewed_by || null,
         notes: existingCO.notes || "", client_message: existingCO.client_message || "", terms: existingCO.terms || "", 
         overall_scope: existingCO.overall_scope || "", show_overall_scope: existingCO.show_overall_scope !== false,
         margin: existingCO.margin ?? 0, margin_adjustment_type: existingCO.margin_adjustment_type || "none",
@@ -391,7 +396,7 @@ export default function ChangeOrderBuilder() {
 
   const grandTotal = effectiveSubtotal + grandTax;
 
-  const handleSave = async (newStatus = null, skipToast = false) => {
+  const handleSave = async (newStatus = null, skipToast = false, expectedStatus = null) => {
     if (savingRef.current) return null;
     if (documentLoading) {
       if (documentLoadFailed) toast.error("The change order could not be loaded. Please retry before saving.");
@@ -430,6 +435,8 @@ export default function ChangeOrderBuilder() {
         change_order_number: coNumber,
         status: finalStatus,
         issue_date: latestForm.issue_date || null,
+        next_follow_up_date: latestForm.next_follow_up_date || null,
+        approval_due_date: latestForm.approval_due_date || null,
         notes: latestForm.notes || "",
         client_message: latestForm.client_message || "",
         terms: latestForm.terms || "",
@@ -460,8 +467,11 @@ export default function ChangeOrderBuilder() {
         }
 
       } else {
-        const { error: coUpdateError } = await supabase.from("change_orders").update(coData).eq("id", coId).eq("company_id", companyId).select("id").single();
+        let coUpdate = supabase.from("change_orders").update(coData).eq("id", coId).eq("company_id", companyId);
+        if (expectedStatus !== null) coUpdate = coUpdate.eq("status", expectedStatus);
+        const { data: updatedCO, error: coUpdateError } = await coUpdate.select("id").single();
         if (coUpdateError) throw new Error(`Change Orders Update: ${coUpdateError.message}`);
+        if (!updatedCO?.id) throw new Error("The change order status has changed. Refresh before saving.");
       }
 
       if (pendingCounterUpdate.current !== null) {
@@ -504,6 +514,8 @@ export default function ChangeOrderBuilder() {
       await queryClient.invalidateQueries({ queryKey: ["change-order-phases", savedId] });
       await queryClient.invalidateQueries({ queryKey: ["change-order-items", savedId] });
       await queryClient.invalidateQueries({ queryKey: ["change_orders"] });
+      await queryClient.invalidateQueries({ queryKey: ["change-order", savedId] });
+      await queryClient.invalidateQueries({ queryKey: ["change-orders"] });
 
       setCoId(savedId);
       window.history.replaceState(window.history.state, "", `/ChangeOrderBuilder?id=${savedId}`);
@@ -516,6 +528,40 @@ export default function ChangeOrderBuilder() {
     } catch (error) {
       toast.dismiss();
       toast.error(`Change order was not saved: ${error.message || "Unknown error"}`);
+      return null;
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const handleRequestInternalReview = async () => {
+    if (savingRef.current) return null;
+    if (!["Draft", "Sent", "Pending Review"].includes(form.status)) {
+      toast.error("Only draft or sent change orders can be submitted for internal review.");
+      return null;
+    }
+    const persistedStatus = form.status;
+    const requestRevision = getRevision();
+    const savedId = await handleSave(null, true, persistedStatus);
+    if (!savedId) return null;
+    if (getRevision() !== requestRevision) {
+      toast.error("Your latest edits are still unsaved. Save them before requesting review.");
+      return null;
+    }
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.from("change_orders").update({
+        status: "Pending Review", internal_review_status: "Pending", internal_reviewed_at: null, internal_reviewed_by: null,
+      }).eq("id", savedId).eq("company_id", companyId).eq("status", persistedStatus).select("id").single();
+      if (error || !data?.id) throw error || new Error("The change order status has changed.");
+      hydrateForm(prev => ({ ...prev, status: "Pending Review", internal_review_status: "Pending", internal_reviewed_at: null, internal_reviewed_by: null }));
+      for (const queryKey of [["change-order", savedId], ["change_orders"], ["change-orders"]]) await queryClient.invalidateQueries({ queryKey });
+      toast.success("Change order submitted for internal review.");
+      return savedId;
+    } catch {
+      toast.error("The change order was saved, but review could not be requested. Refresh its status and try again.");
       return null;
     } finally {
       savingRef.current = false;
@@ -652,6 +698,17 @@ export default function ChangeOrderBuilder() {
             
             <div className="h-px bg-slate-100 my-1.5"></div>
             <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status & Workflow</div>
+
+            <button
+              disabled={saving || documentLoading || !["Draft", "Sent", "Pending Review"].includes(form.status)}
+              onClick={() => {
+                setActionsMenuOpen(false);
+                handleRequestInternalReview();
+              }}
+              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 flex items-center transition-colors disabled:opacity-50"
+            >
+              <Eye className="h-4 w-4 mr-3 text-amber-600" /> Request Internal Review
+            </button>
             
             <button 
               onClick={() => { setActionsMenuOpen(false); handleSave("Sent"); }} 
@@ -725,6 +782,7 @@ export default function ChangeOrderBuilder() {
                 <h1 className="text-base sm:text-xl font-bold text-slate-900 flex items-center gap-2 truncate">
                   <span className="truncate">{coId ? "Edit Change Order" : "New Change Order"}</span>
                   {existingCO && <StatusBadge status={existingCO.status} />}
+                  {form.internal_review_status && <span className="text-xs font-medium text-amber-800">Internal review: {form.internal_review_status === "Approved" ? "Approved for sending" : form.internal_review_status === "Changes Required" ? "Changes required" : "Awaiting review"}</span>}
                 </h1>
                 {existingCO?.change_order_number && <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">{existingCO.change_order_number}</p>}
               </div>
@@ -788,6 +846,18 @@ export default function ChangeOrderBuilder() {
             <div>
               <Label className="text-slate-900 font-medium">Issue Date</Label>
               <Input type="date" value={form.issue_date} onChange={e => setForm({...form, issue_date: e.target.value})} className="bg-white" />
+            </div>
+
+            <div>
+              <Label htmlFor="co-next-follow-up-date" className="text-slate-900 font-medium">Next Follow-up Date</Label>
+              <Input id="co-next-follow-up-date" type="date" value={form.next_follow_up_date} onChange={e => setForm(f => ({...f, next_follow_up_date: e.target.value}))} aria-describedby="co-follow-up-hint" className="h-11 bg-white" />
+              <p id="co-follow-up-hint" className="mt-1 text-xs text-slate-500">Optional date to remind your team to follow up.</p>
+            </div>
+
+            <div>
+              <Label htmlFor="co-approval-due-date" className="text-slate-900 font-medium">Client Approval Due Date</Label>
+              <Input id="co-approval-due-date" type="date" value={form.approval_due_date} onChange={e => setForm(f => ({...f, approval_due_date: e.target.value}))} aria-describedby="co-approval-due-hint" className="h-11 bg-white" />
+              <p id="co-approval-due-hint" className="mt-1 text-xs text-slate-500">Optional deadline for the client decision.</p>
             </div>
 
             <div className="md:col-span-2">

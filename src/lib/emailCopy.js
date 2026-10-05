@@ -119,7 +119,7 @@ export function useDocumentEmailSend({
       // When delivery was confirmed and only the status write failed, retry
       // that write without making another email request.
       if (!copyComplete) {
-        const { data, error } = await supabase.functions.invoke("send-email", { body: intent.payload });
+        const { data, error } = await supabase.functions.invoke("send-email", { body: { ...intent.payload, track_replies: true } });
         if (error) throw await functionError(error);
         if (data?.success !== true) throw new Error(data?.error || "Email delivery could not be confirmed. Please retry.");
         intent.response = data;

@@ -1,10 +1,13 @@
+import { stableRequestId } from "../_shared/salesNotifications.js";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
-const APP_URL = Deno.env.get("APP_URL") || "https://fuzedflow.com";
+const APP_URL = Deno.env.get("APP_URL") || "https://app.fuzedflow.com";
 
 serve(async (req) => {
   try {
+    const serviceAuth = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceAuth || req.headers.get("Authorization") !== `Bearer ${serviceAuth}`) return new Response("Authentication required", { status: 401 });
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -26,7 +29,7 @@ serve(async (req) => {
         companies ( id, name, settings ),
         clients ( name, email, phone )
       `)
-      .in("status", ["Sent", "Viewed", "Overdue", "Partial"]);
+      .in("status", ["Sent", "Viewed", "Overdue", "Partial", "Partially Paid"]);
 
     if (fetchError) throw fetchError;
     
@@ -173,6 +176,7 @@ serve(async (req) => {
         };
 
         const notifications = [];
+        let deliveriesSucceeded = true;
 
         // Queue Email
         if (client.email) {
@@ -185,12 +189,14 @@ serve(async (req) => {
                 subject: subject, 
                 html_body: htmlBody, 
                 client_id: invoice.client_id,
-                company_id: company.id
+                company_id: company.id, document_type: "invoice", document_id: invoice.id, notification_kind: "followup", track_replies: true,
+                request_id: await stableRequestId(`invoice:${invoice.id}:followup:${newStage}:email`)
               })
-            }).then(res => {
-              if (res.ok) emailsTriggered++;
-              else res.text().then(t => console.error("Email failed:", t));
-            })
+            }).then(async res => {
+              const result = await res.json();
+              if (res.ok && result.success === true) emailsTriggered++;
+              else deliveriesSucceeded = false;
+            }).catch(() => { deliveriesSucceeded = false; })
           );
         }
 
@@ -204,24 +210,27 @@ serve(async (req) => {
                 phone_number: client.phone,
                 message_body: smsBody,
                 client_id: invoice.client_id,
-                company_id: company.id
+                company_id: company.id, document_type: "invoice", document_id: invoice.id, notification_kind: "followup",
+                request_id: await stableRequestId(`invoice:${invoice.id}:followup:${newStage}:sms`)
               })
-            }).then(res => {
-              if (res.ok) smsTriggered++;
-              else res.text().then(t => console.error("SMS failed:", t));
-            })
+            }).then(async res => {
+              const result = await res.json();
+              if (res.ok && result.success === true) smsTriggered++;
+              else deliveriesSucceeded = false;
+            }).catch(() => { deliveriesSucceeded = false; })
           );
         }
 
         await Promise.all(notifications);
+        if (!deliveriesSucceeded) continue;
         
         // Update the invoice to the new stage and ensure status flips to Overdue if it wasn't already
         const updatePayload: any = { automation_stage: newStage };
-        if (diffDays > 0 && invoice.status !== "Partial") {
+        if (diffDays > 0 && !["Partial", "Partially Paid"].includes(invoice.status)) {
           updatePayload.status = "Overdue";
         }
         
-        await supabaseAdmin.from("invoices").update(updatePayload).eq("id", invoice.id);
+        await supabaseAdmin.from("invoices").update(updatePayload).eq("id", invoice.id).eq("company_id", invoice.company_id).eq("status", invoice.status);
       }
     }
 

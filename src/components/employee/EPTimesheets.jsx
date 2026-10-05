@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Clock, FileText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/AuthContext";
 
 function buildLocalIsoString(dateStr, timeStr) {
   if (!dateStr || !timeStr) return null;
@@ -47,6 +48,9 @@ const STATUS_COLORS = {
 
 export default function EPTimesheets({ currentUser, companyId }) {
   const qc = useQueryClient();
+  const { profile } = useAuth();
+  const identityReady = !!profile?.id && !!profile?.company_id && currentUser?.id === profile.id && companyId === profile.company_id;
+  const entriesKey = ["employee_timesheets", profile?.company_id, profile?.id];
   const [open, setOpen] = useState(false);
   
   const defaultForm = { 
@@ -69,14 +73,15 @@ export default function EPTimesheets({ currentUser, companyId }) {
     } 
   });
 
-  const { data: sheets = [] } = useQuery({
-    queryKey: ["time_entries_mine", currentUser?.full_name],
-    enabled: !!currentUser?.full_name,
+  const { data: sheets = [], isError, refetch } = useQuery({
+    queryKey: entriesKey,
+    enabled: identityReady,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_entries")
         .select("*")
-        .eq("employee_name", currentUser.full_name)
+        .eq("company_id", profile.company_id)
+        .eq("user_id", profile.id)
         .order("date", { ascending: false })
         .limit(30); 
       
@@ -88,13 +93,14 @@ export default function EPTimesheets({ currentUser, companyId }) {
   // ONLY CREATE ALLOWED - No updating or deleting!
   const createMutation = useMutation({
     mutationFn: async (payload) => {
+      if (!identityReady) throw new Error("Your company profile is unavailable. Sign in again before submitting hours.");
       const clockInTs = buildLocalIsoString(payload.date, payload.clock_in);
       const clockOutTs = buildLocalIsoString(payload.date, payload.clock_out);
 
       const dbPayload = {
-        company_id: companyId,
-        employee_name: currentUser.full_name,
-        user_id: currentUser.id,
+        company_id: profile.company_id,
+        employee_name: profile.full_name || currentUser.full_name,
+        user_id: profile.id,
         project_id: payload.project_id === "none" ? null : payload.project_id,
         date: payload.date,
         clock_in: clockInTs,
@@ -109,7 +115,8 @@ export default function EPTimesheets({ currentUser, companyId }) {
       if (error) throw error;
     },
     onSuccess: () => { 
-      qc.invalidateQueries({ queryKey: ["time_entries_mine"] }); 
+      qc.invalidateQueries({ queryKey: entriesKey });
+      qc.invalidateQueries({ queryKey: ["employee_clock_entries", profile?.company_id, profile?.id] });
       handleCloseDialog();
       toast.success("Timesheet submitted to HR for approval!"); 
     },
@@ -161,6 +168,7 @@ export default function EPTimesheets({ currentUser, companyId }) {
       </div>
 
       <div className="space-y-3">
+        {isError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">Your recorded shifts could not load.<Button variant="outline" className="mt-2 min-h-11" onClick={() => refetch()}>Retry</Button></div>}
         {sheets.length === 0 && (
           <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-300">
             <Clock className="h-10 w-10 text-slate-300 mx-auto mb-3" />
@@ -282,7 +290,7 @@ export default function EPTimesheets({ currentUser, companyId }) {
               <Button 
                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md shadow-amber-500/20" 
                 onClick={handleSubmit} 
-                disabled={createMutation.isPending || !form.clock_in || !form.clock_out}
+                disabled={!identityReady || createMutation.isPending || !form.clock_in || !form.clock_out}
               >
                 {createMutation.isPending ? "Saving..." : "Submit to HR"}
               </Button>

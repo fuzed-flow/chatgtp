@@ -36,7 +36,7 @@ const [localNotes, setLocalNotes] = useState({});
   const [form, setForm] = useState({ 
     name: "", phase_order: 1, status: "Not Started", start_date_target: "", 
     end_date_target: "", client_visible: true, internal_notes: "", budget: 0,
-    subcontractor_id: "none"
+    subcontractor_id: "none", depends_on_phase_id: "none"
   });
 
   // ⚡ FIXED: Subcontractor Creation State matches database schema perfectly
@@ -100,6 +100,7 @@ const [localNotes, setLocalNotes] = useState({});
       if (!cleanData.start_date_target) cleanData.start_date_target = null;
       if (!cleanData.end_date_target) cleanData.end_date_target = null;
       if (cleanData.subcontractor_id === "none") cleanData.subcontractor_id = null;
+      if (cleanData.depends_on_phase_id === "none") cleanData.depends_on_phase_id = null;
 
       const { error } = await supabase.from("project_phases").insert([{ ...cleanData, company_id: companyId, project_id: project.id }]);
       if (error) throw error;
@@ -122,12 +123,13 @@ const [localNotes, setLocalNotes] = useState({});
       if (cleanData.end_date_actual === "") cleanData.end_date_actual = null;
       if (cleanData.assigned_to === "none") cleanData.assigned_to = null;
       if (cleanData.subcontractor_id === "none") cleanData.subcontractor_id = null;
+      if (cleanData.depends_on_phase_id === "none") cleanData.depends_on_phase_id = null;
 
       const { error } = await supabase.from("project_phases").update(cleanData).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pm_phases", project.id] }),
-    onError: (err) => toast.error("Failed to update phase")
+    onError: (err) => toast.error(err.message || "Failed to update phase")
   });
   
   const deletePhase = useMutation({ 
@@ -282,7 +284,7 @@ const [localNotes, setLocalNotes] = useState({});
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {["Not Started","In Progress","Blocked","Completed"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          {["Not Started","Ready","In Progress","Blocked","Completed"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       
@@ -340,6 +342,14 @@ const [localNotes, setLocalNotes] = useState({});
                       <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5 border-b pb-2">
                         <User className="h-3.5 w-3.5 text-purple-500 shrink-0"/> Phase Ownership
                       </h4>
+                      <div>
+                        <Label htmlFor={`phase-prerequisite-${ph.id}`} className="text-xs text-slate-600">Prerequisite phase</Label>
+                        <Select value={ph.depends_on_phase_id || "none"} disabled={updatePhase.isPending} onValueChange={value => updatePhase.mutate({ id: ph.id, data: { depends_on_phase_id: value === "none" ? null : value } })}>
+                          <SelectTrigger id={`phase-prerequisite-${ph.id}`} className="mt-1 min-h-11 bg-slate-50"><SelectValue /></SelectTrigger>
+                          <SelectContent><SelectItem value="none">No prerequisite</SelectItem>{phases.filter(phase => phase.id !== ph.id).map(phase => <SelectItem key={phase.id} value={phase.id}>{phase.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                        {ph.depends_on_phase_id && <p className="mt-1 text-xs text-slate-500">{["completed", "complete", "done"].includes(String(phases.find(phase => phase.id === ph.depends_on_phase_id)?.status || "").toLowerCase()) ? "Prerequisite complete" : "Waiting for prerequisite completion"}</p>}
+                      </div>
                       <div>
                         <Label className="text-xs text-slate-600">Assigned Lead / Foreman</Label>
                         <Select value={ph.assigned_to || "none"} onValueChange={v => updatePhase.mutate({ id: ph.id, data: { assigned_to: v } })}>
@@ -508,6 +518,7 @@ const [localNotes, setLocalNotes] = useState({});
               <Label>Phase Name *</Label>
               <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g. Rough-in Plumbing" />
             </div>
+            <div><Label htmlFor="new-phase-prerequisite">Prerequisite phase</Label><Select value={form.depends_on_phase_id || "none"} onValueChange={value => setForm({ ...form, depends_on_phase_id: value })}><SelectTrigger id="new-phase-prerequisite" className="mt-1 min-h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">No prerequisite</SelectItem>{phases.map(phase => <SelectItem key={phase.id} value={phase.id}>{phase.name}</SelectItem>)}</SelectContent></Select></div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>

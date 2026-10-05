@@ -9,7 +9,8 @@ import {transform} from 'esbuild';
 // Execute the actual Edge Function with synthetic authentication, database,
 // and provider adapters. The fixture cannot make any network requests.
 const source = await fs.readFile(fileURLToPath(new URL('../../supabase/functions/send-email/index.ts', import.meta.url)), 'utf8');
-const javascript = (await transform(source.replace(/^import .*\n/gm, ''), {loader: 'ts', format: 'iife'})).code;
+const shared = await fs.readFile(fileURLToPath(new URL('../../supabase/functions/_shared/salesNotifications.js', import.meta.url)), 'utf8');
+const javascript = (await transform(shared.replace(/^export /gm, '') + '\n' + source.replace(/^import .*\n/gm, ''), {loader: 'ts', format: 'iife'})).code;
 const uuid = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
 const COMPANY = uuid(1);
 const OTHER_COMPANY = uuid(2);
@@ -128,6 +129,7 @@ function edgeFixture(options = {}) {
         return {data: {user: options.invalidUser ? null : {id: USER}}, error: options.invalidUser ? {message: 'Invalid synthetic token'} : null};
       }},
       from: table => new Query(table, args[1]),
+      rpc: async (name, payload) => { observed.rpcs ||= []; observed.rpcs.push({ name, payload: clone(payload || {}) }); return { data: name === "notification_provider_server_config" ? (options.providerConfig || {}) : name === "create_reply_route" ? uuid(999) : true, error: options.rpcErrors?.[name] ? { message: "Synthetic tracking error" } : null }; },
     };
   };
 
@@ -199,7 +201,7 @@ test('CORS preflight performs no authentication, database reads, or email send',
 
 test('an unchecked copy option sends and logs only the original client email', async () => {
   const fixture = edgeFixture();
-  const payload = requestBody({send_copy_to_company: false});
+  const payload = requestBody({send_copy_to_company: false, document_type: undefined, document_id: undefined});
   const {response, body} = await fixture.request(payload);
   assert.equal(response.status, 200);
   assert.equal(body.success, true);
@@ -530,4 +532,71 @@ test('existing service-authorized generic cron emails work without document-copy
   assert.equal(fixture.observed.delivered[0].payload.subject, payload.subject);
   assert.equal(fixture.communications.size, 1);
   assert.equal([...fixture.communications.values()][0].sent_by, null);
+});
+
+test('a failed saved invoice send records a server-scoped finance outcome without a delivery receipt', async () => {
+  const fixture = edgeFixture({primaryFailure: 'throw'});
+  const {response} = await fixture.request(requestBody());
+  assert.equal(response.status, 502);
+  const outcomes = fixture.observed.rpcs.filter(call => call.name === 'record_sales_event');
+  assert.equal(outcomes.length, 1);
+  assert.deepEqual(outcomes[0].payload, {p_company: COMPANY, p_event: 'invoice_send_failed', p_related: 'Invoice', p_id: DOCUMENT, p_message: 'INV-1001: invoice send failed. Open the saved record to review.', p_reference: `${REQUEST}:original`, p_actor: USER});
+  assert.equal(fixture.observed.rpcs.some(call => call.name === 'register_outbound_delivery'), false);
+});
+
+test('copy failure records its own outcome while accepted primary delivery remains tracked once', async () => {
+  const fixture = edgeFixture({copyFailure: 'throw'});
+  const {body} = await fixture.request(requestBody());
+  assert.equal(body.success, true); assert.equal(body.copy_status, 'failed');
+  const registry = fixture.observed.rpcs.filter(call => call.name === 'register_outbound_delivery');
+  assert.equal(registry.length, 1); assert.equal(registry[0].payload.p_copy, false);
+  assert.equal(registry[0].payload.p_related, 'Invoice'); assert.equal(registry[0].payload.p_company, COMPANY);
+  assert.equal(fixture.observed.rpcs.find(call => call.name === 'record_sales_event').payload.p_event, 'document_copy_failed');
+});
+
+test('accepted payment receipt uses the saved invoice client and records receipt availability', async () => {
+  const fixture = edgeFixture();
+  const {body} = await fixture.request(requestBody({send_copy_to_company: false, notification_kind: 'receipt', client_id: OTHER_COMPANY}));
+  assert.equal(body.success, true);
+  const registry = fixture.observed.rpcs.find(call => call.name === 'register_outbound_delivery');
+  assert.equal(registry.payload.p_kind, 'receipt'); assert.equal(registry.payload.p_client, CLIENT);
+  assert.equal(fixture.observed.rpcs.find(call => call.name === 'record_sales_event').payload.p_event, 'receipt_sent');
+});
+
+test('verified reply configuration uses a stable saved-contact address across an idempotent replay', async () => {
+  const fixture = edgeFixture({providerConfig: {resend_reply_domain: 'reply.fuzedflow.com'}});
+  const payload = requestBody({send_copy_to_company: false, track_replies: true});
+  assert.equal((await fixture.request(payload)).body.success, true);
+  assert.equal((await fixture.request(payload)).body.success, true);
+  assert.equal(fixture.observed.delivered.length, 1);
+  assert.equal(fixture.communications.size, 1);
+  assert.deepEqual(fixture.observed.providerAttempts[0].payload.reply_to, [`reply+${uuid(999)}@reply.fuzedflow.com`, COMPANY_EMAIL]);
+  assert.deepEqual(fixture.observed.providerAttempts[1].payload, fixture.observed.providerAttempts[0].payload);
+});
+
+test('unverified receiving configuration preserves the configured company inbox reply fallback', async () => {
+  const fixture = edgeFixture();
+  const {body} = await fixture.request(requestBody({send_copy_to_company: false, track_replies: true, reply_to: undefined}));
+  assert.equal(body.success, true);
+  assert.equal(fixture.observed.delivered[0].payload.reply_to, COMPANY_EMAIL);
+  assert.equal(fixture.observed.rpcs.some(call => call.name === 'create_reply_route'), false);
+});
+
+test('an edited recipient gets the company reply fallback rather than an unrelated saved-contact route', async () => {
+  const fixture = edgeFixture({providerConfig: {resend_reply_domain: 'reply.fuzedflow.com'}});
+  const {body} = await fixture.request(requestBody({send_copy_to_company: false, track_replies: true, reply_to: undefined, to_email: 'alternate@example.invalid'}));
+  assert.equal(body.success, true);
+  assert.equal(fixture.observed.delivered[0].payload.reply_to, COMPANY_EMAIL);
+  assert.equal(fixture.observed.rpcs.some(call => call.name === 'create_reply_route'), false);
+});
+
+test('verified tracking preserves the company inbox on both the primary and exact-content company copy', async () => {
+  const fixture = edgeFixture({providerConfig: {resend_reply_domain: 'reply.fuzedflow.com'}});
+  const {body} = await fixture.request(requestBody({track_replies: true}));
+  assert.equal(body.success, true); assert.equal(body.copy_status, 'sent');
+  const [original, copy] = fixture.observed.delivered;
+  assert.deepEqual(original.payload.reply_to, [`reply+${uuid(999)}@reply.fuzedflow.com`, COMPANY_EMAIL]);
+  assert.deepEqual(copy.payload.reply_to, original.payload.reply_to);
+  assert.equal(copy.payload.html, original.payload.html);
+  assert.deepEqual(copy.payload.attachments, original.payload.attachments);
 });

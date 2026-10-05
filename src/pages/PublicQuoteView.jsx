@@ -1,11 +1,12 @@
+import { notifyDocumentActivity } from '@/lib/documentActivity';
 import React, { useEffect, useState, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; 
-import { Download, CheckCircle, Building2, Calendar, MapPin, Receipt, MessageSquare, FileText, CreditCard, Loader2 } from "lucide-react";
+import { Download, CheckCircle, XCircle, Building2, Calendar, MapPin, Receipt, MessageSquare, FileText, CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -22,6 +23,11 @@ export default function PublicQuoteView() {
   const [changesDialogOpen, setChangesDialogOpen] = useState(false);
   const [changesMessage, setChangesMessage] = useState("");
   const [submittingChanges, setSubmittingChanges] = useState(false);
+  const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [isDeclining, setIsDeclining] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const decisionInFlight = useRef(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [selectedOptionalItems, setSelectedOptionalItems] = useState({});
   const [lightboxImage, setLightboxImage] = useState(null);
@@ -157,7 +163,7 @@ export default function PublicQuoteView() {
       notificationFired.current = true; 
       
       try {
-        await supabase.functions.invoke('company-notifier', {
+        await notifyDocumentActivity( {
           body: {
             event_key: "quote_viewed",
             document_uuid: quote.id,
@@ -200,7 +206,11 @@ export default function PublicQuoteView() {
       const trackView = async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          const viewer_type = session?.user ? 'internal' : 'client';
+          let viewer_type = 'client';
+          if (session?.user) {
+            const { data: viewer } = await supabase.from('profiles').select('company_id,is_active').eq('id', session.user.id).maybeSingle();
+            if (viewer?.company_id === quote.company_id && viewer.is_active !== false) viewer_type = 'internal';
+          }
           // Keep the database view tracker, but remove the broken duplicate notification!
           await supabase.from("quote_views").insert([{ company_id: quote.company_id, quote_id: quoteId, viewer_type, viewed_at: new Date().toISOString() }]);
         } catch (err) { }
@@ -288,6 +298,13 @@ export default function PublicQuoteView() {
   };
 
   const handleAcceptQuote = async () => {
+    if (["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending Review"].includes(quote.status)) {
+      toast.error(quote.status === "Pending Review" ? "The team is reviewing this document." : "This quote already has a recorded decision.");
+      return;
+    }
+    if (decisionInFlight.current) return;
+    decisionInFlight.current = true;
+    setIsApproving(true);
     try {
       const finalTotals = calculateTotals();
       
@@ -297,7 +314,7 @@ export default function PublicQuoteView() {
         subtotal: finalTotals.subtotal, 
         tax: finalTotals.totalTax, 
         total: finalTotals.total
-      }).eq("id", quote.id);
+      }).eq("id", quote.id).eq("company_id", quote.company_id).eq("status", quote.status).select("id").single();
 
       // ⚡ Catch database security blocks so we don't send fake emails
       if (updateError) throw updateError;
@@ -306,7 +323,7 @@ export default function PublicQuoteView() {
         const clientName = client?.name || quote?.client_name || "A client";
         const activeCompanyId = company?.id || quote?.company_id;
 
-        await supabase.functions.invoke('company-notifier', {
+        await notifyDocumentActivity( {
           body: { 
             event_key: "quote_approved", 
             document_uuid: quote.id,
@@ -324,6 +341,34 @@ export default function PublicQuoteView() {
       queryClient.invalidateQueries({ queryKey: ["public-quote", quoteId] });
     } catch (error) { 
       toast.error("Failed to accept quote. Please ensure database permissions allow public updates."); 
+    } finally {
+      decisionInFlight.current = false;
+      setIsApproving(false);
+    }
+  };
+
+  const handleDeclineQuote = async () => {
+    if (["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending Review"].includes(quote?.status)) {
+      toast.error(quote.status === "Pending Review" ? "The team is reviewing this document." : "This quote already has a recorded decision.");
+      return;
+    }
+    if (decisionInFlight.current || !quote?.company_id) return;
+    decisionInFlight.current = true;
+    setIsDeclining(true);
+    try {
+      const { data, error } = await supabase.from("quotes").update({
+        status: "Declined", decline_reason: declineReason.trim().slice(0, 2000) || null,
+      }).eq("id", quote.id).eq("company_id", quote.company_id).eq("status", quote.status).select("id").single();
+      if (error || !data?.id) throw error || new Error("The quote could not be updated.");
+      await queryClient.invalidateQueries({ queryKey: ["public-quote", quoteId] });
+      setDeclineDialogOpen(false);
+      setDeclineReason("");
+      toast.success("Quote declined.");
+    } catch {
+      toast.error("The quote could not be declined. Refresh to check its current status, then try again.");
+    } finally {
+      decisionInFlight.current = false;
+      setIsDeclining(false);
     }
   };
 
@@ -331,7 +376,7 @@ export default function PublicQuoteView() {
     if (!changesMessage.trim()) { toast.error("Please describe the changes you'd like to request"); return; }
     setSubmittingChanges(true);
     try {
-      const { error } = await supabase.functions.invoke('company-notifier', {
+      const { error } = await notifyDocumentActivity( {
         body: { event_key: 'quote_change_requested', document_uuid: quote.id, document_id: quote.id,
           company_id: quote.company_id, message_body: changesMessage.trim().slice(0, 2000) }
       });
@@ -701,13 +746,17 @@ export default function PublicQuoteView() {
           <Button onClick={downloadPDF} variant="outline" className="shadow-sm bg-white font-bold h-11">
             <Download className="h-4 w-4 mr-2 text-slate-500" /> Download PDF
           </Button>
-          {quote.status !== "Approved" && (
+          {quote.status === "Pending Review" && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">The team is reviewing this document.</p>}
+          {!["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending Review"].includes(quote.status) && (
             <>
-              <Button onClick={handleAcceptQuote} className="shadow-lg font-black h-11 px-8" style={{ backgroundColor: brandColor, color: '#fff' }}>
+              <Button onClick={handleAcceptQuote} disabled={isApproving || isDeclining} className="shadow-lg font-black h-11 px-8" style={{ backgroundColor: brandColor, color: '#fff' }}>
                 <CheckCircle className="h-4 w-4 mr-2" /> Approve Quote
               </Button>
-              <Button onClick={() => setChangesDialogOpen(true)} variant="outline" className="shadow-sm bg-white font-bold h-11">
+              <Button onClick={() => setChangesDialogOpen(true)} disabled={isApproving || isDeclining} variant="outline" className="shadow-sm bg-white font-bold h-11">
                 <MessageSquare className="h-4 w-4 mr-2 text-slate-500" /> Request Changes
+              </Button>
+              <Button onClick={() => setDeclineDialogOpen(true)} disabled={isApproving || isDeclining} variant="outline" className="shadow-sm bg-white font-bold h-11 text-red-700 border-red-200 hover:bg-red-50">
+                <XCircle className="h-4 w-4 mr-2" /> Decline Quote
               </Button>
             </>
           )}
@@ -732,6 +781,8 @@ export default function PublicQuoteView() {
             <CheckCircle className="h-6 w-6 text-emerald-600" />
             <span className="text-emerald-800 font-black text-lg">Quote is Approved!</span>
           </div>
+        ) : ["Declined", "Rejected"].includes(quote.status) ? (
+          <div role="status" className="mt-8 mx-auto max-w-md rounded-xl border border-red-200 bg-red-50 p-4 text-center font-semibold text-red-800">This quote has been declined.</div>
         ) : (
           <p className="text-center text-xs font-medium text-slate-400 mt-8">
             This quote is valid until {quote.expiry_date ? format(new Date(quote.expiry_date), "MMMM d, yyyy") : "the specified date"}
@@ -761,6 +812,23 @@ export default function PublicQuoteView() {
         </div>,
         document.body
       )}
+
+      <Dialog open={declineDialogOpen && !["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending Review"].includes(quote.status)} onOpenChange={open => { if (!decisionInFlight.current) setDeclineDialogOpen(open); }}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg bg-white">
+          <DialogHeader>
+            <DialogTitle>Decline this quote?</DialogTitle>
+            <DialogDescription>This records that you do not want to proceed with this quote. Your contractor will receive your decision.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <label htmlFor="quote-decline-reason" className="block text-sm font-medium text-slate-700">Reason (optional)</label>
+            <Textarea id="quote-decline-reason" value={declineReason} onChange={e => setDeclineReason(e.target.value)} maxLength={2000} disabled={isDeclining} placeholder="Let your contractor know why you are declining..." className="min-h-[100px]" />
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <Button onClick={() => setDeclineDialogOpen(false)} variant="outline" disabled={isDeclining} className="h-11 flex-1">Cancel</Button>
+              <Button onClick={handleDeclineQuote} disabled={isDeclining} className="h-11 flex-1 bg-red-600 text-white hover:bg-red-700">{isDeclining ? "Declining..." : "Confirm Decline"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={changesDialogOpen} onOpenChange={setChangesDialogOpen}>
         <DialogContent>
