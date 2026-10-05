@@ -23,3 +23,13 @@ test("the client update project dropdown identifies the linked client", () => {
   assert.match(form, /project\.client_name/);
   assert.match(workspace, /client_name: clientById\[project\.client_id\]\?\.name/);
 });
+
+test("the mobile client-update form keeps a large close control visible above its scroll area", () => {
+  const form = readFileSync(new URL("../../src/components/client-updates/ClientUpdateFormDialog.jsx", import.meta.url), "utf8");
+  const dialog = readFileSync(new URL("../../src/components/ui/dialog.jsx", import.meta.url), "utf8");
+
+  assert.match(dialog, /closeButtonClassName/);
+  assert.match(form, /flex max-h-\[92dvh\][\s\S]*overflow-hidden/);
+  assert.match(form, /closeButtonClassName="[^"]*h-11 w-11/);
+  assert.match(form, /overflow-y-auto px-5/);
+});
