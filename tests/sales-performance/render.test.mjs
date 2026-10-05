@@ -133,6 +133,11 @@ test("the real mobile layout opens More without a hamburger drawer", async () =>
     assert.match(dialog.textContent, /Sales Performance/);
     assert.match(dialog.textContent, /Quotes/);
     assert.match(dialog.textContent, /Reports/);
+    const scrollRegion = dialog.querySelector('[data-mobile-more-scroll]');
+    assert.ok(scrollRegion);
+    assert.ok(scrollRegion.classList.contains('min-h-0'));
+    assert.ok(scrollRegion.classList.contains('overflow-y-auto'));
+    assert.equal(scrollRegion.style.webkitOverflowScrolling, 'touch');
   } finally {
     dom.window.close();
   }

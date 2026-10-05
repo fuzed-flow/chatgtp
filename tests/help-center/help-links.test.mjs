@@ -196,7 +196,7 @@ const widgetBundle = build({
     import {BrowserRouter} from 'react-router-dom';
     import {Context} from 'test-help-auth';
     import AIHelpWidget from './src/components/shared/AIHelpWidget.jsx';
-    function Fixture(){const [profile,setProfile]=useState({id:'first-user',role:'owner'});window.changeHelpProfile=setProfile;return <Context.Provider value={{profile}}><BrowserRouter><AIHelpWidget/></BrowserRouter></Context.Provider>;}
+    function Fixture(){const [profile,setProfile]=useState({id:'first-user',role:'owner'});window.changeHelpProfile=setProfile;return <Context.Provider value={{profile}}><BrowserRouter><nav aria-label="Primary mobile navigation" data-testid="mobile-navigation"/><AIHelpWidget/></BrowserRouter></Context.Provider>;}
     createRoot(document.getElementById('root')).render(<Fixture/>);
   ` },
   bundle: true, write: false, platform: 'browser', format: 'iife', define: { 'process.env.NODE_ENV': '"test"' },
@@ -261,7 +261,16 @@ test('mobile AI Help opens on a tap and moves within the screen after a press an
     await view.wait(() => view.document.querySelector('[aria-label="Open AI help"]')?.getAttribute('aria-describedby'));
 
     const trigger = view.document.querySelector('[aria-label="Open AI help"]');
-    trigger.getBoundingClientRect = () => ({ left: 280, top: 700, width: 102, height: 56, right: 382, bottom: 756 });
+    const mobileNavigation = view.document.querySelector('[data-testid="mobile-navigation"]');
+    assert.ok(trigger.classList.contains('bottom-[calc(env(safe-area-inset-bottom)+5rem)]'));
+    assert.ok(trigger.classList.contains('z-[115]'));
+    assert.ok(trigger.classList.contains('lg:bottom-6'));
+    mobileNavigation.getBoundingClientRect = () => ({ left: 0, top: 700, width: 390, height: 80, right: 390, bottom: 780 });
+    trigger.getBoundingClientRect = () => {
+      const left = Number.parseFloat(trigger.style.left) || 280;
+      const top = Number.parseFloat(trigger.style.top) || 700;
+      return { left, top, width: 102, height: 56, right: left + 102, bottom: top + 56 };
+    };
     let capturedPointer = null;
     trigger.setPointerCapture = pointerId => { capturedPointer = pointerId; };
     trigger.hasPointerCapture = pointerId => capturedPointer === pointerId;
@@ -286,6 +295,16 @@ test('mobile AI Help opens on a tap and moves within the screen after a press an
     assert.equal(view.document.querySelector('[role="dialog"]'), null, 'Releasing a drag does not open AI Help.');
     assert.equal(trigger.dataset.dragging, 'false');
     assert.deepEqual(JSON.parse(view.window.sessionStorage.getItem('fuzedflow.ai-help.mobile-position')), { x: 8, y: 8 });
+
+    pointer('pointerdown', 20, 30);
+    await view.wait(() => trigger.dataset.dragging === 'true');
+    pointer('pointermove', 20, 900);
+    await view.wait(() => trigger.style.top === '636px');
+    pointer('pointerup', 20, 900);
+    trigger.click();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.equal(view.document.querySelector('[role="dialog"]'), null, 'The widget stays closed after dragging above the mobile navigation.');
+    assert.deepEqual(JSON.parse(view.window.sessionStorage.getItem('fuzedflow.ai-help.mobile-position')), { x: 8, y: 636 });
 
     trigger.click();
     await view.wait(() => view.document.querySelector('[role="dialog"]'));
