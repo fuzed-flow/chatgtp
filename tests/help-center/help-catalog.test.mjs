@@ -23,6 +23,7 @@ const migrations = await Promise.all([
   '20261004180636_subscriber_notification_workflow_help.sql',
   '20261005140001_recent_feature_help.sql',
   '20261005193000_recent_feature_help.sql',
+  '20261005195600_recent_feature_help.sql',
 ].map(name => fs.readFile(local('../../supabase/migrations/' + name), 'utf8')));
 const schema = await fs.readFile(local('./schema.sql'), 'utf8');
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;

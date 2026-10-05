@@ -2,7 +2,16 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+import { deficiencyPhotoUrls, isDeficiencyPhotoFile } from "../../src/lib/projectCloseouts.js";
+
 const read = path => readFile(new URL(`../../${path}`, import.meta.url), "utf8");
+
+test("photo helpers preserve order, remove duplicates, and accept mobile photo formats", () => {
+  assert.deepEqual(deficiencyPhotoUrls({ photo_url: "legacy.jpg" }), ["legacy.jpg"]);
+  assert.deepEqual(deficiencyPhotoUrls({ photo_url: "legacy.jpg", photo_urls: ["one.jpg", "two.jpg", "one.jpg"] }), ["one.jpg", "two.jpg"]);
+  assert.equal(isDeficiencyPhotoFile({ name: "IMG_1001.HEIC", type: "" }), true);
+  assert.equal(isDeficiencyPhotoFile({ name: "notes.pdf", type: "application/pdf" }), false);
+});
 
 test("project closeouts are tenant-secured and expose only published portal records", async () => {
   const migration = await read("supabase/migrations/20261005063000_project_closeouts.sql");
@@ -19,11 +28,27 @@ test("onsite workflow supports quick capture, guided save-next, trade delivery a
   const delivery = await read("src/components/closeouts/ProjectCloseoutDeliveryDialog.jsx");
   assert.match(view, /mode: "quick"/);
   assert.match(view, /mode: "guided"/);
-  assert.match(itemDialog, /Save photo & next/);
+  assert.match(itemDialog, /Save photos & next/);
   assert.match(itemDialog, /Save & next/);
+  assert.match(itemDialog, /capture="environment"/);
+  assert.match(itemDialog, /multiple aria-label="Choose deficiency photos from device"/);
+  assert.match(view, /photo_urls: photoUrls/);
+  assert.match(itemDialog, /Choose from device/);
   assert.match(delivery, /Send to assigned subcontractors/);
   assert.match(delivery, /document_type: "project_closeout"/);
   assert.match(delivery, /generateProjectCloseoutPDF/);
+});
+
+test("closeout previews, portal output, and PDFs retain every deficiency photo", async () => {
+  const [preview, pdf, migration] = await Promise.all([
+    read("src/components/closeouts/ProjectCloseoutPreview.jsx"),
+    read("src/components/pdf/PDFGenerator.jsx"),
+    read("supabase/migrations/20261005195536_project_closeout_multiple_photos.sql"),
+  ]);
+  assert.match(preview, /deficiencyPhotoUrls\(item\)/);
+  assert.match(pdf, /photoUrls\.slice\(1\)/);
+  assert.match(migration, /cardinality\(photo_urls\) between 1 and 10/i);
+  assert.match(migration, /'photo_urls', i\.photo_urls/);
 });
 
 test("closeout completion identifies blocking items and only enables a valid completion", async () => {
