@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { CalendarDays, CheckCircle2, Save } from "lucide-react";
 
+import AIRewriteTextarea from "@/components/shared/AIRewriteTextarea";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { itemsToLines, linesToItems } from "@/lib/clientUpdates";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -92,25 +92,25 @@ export default function ClientUpdateFormDialog({ open, onOpenChange, update, pro
 
           <div className="space-y-2">
             <Label htmlFor="client-update-summary">Project update</Label>
-            <Textarea id="client-update-summary" value={form.summary} maxLength={10000} rows={5} disabled={saving} onChange={event => setForm(current => ({ ...current, summary: event.target.value }))} placeholder="Give the client a concise, professional overview of this period’s progress." />
+            <AIRewriteTextarea id="client-update-summary" value={form.summary} maxLength={10000} rows={5} disabled={saving} rewriteField="project_summary" onValueChange={value => setForm(current => ({ ...current, summary: value }))} placeholder="Give the client a concise, professional overview of this period’s progress." />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="client-update-completed">Completed work</Label>
-              <Textarea id="client-update-completed" value={form.completed_work} rows={7} disabled={saving} onChange={event => setForm(current => ({ ...current, completed_work: event.target.value }))} placeholder={"One completed item per line\nPlumbing rough-in completed\nCity inspection passed"} />
+              <AIRewriteTextarea id="client-update-completed" value={form.completed_work} maxLength={10000} rows={7} disabled={saving} rewriteField="completed_work" onValueChange={value => setForm(current => ({ ...current, completed_work: value }))} placeholder={"One completed item per line\nPlumbing rough-in completed\nCity inspection passed"} />
               <p className="text-xs text-slate-500">Each line becomes a confirmed completion item in the portal and PDF.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="client-update-upcoming">Upcoming work</Label>
-              <Textarea id="client-update-upcoming" value={form.upcoming_work} rows={7} disabled={saving} onChange={event => setForm(current => ({ ...current, upcoming_work: event.target.value }))} placeholder={"One upcoming item per line\nTiling begins Monday\nPainter scheduled after taping"} />
+              <AIRewriteTextarea id="client-update-upcoming" value={form.upcoming_work} maxLength={10000} rows={7} disabled={saving} rewriteField="upcoming_work" onValueChange={value => setForm(current => ({ ...current, upcoming_work: value }))} placeholder={"One upcoming item per line\nTiling begins Monday\nPainter scheduled after taping"} />
               <p className="text-xs text-slate-500">Use clear expectations without promising dates that are not confirmed.</p>
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="client-update-notes">Important notes for the client</Label>
-            <Textarea id="client-update-notes" value={form.client_notes} maxLength={10000} rows={4} disabled={saving} onChange={event => setForm(current => ({ ...current, client_notes: event.target.value }))} placeholder="Optional decisions, access requirements, scheduling notes, or reminders." />
+            <AIRewriteTextarea id="client-update-notes" value={form.client_notes} maxLength={10000} rows={4} disabled={saving} rewriteField="client_notes" onValueChange={value => setForm(current => ({ ...current, client_notes: value }))} placeholder="Optional decisions, access requirements, scheduling notes, or reminders." />
           </div>
 
           <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">
