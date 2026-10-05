@@ -55,6 +55,7 @@ import ChangeOrderView from './pages/ChangeOrderView';
 import ClientDetail from './pages/ClientDetail';
 import ClientForms from './pages/ClientForms';
 import ClientPortal from './pages/ClientPortal';
+import ClientUpdates from './pages/ClientUpdates';
 import Clients from './pages/Clients';
 import Dashboard from './pages/Dashboard';
 import HumanResources from './pages/HumanResources';
@@ -104,6 +105,7 @@ export const PAGES = {
     "ClientDetail": ClientDetail,
     "ClientForms": ClientForms,
     "ClientPortal": ClientPortal,
+    "ClientUpdates": ClientUpdates,
     "Clients": Clients,
     "Dashboard": Dashboard,
     "HumanResources": HumanResources,

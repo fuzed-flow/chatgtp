@@ -302,6 +302,7 @@
     ],
     "source_files": [
       "src/components/pm/PMClientTimelineTab.jsx",
+      "src/pages/ClientUpdates.jsx",
       "src/pages/PMProjectWorkspace.jsx"
     ],
     "audience": "office",

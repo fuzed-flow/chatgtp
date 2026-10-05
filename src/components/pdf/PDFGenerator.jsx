@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
 import { formatCurrency } from '../utils/formatCurrency';
 
@@ -1154,6 +1154,178 @@ export async function generatePOPDF(po, vendor, items, organization) {
   } else {
     doc.save(`${po?.po_number || 'Purchase_Order'}.pdf`);
   }
+}
+
+export async function generateClientUpdatePDF(update, project, client, organization, options = {}) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  const contentWidth = pageWidth - margin * 2;
+  const bottomLimit = pageHeight - 22;
+  const settings = organization?.settings || {};
+  const colors = {
+    primary: [15, 23, 42],
+    accent: hexToRgb(settings?.pdf?.brand_color || '#f59e0b'),
+    text: [30, 41, 59],
+    muted: [100, 116, 139],
+    border: [226, 232, 240],
+    surface: [248, 250, 252],
+    success: [22, 101, 52],
+  };
+  let yPos = 16;
+
+  const formattedDate = update?.update_date
+    ? format(new Date(`${update.update_date}T12:00:00`), 'MMMM d, yyyy')
+    : format(new Date(), 'MMMM d, yyyy');
+  const addPage = () => { doc.addPage(); yPos = 18; };
+  const ensureSpace = required => { if (yPos + required > bottomLimit) addPage(); };
+  const addParagraph = (value, { color = colors.text, fontSize = 10, leading = 5, indent = 0 } = {}) => {
+    const text = String(value || '').trim();
+    if (!text) return;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fontSize);
+    doc.setTextColor(...color);
+    const lines = doc.splitTextToSize(text, contentWidth - indent);
+    for (const line of lines) {
+      ensureSpace(leading + 2);
+      doc.text(line, margin + indent, yPos);
+      yPos += leading;
+    }
+  };
+  const addSectionTitle = title => {
+    ensureSpace(17);
+    yPos += 4;
+    doc.setFillColor(...colors.primary);
+    doc.roundedRect(margin, yPos, contentWidth, 10, 2, 2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text(title.toUpperCase(), margin + 5, yPos + 6.5);
+    yPos += 16;
+  };
+  const addItems = (items, tone = 'default') => {
+    const list = Array.isArray(items) ? items.filter(Boolean) : [];
+    if (!list.length) {
+      addParagraph('No items were added to this section.', { color: colors.muted });
+      return;
+    }
+    list.forEach((item, index) => {
+      const lines = doc.splitTextToSize(String(item), contentWidth - 16);
+      ensureSpace(Math.max(12, lines.length * 5 + 5));
+      doc.setFillColor(...(tone === 'complete' ? [220, 252, 231] : [254, 243, 199]));
+      doc.circle(margin + 4, yPos - 1.2, 3.2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(...(tone === 'complete' ? colors.success : colors.primary));
+      doc.text(String(index + 1), margin + 4, yPos + 0.2, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...colors.text);
+      doc.text(lines, margin + 11, yPos);
+      yPos += Math.max(9, lines.length * 5 + 3);
+    });
+  };
+
+  doc.setFillColor(...colors.primary);
+  doc.roundedRect(margin, yPos, contentWidth, 38, 3, 3, 'F');
+  doc.setFillColor(...colors.accent);
+  doc.rect(margin, yPos, 4, 38, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(19);
+  doc.setTextColor(255, 255, 255);
+  doc.text('PROJECT UPDATE', margin + 10, yPos + 13);
+  doc.setFontSize(12);
+  doc.text(project?.name || 'Project', margin + 10, yPos + 23);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(203, 213, 225);
+  doc.text(formattedDate, margin + 10, yPos + 31);
+  const logoUrl = organization?.logo_url || organization?.company_logo_url;
+  const addedLogo = logoUrl
+    ? await safelyAddImage(doc, logoUrl, 'PNG', pageWidth - margin - 42, yPos + 7, 38, 24)
+    : false;
+  if (!addedLogo) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(255, 255, 255);
+    doc.text(organization?.name || 'Fuzed Flow', pageWidth - margin - 7, yPos + 13, { align: 'right' });
+  }
+  yPos += 46;
+
+  doc.setFillColor(...colors.surface);
+  doc.setDrawColor(...colors.border);
+  doc.roundedRect(margin, yPos, contentWidth, 32, 3, 3, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...colors.muted);
+  doc.text('PREPARED FOR', margin + 6, yPos + 8);
+  doc.text('PROJECT DETAILS', margin + contentWidth / 2 + 4, yPos + 8);
+  doc.setFontSize(10);
+  doc.setTextColor(...colors.text);
+  doc.text(client?.name || 'Client', margin + 6, yPos + 15);
+  doc.text(project?.project_number || project?.name || 'Project', margin + contentWidth / 2 + 4, yPos + 15);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...colors.muted);
+  const clientAddress = client?.site_address || project?.site_address || '';
+  const projectAddress = project?.site_address || client?.site_address || '';
+  if (clientAddress) doc.text(doc.splitTextToSize(clientAddress, contentWidth / 2 - 12), margin + 6, yPos + 22);
+  if (projectAddress) doc.text(doc.splitTextToSize(projectAddress, contentWidth / 2 - 12), margin + contentWidth / 2 + 4, yPos + 22);
+  yPos += 37;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(...colors.primary);
+  doc.text(update?.title || 'Project progress update', margin, yPos);
+  yPos += 8;
+  if (update?.summary) {
+    addParagraph(update.summary, { fontSize: 10.5, leading: 5.5 });
+    yPos += 1;
+  }
+
+  addSectionTitle('Completed since the last update');
+  addItems(update?.completed_work, 'complete');
+  addSectionTitle('Upcoming work');
+  addItems(update?.upcoming_work, 'upcoming');
+  if (update?.client_notes) {
+    addSectionTitle('Important notes');
+    addParagraph(update.client_notes, { fontSize: 10, leading: 5.2 });
+  }
+
+  if (yPos + 18 > pageHeight - 16) addPage();
+  yPos += 4;
+  doc.setDrawColor(...colors.border);
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 7;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...colors.primary);
+  doc.text(`Prepared by ${update?.prepared_by_name || organization?.name || 'Project team'}`, margin, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...colors.muted);
+  const contact = [settings?.email, settings?.phone || organization?.phone, settings?.website || organization?.website].filter(Boolean).join(' | ');
+  if (contact) {
+    yPos += 5;
+    doc.text(doc.splitTextToSize(contact, contentWidth), margin, yPos);
+  }
+
+  const pageCount = doc.getNumberOfPages();
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setDrawColor(...colors.border);
+    doc.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...colors.muted);
+    doc.text(organization?.name || 'Fuzed Flow', margin, pageHeight - 9);
+    doc.text(`Page ${page} of ${pageCount}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
+  }
+
+  const fileBase = String(project?.project_number || project?.name || 'Project')
+    .replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'Project';
+  if (options.returnBase64 || update?.returnBase64) return doc.output('datauristring').split(',')[1];
+  doc.save(`${fileBase}-Update-${update?.update_date || format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
 
 // PAYMENT RECEIPTS

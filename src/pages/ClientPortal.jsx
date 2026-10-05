@@ -6,19 +6,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   FileText, Receipt, Calendar, DollarSign, Eye, 
   Lock, AlertCircle, Image as ImageIcon, Download, 
-  ShieldCheck, FilePlus, ChevronDown 
+  ShieldCheck, FilePlus, ChevronDown, Newspaper, DownloadCloud
 } from "lucide-react";
 import { format } from "date-fns";
 import { createPageUrl } from "../utils";
 import StatusBadge from "../components/shared/StatusBadge";
 import { formatCurrencyUSD } from "../components/utils/formatCurrency";
+import { ClientUpdatePreview } from "@/components/client-updates/ClientUpdatePreviewDialog";
+import { generateClientUpdatePDF } from "@/components/pdf/PDFGenerator";
 
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
   const clientId = params.get("id");
+  const requestedUpdateId = params.get("update");
 
   // --- UI STATE ---
-  const [activeTab, setActiveTab] = useState("quotes");
+  const [activeTab, setActiveTab] = useState(() => params.get("tab") || "quotes");
   const [lightboxImage, setLightboxImage] = useState(null);
 
   // --- DATA STATE (Vanilla React) ---
@@ -29,6 +32,7 @@ export default function ClientPortal() {
   const [quotes, setQuotes] = useState([]);
   const [changeOrders, setChangeOrders] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [clientUpdates, setClientUpdates] = useState([]);
 
   // --- VANILLA DATA FETCHING ---
   useEffect(() => {
@@ -54,16 +58,18 @@ export default function ClientPortal() {
         
         setClient(clientData);
 
-        const [companyRes, quotesRes, coRes, invoicesRes] = await Promise.all([
+        const [companyRes, quotesRes, coRes, invoicesRes, updatesRes] = await Promise.all([
           supabase.from("companies").select("*").eq("id", clientData.company_id).maybeSingle(),
           supabase.from("quotes").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
           supabase.from("change_orders").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
-          supabase.from("invoices").select("*").eq("client_id", clientId).order("created_at", { ascending: false })
+          supabase.from("invoices").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
+          supabase.rpc("get_client_portal_updates", { p_client: clientId })
         ]);
 
         if (companyRes.data) setCompany(companyRes.data);
         if (quotesRes.data) setQuotes(quotesRes.data);
         if (invoicesRes.data) setInvoices(invoicesRes.data);
+        if (updatesRes.data && !updatesRes.error) setClientUpdates(updatesRes.data);
         
         if (coRes.data && !coRes.error) {
           setChangeOrders(coRes.data);
@@ -87,16 +93,14 @@ export default function ClientPortal() {
   const showInvoices = portalSettings.show_invoices !== false;
   const showDocs = portalSettings.show_documents !== false;
   const showPortfolio = portalSettings.show_portfolio !== false;
+  const showUpdates = portalSettings.show_client_updates !== false;
 
   // Set the initial active tab based on what is actually enabled
   useEffect(() => {
-    if (company && activeTab === "quotes" && !showQuotes) {
-      if (showCOs) setActiveTab("change_orders");
-      else if (showInvoices) setActiveTab("invoices");
-      else if (showDocs) setActiveTab("documents");
-      else if (showPortfolio) setActiveTab("photos");
-    }
-  }, [company, showQuotes, showCOs, showInvoices, showDocs, showPortfolio, activeTab]);
+    if (!company) return;
+    const available = [showUpdates && "updates", showQuotes && "quotes", showCOs && "change_orders", showInvoices && "invoices", showDocs && "documents", showPortfolio && "photos"].filter(Boolean);
+    if (!available.includes(activeTab)) setActiveTab(available[0] || "updates");
+  }, [company, showUpdates, showQuotes, showCOs, showInvoices, showDocs, showPortfolio, activeTab]);
 
   // --- EXTRACT DOCUMENTS & PHOTOS ---
   const allDocuments = quotes.flatMap(q => 
@@ -209,6 +213,7 @@ export default function ClientPortal() {
               onChange={(e) => setActiveTab(e.target.value)}
               className="w-full appearance-none bg-white border border-slate-200 text-slate-900 text-sm font-bold py-3.5 pl-5 pr-12 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition-shadow"
             >
+              {showUpdates && <option value="updates">Project Updates ({clientUpdates.length})</option>}
               {showQuotes && <option value="quotes">Quotes ({quotes.length})</option>}
               {showCOs && <option value="change_orders">Change Orders ({changeOrders.length})</option>}
               {showInvoices && <option value="invoices">Invoices ({invoices.length})</option>}
@@ -222,6 +227,11 @@ export default function ClientPortal() {
 
           {/* 💻 DESKTOP PILLS NAVIGATION */}
           <TabsList className="hidden sm:flex bg-white border border-slate-200 shadow-sm p-1.5 rounded-full flex-wrap h-auto justify-center gap-2">
+            {showUpdates && (
+              <TabsTrigger value="updates" className="rounded-full px-5 py-2 data-[state=active]:bg-amber-500 data-[state=active]:text-white font-bold data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:bg-slate-50 transition-all">
+                <Newspaper className="w-4 h-4 mr-2" /> Updates ({clientUpdates.length})
+              </TabsTrigger>
+            )}
             {showQuotes && (
               <TabsTrigger value="quotes" className="rounded-full px-5 py-2 data-[state=active]:bg-amber-500 data-[state=active]:text-white font-bold data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:bg-slate-50 transition-all">
                 <FileText className="w-4 h-4 mr-2" /> Quotes ({quotes.length})
@@ -252,6 +262,27 @@ export default function ClientPortal() {
               </TabsTrigger>
             )}
           </TabsList>
+
+          <TabsContent value="updates" className="focus:outline-none">
+            <div className="space-y-6">
+              {clientUpdates.length === 0 ? (
+                <Card className="border-0 p-12 text-center shadow-xl ring-1 ring-slate-100">
+                  <Newspaper className="mx-auto mb-3 h-12 w-12 text-slate-200" />
+                  <p className="font-medium text-slate-500">No project updates have been published yet.</p>
+                </Card>
+              ) : clientUpdates.map(update => {
+                const project = { id: update.project_id, name: update.project_name, project_number: update.project_number, site_address: update.site_address };
+                return (
+                  <div key={update.id} id={`client-update-${update.id}`} className={requestedUpdateId === update.id ? "rounded-2xl ring-4 ring-amber-300 ring-offset-4" : ""}>
+                    <ClientUpdatePreview update={update} project={project} client={client} company={company} />
+                    <div className="mt-3 flex justify-end">
+                      <Button variant="outline" onClick={() => generateClientUpdatePDF(update, project, client, company)} className="bg-white font-bold"><DownloadCloud className="mr-2 h-4 w-4" />Download PDF</Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </TabsContent>
 
           {/* 📄 QUOTES TAB */}
           <TabsContent value="quotes" className="focus:outline-none">
