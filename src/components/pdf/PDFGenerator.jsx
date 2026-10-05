@@ -1328,6 +1328,187 @@ export async function generateClientUpdatePDF(update, project, client, organizat
   doc.save(`${fileBase}-Update-${update?.update_date || format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
 
+export async function generateProjectCloseoutPDF(closeout, items = [], project, client, organization, options = {}) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  const contentWidth = pageWidth - margin * 2;
+  const bottomLimit = pageHeight - 22;
+  const settings = organization?.settings || {};
+  const colors = {
+    primary: [15, 23, 42],
+    accent: hexToRgb(settings?.pdf?.brand_color || '#f59e0b'),
+    text: [30, 41, 59],
+    muted: [100, 116, 139],
+    border: [226, 232, 240],
+    surface: [248, 250, 252],
+    success: [22, 101, 52],
+  };
+  const normalizedItems = Array.isArray(items) ? items : [];
+  let yPos = 15;
+  const formattedDate = closeout?.walkthrough_date
+    ? format(new Date(`${closeout.walkthrough_date}T12:00:00`), 'MMMM d, yyyy')
+    : format(new Date(), 'MMMM d, yyyy');
+  const addPage = () => { doc.addPage(); yPos = 18; };
+  const ensureSpace = required => { if (yPos + required > bottomLimit) addPage(); };
+
+  doc.setFillColor(...colors.primary);
+  doc.roundedRect(margin, yPos, contentWidth, 40, 3, 3, 'F');
+  doc.setFillColor(...colors.accent);
+  doc.rect(margin, yPos, 4, 40, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text('PROJECT CLOSEOUT', margin + 10, yPos + 13);
+  doc.setFontSize(11);
+  doc.text(project?.name || 'Project', margin + 10, yPos + 23);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text(`${formattedDate}${options.audience ? `  •  Prepared for ${options.audience}` : ''}`, margin + 10, yPos + 31);
+  const logoUrl = organization?.logo_url || organization?.company_logo_url;
+  const addedLogo = logoUrl ? await safelyAddImage(doc, logoUrl, 'PNG', pageWidth - margin - 39, yPos + 7, 35, 24) : false;
+  if (!addedLogo) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text(organization?.name || 'Fuzed Flow', pageWidth - margin - 6, yPos + 13, { align: 'right' });
+  }
+  yPos += 47;
+
+  doc.setFillColor(...colors.surface);
+  doc.setDrawColor(...colors.border);
+  doc.roundedRect(margin, yPos, contentWidth, 30, 3, 3, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...colors.muted);
+  doc.text('PREPARED FOR', margin + 6, yPos + 8);
+  doc.text('CHECKLIST STATUS', margin + contentWidth / 2 + 4, yPos + 8);
+  doc.setFontSize(10);
+  doc.setTextColor(...colors.text);
+  doc.text(client?.name || 'Client', margin + 6, yPos + 15);
+  const completedCount = normalizedItems.filter(item => item.status === 'Complete').length;
+  doc.text(`${completedCount} of ${normalizedItems.length} deficiencies complete`, margin + contentWidth / 2 + 4, yPos + 15);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...colors.muted);
+  const projectLabel = [project?.project_number, project?.site_address].filter(Boolean).join(' • ');
+  if (projectLabel) doc.text(doc.splitTextToSize(projectLabel, contentWidth / 2 - 12), margin + 6, yPos + 22);
+  doc.text(`Closeout: ${closeout?.status || 'Draft'}`, margin + contentWidth / 2 + 4, yPos + 22);
+  yPos += 37;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(...colors.primary);
+  doc.text(closeout?.title || 'Project deficiency walkthrough', margin, yPos);
+  yPos += 7;
+  if (closeout?.notes) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...colors.text);
+    const noteLines = doc.splitTextToSize(String(closeout.notes), contentWidth);
+    for (const line of noteLines) {
+      ensureSpace(6);
+      doc.text(line, margin, yPos);
+      yPos += 4.8;
+    }
+    yPos += 3;
+  }
+
+  if (!normalizedItems.length) {
+    ensureSpace(24);
+    doc.setFillColor(...colors.surface);
+    doc.setDrawColor(...colors.border);
+    doc.roundedRect(margin, yPos, contentWidth, 20, 2, 2, 'FD');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...colors.muted);
+    doc.text('No deficiencies were recorded for this walkthrough.', pageWidth / 2, yPos + 12, { align: 'center' });
+    yPos += 25;
+  }
+
+  for (let index = 0; index < normalizedItems.length; index += 1) {
+    const item = normalizedItems[index];
+    const vendorName = item?.vendor_name || item?.vendor?.name || 'Unassigned';
+    const description = String(item?.description || 'Description to be completed.').trim();
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const descriptionLines = doc.splitTextToSize(description, contentWidth - 72);
+    const cardHeight = Math.max(54, 29 + descriptionLines.length * 4.5);
+    ensureSpace(cardHeight + 6);
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(...colors.border);
+    doc.roundedRect(margin, yPos, contentWidth, cardHeight, 3, 3, 'FD');
+    const imageAdded = await safelyAddImage(doc, item?.photo_url, 'JPEG', margin + 4, yPos + 4, 58, Math.min(44, cardHeight - 8));
+    if (!imageAdded) {
+      doc.setFillColor(...colors.surface);
+      doc.roundedRect(margin + 4, yPos + 4, 58, Math.min(44, cardHeight - 8), 2, 2, 'F');
+      doc.setFontSize(8);
+      doc.setTextColor(...colors.muted);
+      doc.text('Photo unavailable', margin + 33, yPos + 25, { align: 'center' });
+    }
+    const textX = margin + 68;
+    doc.setFillColor(...colors.primary);
+    doc.roundedRect(textX, yPos + 4, 12, 7, 3, 3, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`#${index + 1}`, textX + 6, yPos + 8.8, { align: 'center' });
+    doc.setFontSize(9);
+    doc.setTextColor(...colors.primary);
+    doc.text(String(item?.deficiency_type || 'General').toUpperCase(), textX + 16, yPos + 9);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...colors.text);
+    doc.text(descriptionLines, textX, yPos + 18);
+    const metaY = yPos + cardHeight - 9;
+    doc.setFontSize(7.7);
+    doc.setTextColor(...colors.muted);
+    doc.text(`Assigned: ${vendorName}`, textX, metaY);
+    const dueText = item?.due_date ? format(new Date(`${item.due_date}T12:00:00`), 'MMM d, yyyy') : 'Not set';
+    doc.text(`Due: ${dueText}`, textX + 55, metaY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...(item?.status === 'Complete' ? colors.success : colors.accent));
+    doc.text(item?.status || 'Open', pageWidth - margin - 5, metaY, { align: 'right' });
+    yPos += cardHeight + 6;
+  }
+
+  ensureSpace(20);
+  yPos += 2;
+  doc.setDrawColor(...colors.border);
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 7;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...colors.primary);
+  doc.text(`Prepared by ${closeout?.prepared_by_name || organization?.name || 'Project team'}`, margin, yPos);
+  const contact = [settings?.email, settings?.phone || organization?.phone, settings?.website || organization?.website].filter(Boolean).join(' | ');
+  if (contact) {
+    yPos += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...colors.muted);
+    doc.text(doc.splitTextToSize(contact, contentWidth), margin, yPos);
+  }
+
+  const pageCount = doc.getNumberOfPages();
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setDrawColor(...colors.border);
+    doc.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...colors.muted);
+    doc.text(`${organization?.name || 'Fuzed Flow'} • PROJECT CLOSEOUT`, margin, pageHeight - 9);
+    doc.text(`Page ${page} of ${pageCount}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
+  }
+
+  const fileBase = String(project?.project_number || project?.name || 'Project').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'Project';
+  if (options.returnBase64 || closeout?.returnBase64) return doc.output('datauristring').split(',')[1];
+  doc.save(`${fileBase}-Closeout-${closeout?.walkthrough_date || format(new Date(), 'yyyy-MM-dd')}.pdf`);
+}
+
 // PAYMENT RECEIPTS
 export async function generateReceiptPDF(client, selectedPayments, invoices, organization, options = {}) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });

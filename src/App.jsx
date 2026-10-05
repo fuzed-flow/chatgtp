@@ -36,6 +36,7 @@ import DocumentRequests from './pages/DocumentRequests';
 import DocumentResponse from './pages/DocumentResponse';
 import WarrantyResponse from './pages/WarrantyResponse';
 import ClientUpdateView from './pages/ClientUpdateView';
+import ProjectCloseoutView from './pages/ProjectCloseoutView';
 
 // --- COMPONENTS ---
 import AIHelpWidget from "./components/shared/AIHelpWidget";
@@ -138,6 +139,12 @@ const AuthenticatedApp = () => {
         <Route path="/ClientUpdateView" element={
           <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
             <ClientUpdateView />
+          </RoleGuard>
+        } />
+
+        <Route path="/ProjectCloseoutView" element={
+          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
+            <ProjectCloseoutView />
           </RoleGuard>
         } />
 

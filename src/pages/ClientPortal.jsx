@@ -6,19 +6,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   FileText, Receipt, Calendar, DollarSign, Eye, 
   Lock, AlertCircle, Image as ImageIcon, Download, 
-  ShieldCheck, FilePlus, ChevronDown, Newspaper, DownloadCloud
+  ShieldCheck, FilePlus, ChevronDown, Newspaper, DownloadCloud, ClipboardCheck
 } from "lucide-react";
 import { format } from "date-fns";
 import { createPageUrl } from "../utils";
 import StatusBadge from "../components/shared/StatusBadge";
 import { formatCurrencyUSD } from "../components/utils/formatCurrency";
 import { ClientUpdatePreview } from "@/components/client-updates/ClientUpdatePreviewDialog";
-import { generateClientUpdatePDF } from "@/components/pdf/PDFGenerator";
+import { generateClientUpdatePDF, generateProjectCloseoutPDF } from "@/components/pdf/PDFGenerator";
+import ProjectCloseoutPreview from "@/components/closeouts/ProjectCloseoutPreview";
 
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
   const clientId = params.get("id");
   const requestedUpdateId = params.get("update");
+  const requestedCloseoutId = params.get("closeout");
 
   // --- UI STATE ---
   const [activeTab, setActiveTab] = useState(() => params.get("tab") || "quotes");
@@ -33,6 +35,7 @@ export default function ClientPortal() {
   const [changeOrders, setChangeOrders] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [clientUpdates, setClientUpdates] = useState([]);
+  const [projectCloseouts, setProjectCloseouts] = useState([]);
 
   // --- VANILLA DATA FETCHING ---
   useEffect(() => {
@@ -58,18 +61,20 @@ export default function ClientPortal() {
         
         setClient(clientData);
 
-        const [companyRes, quotesRes, coRes, invoicesRes, updatesRes] = await Promise.all([
+        const [companyRes, quotesRes, coRes, invoicesRes, updatesRes, closeoutsRes] = await Promise.all([
           supabase.from("companies").select("*").eq("id", clientData.company_id).maybeSingle(),
           supabase.from("quotes").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
           supabase.from("change_orders").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
           supabase.from("invoices").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
-          supabase.rpc("get_client_portal_updates", { p_client: clientId })
+          supabase.rpc("get_client_portal_updates", { p_client: clientId }),
+          supabase.rpc("get_client_portal_closeouts", { p_client: clientId })
         ]);
 
         if (companyRes.data) setCompany(companyRes.data);
         if (quotesRes.data) setQuotes(quotesRes.data);
         if (invoicesRes.data) setInvoices(invoicesRes.data);
         if (updatesRes.data && !updatesRes.error) setClientUpdates(updatesRes.data);
+        if (closeoutsRes.data && !closeoutsRes.error) setProjectCloseouts(closeoutsRes.data);
         
         if (coRes.data && !coRes.error) {
           setChangeOrders(coRes.data);
@@ -94,13 +99,14 @@ export default function ClientPortal() {
   const showDocs = portalSettings.show_documents !== false;
   const showPortfolio = portalSettings.show_portfolio !== false;
   const showUpdates = portalSettings.show_client_updates !== false;
+  const showCloseouts = portalSettings.show_project_closeouts !== false;
 
   // Set the initial active tab based on what is actually enabled
   useEffect(() => {
     if (!company) return;
-    const available = [showUpdates && "updates", showQuotes && "quotes", showCOs && "change_orders", showInvoices && "invoices", showDocs && "documents", showPortfolio && "photos"].filter(Boolean);
+    const available = [showUpdates && "updates", showCloseouts && "closeouts", showQuotes && "quotes", showCOs && "change_orders", showInvoices && "invoices", showDocs && "documents", showPortfolio && "photos"].filter(Boolean);
     if (!available.includes(activeTab)) setActiveTab(available[0] || "updates");
-  }, [company, showUpdates, showQuotes, showCOs, showInvoices, showDocs, showPortfolio, activeTab]);
+  }, [company, showUpdates, showCloseouts, showQuotes, showCOs, showInvoices, showDocs, showPortfolio, activeTab]);
 
   // --- EXTRACT DOCUMENTS & PHOTOS ---
   const allDocuments = quotes.flatMap(q => 
@@ -214,6 +220,7 @@ export default function ClientPortal() {
               className="w-full appearance-none bg-white border border-slate-200 text-slate-900 text-sm font-bold py-3.5 pl-5 pr-12 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition-shadow"
             >
               {showUpdates && <option value="updates">Project Updates ({clientUpdates.length})</option>}
+              {showCloseouts && <option value="closeouts">Project Closeouts ({projectCloseouts.length})</option>}
               {showQuotes && <option value="quotes">Quotes ({quotes.length})</option>}
               {showCOs && <option value="change_orders">Change Orders ({changeOrders.length})</option>}
               {showInvoices && <option value="invoices">Invoices ({invoices.length})</option>}
@@ -230,6 +237,11 @@ export default function ClientPortal() {
             {showUpdates && (
               <TabsTrigger value="updates" className="rounded-full px-5 py-2 data-[state=active]:bg-amber-500 data-[state=active]:text-white font-bold data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:bg-slate-50 transition-all">
                 <Newspaper className="w-4 h-4 mr-2" /> Updates ({clientUpdates.length})
+              </TabsTrigger>
+            )}
+            {showCloseouts && (
+              <TabsTrigger value="closeouts" className="rounded-full px-5 py-2 data-[state=active]:bg-amber-500 data-[state=active]:text-white font-bold data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:bg-slate-50 transition-all">
+                <ClipboardCheck className="w-4 h-4 mr-2" /> Closeouts ({projectCloseouts.length})
               </TabsTrigger>
             )}
             {showQuotes && (
@@ -277,6 +289,28 @@ export default function ClientPortal() {
                     <ClientUpdatePreview update={update} project={project} client={client} company={company} />
                     <div className="mt-3 flex justify-end">
                       <Button variant="outline" onClick={() => generateClientUpdatePDF(update, project, client, company)} className="bg-white font-bold"><DownloadCloud className="mr-2 h-4 w-4" />Download PDF</Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="closeouts" className="focus:outline-none">
+            <div className="space-y-6">
+              {projectCloseouts.length === 0 ? (
+                <Card className="border-0 p-12 text-center shadow-xl ring-1 ring-slate-100">
+                  <ClipboardCheck className="mx-auto mb-3 h-12 w-12 text-slate-200" />
+                  <p className="font-medium text-slate-500">No project closeouts have been published yet.</p>
+                </Card>
+              ) : projectCloseouts.map(closeout => {
+                const project = { id: closeout.project_id, name: closeout.project_name, project_number: closeout.project_number, site_address: closeout.site_address };
+                const items = Array.isArray(closeout.items) ? closeout.items : [];
+                return (
+                  <div key={closeout.id} id={`project-closeout-${closeout.id}`} className={requestedCloseoutId === closeout.id ? "rounded-2xl ring-4 ring-amber-300 ring-offset-4" : ""}>
+                    <ProjectCloseoutPreview closeout={closeout} items={items} project={project} client={client} company={company} compact />
+                    <div className="mt-3 flex justify-end">
+                      <Button variant="outline" onClick={() => generateProjectCloseoutPDF(closeout, items, project, client, company)} className="bg-white font-bold"><DownloadCloud className="mr-2 h-4 w-4" />Download PDF</Button>
                     </div>
                   </div>
                 );
