@@ -1,0 +1,111 @@
+[
+  {
+    "slug": "guide-project-closeouts",
+    "feature_area": "Projects",
+    "question": "Create and deliver a project closeout deficiency checklist",
+    "answer_short": "Capture deficiencies during a walkthrough, complete trade assignments and details, then share a branded checklist with subcontractors and the client.",
+    "answer_long": "## Start the checklist\nOpen **Project Management → Project Closeouts**, or open a project and choose **Project Closeouts** from its workspace dropdown. Select a project that has a linked client, enter a checklist title and walkthrough date, and add general notes when the whole walkthrough needs context. You can save and continue from a phone or return from the office.\n\nChoose **Quick photo capture** when speed on site matters. Take each photo and use **Save photo & next**; trade, description and due date can be completed later. Choose **Guided walkthrough** when you want to finish each deficiency before moving on. Add the photo, deficiency type, description, assigned subcontractor, status and optional due date, then use **Save & next**.\n\n## Complete every deficiency\nOpen **View** to review the checklist in a separate tab, or **Edit** to update the checklist. Each deficiency can be edited or deleted. Use clear descriptions that identify the room or area, required correction and expected finish. The status choices are **Open**, **In Progress**, **Ready for Review** and **Complete**.\n\nThe progress panel shows total deficiencies, completed items, missing descriptions and unassigned work. Resolve missing descriptions and assignments before distributing the checklist. The subcontractor selector uses the company's vendor/subcontractor directory; add or correct that directory record when a trade is missing or has no email address.\n\n## Send trade-specific packages\nSelect **Send to trades** after assigning deficiencies. Each subcontractor with an email address receives a branded PDF containing only the items assigned to that company, including photos, descriptions, due dates and current status. Subcontractors without an email address are skipped, so review the recipient list before sending. Wait for the success result rather than treating the button click as proof of delivery.\n\n## Publish and share with the client\nUse **Publish to portal** to make the checklist available in the Client Portal. **Email client** can attach the branded PDF and optionally send the company a copy. **Text client** sends the secure portal link. Emailing or texting a Draft publishes it first. Review client contact information, checklist contents and photos before sending.\n\n**Mark complete** records the overall closeout as completed; it is separate from completing each deficiency and separate from sending or publishing. Confirm the individual item statuses before marking the checklist complete. Published closeouts remain available to the client with a PDF download.\n\n## Mobile and troubleshooting\nOn a phone, grant camera access when prompted, keep the device connected until each photo saves, and use the large next action to continue. If a photo or save fails, keep the original image and check the checklist before retrying. If sending is disabled, confirm that the checklist has at least one deficiency and that the client or assigned subcontractor has the required email or phone number.",
+    "route": "/ProjectCloseouts",
+    "search_terms": [
+      "project closeout",
+      "deficiency checklist",
+      "punch list",
+      "walkthrough photos",
+      "quick capture",
+      "guided walkthrough",
+      "send to trades",
+      "client portal closeout"
+    ],
+    "priority": 94,
+    "related_slugs": [
+      "guide-project-workspace",
+      "guide-project-contractor-portal"
+    ],
+    "source_files": [
+      "src/pages/ProjectCloseouts.jsx",
+      "src/pages/ProjectCloseoutView.jsx",
+      "src/components/closeouts/ProjectCloseoutsWorkspace.jsx",
+      "src/components/closeouts/DeficiencyItemDialog.jsx",
+      "src/components/closeouts/ProjectCloseoutDeliveryDialog.jsx",
+      "src/components/closeouts/ProjectCloseoutPreview.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-05",
+    "is_active": true
+  },
+  {
+    "slug": "guide-ai-writing-tools",
+    "feature_area": "Help & Support",
+    "question": "Use AI Rewrite, Undo, and expanded text fields safely",
+    "answer_short": "Polish long business text, review every rewritten detail, undo the result when needed, and expand the editor for comfortable writing.",
+    "answer_long": "## Where writing tools appear\nSupported larger text fields show a footer with **AI Rewrite** and **Expand**. This includes the main narrative fields in Client Updates and supported long descriptions throughout the app. Quote, change-order and invoice line-item editors also provide the controls for **Description** and **Internal Notes**. A signed-in user must enter text before AI Rewrite becomes available.\n\n## Rewrite and review\n1. Enter the facts, dates, amounts, measurements, names and qualifications that must remain accurate.\n2. Select **AI Rewrite** and wait for the rewritten text to replace the draft.\n3. Read the entire result before saving or sending. The rewrite is designed to improve professional tone and clarity while preserving supplied facts, but the person sending the document remains responsible for accuracy.\n4. Select **Undo** to restore the pre-rewrite text. Undo is available until you manually edit the rewritten result or start another change.\n5. Select **Expand** for a taller editor and **Collapse** when finished. On desktop, supported fields can also be dragged vertically from the lower edge; on smaller screens, Expand gives a more reliable editing area.\n\nDo not use AI Rewrite to invent scope, commitments, prices, dates or completion claims. Keep private information out of customer-facing descriptions. If an important internal note must persist, save the document and reopen it to verify the field; current line-item Internal Notes should not be relied on as the only stored copy.\n\n## Plans and usage protection\nAI Rewrite is available to Professional and Business plans. Current active subscribers who had access before plan enforcement keep access unless a company entitlement explicitly disables it. The server checks subscription and company access for every request, applies per-user and per-company limits, and isolates usage by company. Text between 1 and 10,000 characters is supported.\n\nWhen a limit is reached, the app displays a retry time. Keep your draft and try again after that period; repeated clicks do not bypass the limit. The usage log stores lightweight request metadata and status rather than the source text.\n\n## If rewriting is unavailable\nA plan message means the company is not currently entitled. A usage-limit message includes when to retry. A sign-in message means the current session must be restored. For a temporary service error, keep the original text and retry once later. Never assume a failed request changed the saved document; AI Rewrite changes the field draft, and the form still needs its normal Save action.",
+    "route": "/HelpArticles",
+    "search_terms": [
+      "AI Rewrite",
+      "rewrite text",
+      "professional writing",
+      "undo rewrite",
+      "expand text box",
+      "resize textarea",
+      "AI usage limit",
+      "Professional Business plan"
+    ],
+    "priority": 95,
+    "related_slugs": [
+      "guide-project-client-updates",
+      "guide-quotes-create-save"
+    ],
+    "source_files": [
+      "src/components/shared/AIRewriteTextarea.jsx",
+      "src/components/ui/textarea.jsx",
+      "src/lib/aiRewrite.js",
+      "src/components/quotes/LineItemRow.jsx",
+      "supabase/functions/rewrite-text/index.ts",
+      "supabase/migrations/20261005140000_ai_rewrite_guardrails.sql"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-05",
+    "is_active": true
+  },
+  {
+    "slug": "guide-builder-unsaved-changes",
+    "feature_area": "Quotes",
+    "question": "Exit a quote, change order, or invoice with unsaved changes",
+    "answer_short": "Choose whether to keep editing, discard the current unsaved edits, or save them before continuing to the selected destination.",
+    "answer_long": "## When the warning appears\nQuote Builder, Change Order Builder and Invoice Builder track document changes. When you follow an in-app link or another same-tab destination while edits are unsaved, the **Unsaved changes** dialog pauses navigation. The destination you selected is retained while you decide what to do.\n\nThe dialog does not replace the browser's own warning for refreshing the page, closing the tab or closing the browser. Browsers control that message and may not show custom wording. Opening an intentional new-tab link or downloading a file does not replace the current builder tab, so those actions are not treated the same as leaving it.\n\n## Choose the correct action\nSelect **Cancel** to close the warning and keep editing the current document. Nothing is discarded and the attempted navigation is cancelled.\n\nSelect **Leave without saving** to discard the current unsaved edits and continue to the destination you chose. Use this only when those changes are no longer needed. This action does not create a backup or a recoverable draft.\n\nSelect **Save and exit** to run the builder's normal save process, wait for persistence, and then continue to the exact destination. While saving, the actions are disabled to prevent duplicate saves. If the save fails or some edits are still unsaved, the dialog stays open and shows an error; cancel to review the document or try the save again.\n\n## Work safely on mobile\nThe three actions use full-height touch targets and the dialog can scroll on a small screen. Read the document name in the warning before choosing **Leave without saving**. If the on-screen keyboard covers the footer, close the keyboard or scroll the dialog. Avoid using the device's Back gesture repeatedly while a save is running.\n\n## Confirm the outcome\nAfter **Save and exit**, reopen the document when the changes are important and verify the saved values. After **Leave without saving**, the prior stored version remains unchanged. A document's Draft, Sent or Approved status is separate from this navigation warning; the warning protects unsaved editor state and does not send, approve or publish the document.",
+    "route": "/Quotes",
+    "search_terms": [
+      "unsaved changes",
+      "leave without saving",
+      "save and exit",
+      "cancel exit",
+      "quote builder exit",
+      "change order builder exit",
+      "invoice builder exit"
+    ],
+    "priority": 92,
+    "related_slugs": [
+      "guide-quotes-create-save",
+      "guide-change-order-draft",
+      "guide-invoices-create-edit"
+    ],
+    "source_files": [
+      "src/components/shared/UnsavedChangesGuard.jsx",
+      "src/pages/QuoteBuilder.jsx",
+      "src/pages/ChangeOrderBuilder.jsx",
+      "src/pages/InvoiceBuilder.jsx"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-05",
+    "is_active": true
+  }
+]

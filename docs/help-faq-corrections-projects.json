@@ -55,22 +55,25 @@
     "slug": "post-client-update",
     "feature_area": "Client Timeline",
     "audience": "contractor",
-    "question": "Can I post a manual project update for the client?",
-    "route": "/PMProjects",
+    "question": "Can I post a quick timeline update instead of a formal Client Update?",
+    "route": "/ClientUpdates",
     "requires_admin": false,
-    "answer_short": "Yes. Use Post Update in the project Client View to save a dated title, details, and client-visibility choice.",
-    "answer_long": "1. Open **PM Projects**, select **Open** on the project, and choose **Client View**.\n2. Select **Post Update**, or **Post First Update** when the feed is empty.\n3. Enter **Event Title / Summary**, **Event Date**, and **Details & Notes**.\n4. Review **Visible to Client** and select **Post Update** to save.\n\nThe dialog does not include a category selector; manual posts use the Update category. Updates with client visibility switched off are not shown in the client-visible feed. Saving an update does not itself confirm delivery of an email or text.",
+    "answer_short": "Yes. Client View supports lightweight dated timeline posts; use Client Updates when you need a branded PDF, delivery controls, search and editing.",
+    "answer_long": "For a quick timeline entry, open **PM Projects**, select **Open**, choose **Client View**, and use **Post Update**. Enter the event title, date and details, review **Visible to Client**, and save. The feed also combines visible phases, milestones and issues. A timeline post does not create a branded report or send an email/text.\n\nFor a professional report, open **Project Management → Client Updates** or choose **Client Updates** in the project workspace. That module supports Draft and Published status, completed and upcoming work, client notes, search, edit, branded PDF, email, text and Client Portal publishing. Use it when the client needs a polished record of progress and what comes next.",
     "search_terms": [
       "post update",
       "client update",
       "timeline",
       "client update fields",
-      "visible to client"
+      "visible to client",
+      "formal client update",
+      "branded PDF"
     ],
     "article_type": "faq",
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "source_files": [
-      "src/components/pm/PMClientTimelineTab.jsx"
+      "src/components/pm/PMClientTimelineTab.jsx",
+      "src/components/client-updates/ClientUpdatesWorkspace.jsx"
     ]
   },
   {

@@ -180,10 +180,10 @@
   },
   {
     "slug": "guide-approvals-review",
-    "question": "Reviewing quotes, change orders, and purchase orders in Approvals",
+    "question": "Review client documents and action items in Approvals",
     "feature_area": "Projects",
-    "answer_short": "Choose the approval record type, review its status, and distinguish approvals from document signing and delivery.",
-    "answer_long": "## Choose the record type\nOpen **Approvals** from Project Management. Use the view selector to choose **Quote Approvals**, **Change Orders**, or **Purchase Orders**. Each view uses its own search and status filters, so an empty list may simply reflect the selected view or filter.\n\nThis is an office/project coordination screen. Field users should ask their manager about approval status rather than expect the Approvals page in the Employee Portal.\n\n## Review a quote approval\n1. Choose **Quote Approvals**.\n2. Search for a quote or signer and choose the desired status filter.\n3. Compare the quote number, signer information, status, and dates with the intended quote.\n4. Open the related quote through the **Quotes** page when you need to inspect its current contents.\n5. Confirm customer-facing details before sending another customer link.\n\nThe quote approval list includes statuses such as **Pending**, **Sent**, **Viewed**, **Signed**, **Declined**, and **Expired**. A status label is a record state; it is not a guarantee that every document in the company has a captured signature.\n\n## Review change orders and purchase orders\nSwitch the view selector and search for the intended record. Use **View Details** to inspect the document. Where status controls are available, check the record and your authorization before changing an approval state. Return to the document and project to verify any associated values; an approval does not by itself prove all project, accounting, or external systems have synchronized.\n\n## Treat resend and copied-link actions carefully\nThe Approvals screen's **Resend Link** updates the stored approval status and sent time. It should not be treated as evidence that a message was actually delivered. The copied quote-approval URL from this screen is not a confirmed working customer route in the current app. Use the quote's supported preview/share/send workflow and verify the intended public view instead.\n\n## If an approval is missing or inconsistent\nClear the view's filters, confirm the source document and company, and compare the current status on the document. If a link does not open or approval information disagrees, keep the quote/change-order/purchase-order number and page name for support. Avoid repeated approvals while the issue is unresolved.\n\n## Internal review is separate from customer acceptance\nSaved Quote and Change Order builders offer **Actions → Request Internal Review** for eligible drafts/sent documents. It saves content before setting Pending Review. In **Approvals**, choose **Internal Review**, then **Open document**, **Approve for sending** or **Return for changes**. Both decisions return the document to Draft with the independent review result. Neither is customer acceptance or an electronic signature. Customer document pages separately support accepting, requesting changes and declining, including an optional reason.",
+    "answer_short": "Use Action queue, Client quotes, Change orders, or Purchase orders to find the customer-facing record and verify its current status.",
+    "answer_long": "## Choose the current view\nOpen **Approvals** from Project Management. The available views are **Action queue**, **Client quotes**, **Change orders**, and **Purchase orders**. Internal reviews are not shown in the Approvals hub, and document requests are not part of this page. Each view has its own search and status filters, so an empty list may reflect the selected view rather than missing records.\n\nThis is an office/project coordination screen. Field users should ask their manager about approval status rather than expect the Approvals page in Employee Portal.\n\n## Work through the Action queue\nUse **Action queue** to find customer-facing records that need attention. Review the document type, customer, project, status and due information before opening an item. Clear search and filters when expected work is absent. The queue is a coordination view; completing a task there does not itself prove that an email, text, payment or accounting synchronization occurred.\n\n## Review client quotes\n1. Choose **Client quotes**.\n2. Search for the quote or signer and select the appropriate status filter.\n3. Compare the quote number, signer information, status and dates with the intended quote.\n4. Open the related quote through **Quotes** when you need to inspect or edit its current contents.\n5. Use the quote builder's supported preview, email or text action when contacting the customer.\n\nQuote approval statuses can include **Pending**, **Sent**, **Viewed**, **Signed**, **Declined**, and **Expired**. A status label is a record state; it is not by itself proof of message delivery or a general electronic signature for another document.\n\n## Review change orders and purchase orders\nChoose **Change orders** or **Purchase orders**, search for the intended record, and use **View Details** where available. Check the record and your authorization before changing a state. Return to the source document and project to verify related totals, work or purchasing records; an approval does not guarantee that every downstream system synchronized.\n\n## If an approval is missing or inconsistent\nClear the current view's filters, confirm the company and source document, and compare its status on the source page. Client acceptance, document delivery and general document-signature requests are separate workflows. If a link does not open or the statuses disagree, keep the quote, change-order or purchase-order number and page name for support. Avoid repeating an approval or send action while the saved result is unclear.",
     "route": "/Approvals",
     "source_files": [
       "src/pages/Approvals.jsx",
@@ -197,7 +197,9 @@
       "resend",
       "change order",
       "purchase order",
-      "status"
+      "status",
+      "action queue",
+      "client quotes"
     ],
     "related_slugs": [
       "guide-feature-availability",
@@ -208,7 +210,7 @@
     "priority": 80,
     "article_type": "guide",
     "read_minutes": 3,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "is_active": true
   },
   {

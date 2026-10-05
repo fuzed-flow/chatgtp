@@ -1,0 +1,198 @@
+[
+  {
+    "slug": "client-updates-formal-vs-timeline",
+    "feature_area": "Client Timeline",
+    "audience": "office",
+    "question": "Should I use Client Updates or the project Client View timeline?",
+    "answer_short": "Use Client Updates for a branded progress report you can search, edit, publish, email, text and export as PDF; use Client View for a lightweight timeline post.",
+    "answer_long": "Use **Project Management → Client Updates** for a formal client report. It records a summary, completed work, upcoming work and client notes; supports Draft and Published status; creates a branded PDF; and can be emailed, texted or published to the Client Portal. **View** opens the saved report in a new tab.\n\nUse **PM Projects → Open → Client View → Post Update** for a lightweight dated timeline item. That feed also combines visible phases, milestones and issues. A timeline post does not create the formal Client Update PDF or send an email/text. Choose the formal module when the client needs a polished project update and record of what comes next.",
+    "route": "/ClientUpdates",
+    "search_terms": ["client update", "formal update", "timeline post", "branded PDF", "completed work", "upcoming work"],
+    "priority": 94,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/components/client-updates/ClientUpdatesWorkspace.jsx",
+      "src/components/client-updates/ClientUpdateFormDialog.jsx",
+      "src/components/pm/PMClientTimelineTab.jsx"
+    ]
+  },
+  {
+    "slug": "project-closeout-capture-modes",
+    "feature_area": "Projects",
+    "audience": "office",
+    "question": "What is the difference between Quick photo capture and Guided walkthrough?",
+    "answer_short": "Quick capture saves photos for later completion; Guided walkthrough records the photo and deficiency details before moving to the next item.",
+    "answer_long": "Choose **Quick photo capture** when you need to move quickly around the site. Take the photo and select **Save photo & next**; description, deficiency type, subcontractor and due date can be added later from the office.\n\nChoose **Guided walkthrough** when the details should be completed on site. Add the photo, type, description, assigned subcontractor, status and optional due date, then select **Save & next**. In either mode, review the checklist's missing-description and unassigned counts before sending trade packages or publishing to the client.",
+    "route": "/ProjectCloseouts",
+    "search_terms": ["quick photo capture", "guided walkthrough", "deficiency", "save and next", "walkthrough mode"],
+    "priority": 92,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/components/closeouts/ProjectCloseoutsWorkspace.jsx",
+      "src/components/closeouts/DeficiencyItemDialog.jsx",
+      "src/pages/ProjectCloseoutView.jsx"
+    ]
+  },
+  {
+    "slug": "project-closeout-sharing",
+    "feature_area": "Projects",
+    "audience": "office",
+    "question": "How do I send a project closeout to subcontractors and the client?",
+    "answer_short": "Send trade-specific PDFs to assigned subcontractors, then publish, email or text the client checklist after reviewing every deficiency.",
+    "answer_long": "Open the closeout and select **Send to trades**. Each assigned subcontractor with an email receives a branded PDF containing only that company's deficiencies; recipients without email addresses are skipped.\n\nFor the client, use **Publish to portal**, **Email client** or **Text client**. Email can include the branded PDF and an optional company copy. Text includes the portal link. Emailing or texting a Draft publishes it first. **Mark complete** is a separate overall status and does not by itself send the checklist or mark every deficiency Complete.",
+    "route": "/ProjectCloseouts",
+    "search_terms": ["send closeout", "send to trades", "subcontractor PDF", "publish closeout", "email client", "text client"],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/pages/ProjectCloseoutView.jsx",
+      "src/components/closeouts/ProjectCloseoutDeliveryDialog.jsx"
+    ]
+  },
+  {
+    "slug": "ai-rewrite-access-limits",
+    "feature_area": "Help & Support",
+    "audience": "office",
+    "question": "Which plans include AI Rewrite and what are the usage limits?",
+    "answer_short": "AI Rewrite is included with Professional and Business; existing active subscribers who previously had access remain enabled unless a company entitlement says otherwise.",
+    "answer_long": "The default limits are enforced by the server and isolated by company. **Professional** allows 30 rewrites per user per hour, 150 per company per hour and 500 per company per day. **Business** allows 60 per user per hour, 400 per company per hour and 2,000 per company per day. Supported input is 1–10,000 characters.\n\nExisting active, trialing or past-due subscribers who had access when plan enforcement was introduced are preserved unless an explicit company entitlement disables AI Rewrite; their assigned limits can differ by plan or override. Starter does not receive new access by default. If a limit is reached, keep the draft and follow the retry time shown in the message.",
+    "route": "/HelpArticles",
+    "search_terms": ["AI Rewrite plan", "Professional", "Business", "rate limit", "usage limit", "grandfathered subscriber"],
+    "priority": 96,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/components/shared/AIRewriteTextarea.jsx",
+      "supabase/migrations/20261005140000_ai_rewrite_guardrails.sql",
+      "supabase/functions/rewrite-text/index.ts"
+    ]
+  },
+  {
+    "slug": "ai-rewrite-undo-expand",
+    "feature_area": "Help & Support",
+    "audience": "office",
+    "question": "Can I undo an AI rewrite or make a large text box easier to edit?",
+    "answer_short": "Yes. Undo restores the text from before the most recent rewrite, and Expand opens a taller editor that works reliably on phones and desktops.",
+    "answer_long": "After a successful rewrite, select **Undo** before manually editing the new result to restore the prior text. Always review the result before saving because AI Rewrite changes the field draft, not the saved record.\n\nSelect **Expand** to make the editor taller and **Collapse** to return it to its normal size. On desktop, supported larger fields can also be resized vertically. Mobile uses the Expand control because dragging a resize handle is unreliable on a touch screen. Empty fields cannot be rewritten; enter the source facts first.",
+    "route": "/HelpArticles",
+    "search_terms": ["undo AI rewrite", "expand text box", "collapse editor", "resize text area", "mobile text box"],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/components/shared/AIRewriteTextarea.jsx"
+    ]
+  },
+  {
+    "slug": "ai-rewrite-line-items",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "question": "Can I use AI Rewrite in quote, change-order and invoice line items?",
+    "answer_short": "Yes. Supported line-item Description and Internal Notes fields include AI Rewrite and Expand, but important private notes must be verified after saving.",
+    "answer_long": "Open a line item in Quote Builder, Change Order Builder or Invoice Builder. Enter the source wording in **Description** or **Internal Notes**, then use **AI Rewrite**, review the result and save the document. The description is customer-facing, so do not place private information there.\n\nThe current builders do not consistently persist line-item Internal Notes. Keep important private reminders in a document- or phase-level internal-notes field and save/reopen to verify them. AI Rewrite improves the field draft; it does not change persistence rules or save the document for you.",
+    "route": "/Quotes",
+    "search_terms": ["line item AI rewrite", "quote description", "change order line item", "invoice line item", "internal notes"],
+    "priority": 91,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/components/quotes/LineItemRow.jsx",
+      "src/pages/QuoteBuilder.jsx",
+      "src/pages/ChangeOrderBuilder.jsx",
+      "src/pages/InvoiceBuilder.jsx"
+    ]
+  },
+  {
+    "slug": "builder-unsaved-exit-options",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "question": "What do Cancel, Leave without saving, and Save and exit do?",
+    "answer_short": "Cancel keeps you in the builder, Leave without saving discards current edits, and Save and exit saves before continuing to the selected destination.",
+    "answer_long": "The warning appears when Quote Builder, Change Order Builder or Invoice Builder has unsaved edits and you try to leave in the same tab. **Cancel** returns to the document with the edits intact. **Leave without saving** discards the current unsaved edits and continues. **Save and exit** runs the normal save, waits for it to finish, and then continues to the exact destination.\n\nIf saving fails or changes remain unsaved, the dialog stays open and shows an error. Refreshing or closing the browser uses the browser's standard unsaved-changes warning, so its wording may differ.",
+    "route": "/Quotes",
+    "search_terms": ["leave without saving", "save and exit", "unsaved changes", "quote exit", "invoice exit", "change order exit"],
+    "priority": 94,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/components/shared/UnsavedChangesGuard.jsx",
+      "src/pages/QuoteBuilder.jsx",
+      "src/pages/ChangeOrderBuilder.jsx",
+      "src/pages/InvoiceBuilder.jsx"
+    ]
+  },
+  {
+    "slug": "project-closeout-completion-gate",
+    "feature_area": "Projects",
+    "audience": "office",
+    "question": "Why can't I mark a project closeout complete?",
+    "answer_short": "Every deficiency must be Complete before the checklist can be marked complete; the closeout shows each blocking item so it can be corrected.",
+    "answer_long": "Open the closeout and review the amber completion panel. It lists every deficiency still marked **Open**, **In Progress**, or **Ready for Review**. Select a listed item, confirm the work and change its status to **Complete**. **Mark complete** becomes available only when the checklist contains at least one deficiency and every item is Complete.\n\nThe same rule is enforced by the database, so an outdated screen or direct request cannot bypass it. Publishing, emailing, texting and trade delivery remain available while work is unresolved. If a completed deficiency is later changed back to an unresolved status, the closeout automatically returns to **Published** and remains client-visible without incorrectly claiming completion. Editing a completed item's description or assignment while its status remains Complete does not reopen the checklist.",
+    "route": "/ProjectCloseouts",
+    "search_terms": ["mark closeout complete", "blocking deficiencies", "unresolved items", "reopen closeout", "Published closeout"],
+    "priority": 96,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/pages/ProjectCloseoutView.jsx",
+      "supabase/migrations/20261005140002_project_closeout_completion_gate.sql"
+    ]
+  },
+  {
+    "slug": "create-task-vendor-field",
+    "feature_area": "Tasks",
+    "audience": "office",
+    "question": "When can I assign a vendor or subcontractor in Create Task?",
+    "answer_short": "The optional Vendor / Subcontractor field links an external company to a CRM task; project tasks use the project's Subcontractors workspace instead.",
+    "answer_long": "In **Create Task**, first choose where the task belongs. For a CRM task linked to a lead or client, **Vendor / Subcontractor** is optional and identifies the external trade or supplier responsible for the task. The dropdown shows available vendor names and categories. Use **Assign To** separately for the internal team member responsible for follow-up.\n\nWhen a **Production Project** is selected, the CRM vendor field is disabled and cleared because project tasks do not store that link. Manage project trade relationships under **PM Projects → Open → Subcontractors**, then use the task description and internal assignee to communicate responsibility. If the required company is missing from a CRM task, add it in **Vendors** first.",
+    "route": "/Tasks",
+    "search_terms": ["create task vendor", "subcontractor task", "CRM task vendor", "project task vendor", "assign external company"],
+    "priority": 84,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": [],
+    "source_files": [
+      "src/components/tasks/CreateTaskDialog.jsx",
+      "src/pages/Tasks.jsx",
+      "src/components/pm/PMStaffTab.jsx"
+    ]
+  }
+]

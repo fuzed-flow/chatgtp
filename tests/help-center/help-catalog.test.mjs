@@ -21,6 +21,7 @@ const migrations = await Promise.all([
   '20261004155307_fuzed_flow_contractor_portal_branding.sql',
   '20261004164956_document_email_company_copy_help.sql',
   '20261004180636_subscriber_notification_workflow_help.sql',
+  '20261005140001_recent_feature_help.sql',
 ].map(name => fs.readFile(local('../../supabase/migrations/' + name), 'utf8')));
 const schema = await fs.readFile(local('./schema.sql'), 'utf8');
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -122,6 +123,11 @@ test('AI retrieves useful current sections for real notification, expense, prici
       {query: 'quote send me a copy company email retry copy', slug: 'guide-quotes-review-send', content: /Send me a copy[\s\S]*Branding & PDFs[\s\S]*Retry copy[\s\S]*without sending another client email/},
       {query: 'invoice send me a copy company email', slug: 'guide-invoices-share-customer-pay', content: /\[COPY\] Invoice from LBProjects - Invoice #INV-1001 for Jane Smith/},
       {query: 'change order send me a copy company email', slug: 'guide-change-order-draft', content: /\[COPY\] Change Order from LBProjects - Change Order #CO-1001 for Jane Smith/},
+      {query: 'Client Updates form Project summary Completed work Upcoming work Client notes', slug: 'guide-project-client-updates', content: /## Create and save the report[\s\S]*Completed work[\s\S]*Upcoming work/},
+      {query: 'project closeout quick photo guided walkthrough deficiency', slug: 'guide-project-closeouts', content: /Quick photo capture[\s\S]*Guided walkthrough/},
+      {query: 'project closeout assigned subcontractor trade-specific PDF package', slug: 'guide-project-closeouts', content: /## Send trade-specific packages[\s\S]*only the items assigned/},
+      {query: 'AI Rewrite Professional Business usage limit undo expand', slug: 'guide-ai-writing-tools', content: /## Plans and usage protection[\s\S]*Professional and Business[\s\S]*10,000 characters/},
+      {query: 'quote change order invoice leave without saving save and exit', slug: 'guide-builder-unsaved-changes', content: /Leave without saving[\s\S]*Save and exit/},
     ];
     for (const example of cases) {
       const results = (await db.query('select * from search_help_articles($1,null,null,4)', [example.query])).rows;
@@ -147,6 +153,8 @@ test('AI retrieves useful current sections for real notification, expense, prici
       assert.ok(result.every(article => currentArticles.has(article.slug) && canReadHelp(currentArticles.get(article.slug), 'employee')));
       assert.ok(!result.some(article => ['guide-quotes-pricing-tax-discount', 'guide-hr-approvals', 'guide-company-branding'].includes(article.slug)), 'Office/admin guidance is denied even when its keywords match.');
     }
+    assert.doesNotMatch(currentArticles.get('guide-approvals-review').answer_long, /Internal Review|Request Internal Review/);
+    assert.match(currentArticles.get('guide-document-recipient').answer_long, /hidden from the regular sidebar/);
   } finally { await db.close(); }
 });
 

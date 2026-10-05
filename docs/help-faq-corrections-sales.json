@@ -248,8 +248,8 @@
     "feature_area": "Quotes",
     "audience": "contractor",
     "question": "Can I add notes to a quote that the client cannot see?",
-    "answer_short": "Use quote-level or phase-level internal notes for saved private reminders, and verify them after saving. Do not rely on line-item notes persisting.",
-    "answer_long": "Use the quote’s **Internal Notes** or the phase’s private notes field under **Settings** for saved team reminders. These fields are separate from the client-facing scope and message. Save and reopen the quote to confirm the notes you need are retained.\n\nThe line-item editor also displays an internal-notes field, but the current quote-save workflow does not retain that field with the saved line item. Copy important line-item reminders into the quote or phase internal notes before saving. Do not put private information in the item description, which is shown to the client.",
+    "answer_short": "Use quote- or phase-level internal notes for saved private reminders. AI writing tools also appear in line items, but do not rely on line-item Internal Notes persisting.",
+    "answer_long": "Use the quote's **Internal Notes** or the phase's private notes under **Settings** for saved team reminders. Supported larger fields include **AI Rewrite**, **Undo** and **Expand**. Review any rewrite, save, and reopen the quote to confirm important notes were retained.\n\nThe line-item editor also shows AI writing tools for **Description** and **Internal Notes**, but the current quote-save workflow does not retain line-item Internal Notes. Copy important reminders into quote- or phase-level internal notes before saving. Do not put private information in the item description, which is shown to the client.",
     "route": "/Quotes",
     "search_terms": [
       "internal notes",
@@ -259,10 +259,12 @@
       "phase notes",
       "private",
       "line item notes",
-      "not saved"
+      "not saved",
+      "AI Rewrite",
+      "Expand"
     ],
     "requires_admin": false,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "priority": 50,
     "is_active": true,
     "article_type": "faq",
@@ -272,6 +274,7 @@
       "src/pages/QuoteBuilder.jsx",
       "src/components/quotes/PhaseCard.jsx",
       "src/components/quotes/LineItemRow.jsx",
+      "src/components/shared/AIRewriteTextarea.jsx",
       "src/pages/QuoteView.jsx",
       "src/pages/PublicQuoteView.jsx"
     ]

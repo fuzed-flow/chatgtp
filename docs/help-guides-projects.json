@@ -3,20 +3,24 @@
     "slug": "guide-project-workspace",
     "feature_area": "Projects",
     "question": "Find your project and navigate the project workspace",
-    "answer_short": "Locate a project, open its workspace, and choose the right area for scheduling, staff, materials, documents, and client updates.",
-    "answer_long": "## Before you begin\nSign in to your company's workspace with a role that can manage projects. Project management pages show the company's projects; field team members use their assigned work in Employee Portal. Have the project name, client, or site address ready so you can distinguish similarly named jobs.\n\n## Open and navigate a project\n1. Open **PM Projects**. Each project card shows its name, status, and any saved client, address, dates, or budget.\n2. Select **Open** on the correct project card. Check the project heading and site address before making changes.\n3. Use the dropdown underneath the project heading to select a workspace area. The selected area is shown on the button, which also works on phones.\n4. Choose **Overview** for project health, milestones, linked documents, status, and quick additions. Choose **Phases** to maintain phase details and **Phase Timeline** to review the phase schedule.\n5. Choose **Staff & Tasks** for assignments, task editing, and the assignee filter. Use **Materials**, **Subcontractors**, or **Permits** for the related project records.\n6. Choose **Client View** for client-visible timeline updates, **Client Notes** for the notes feed, and **Project Notes** for the project diary. These areas serve different purposes.\n7. Choose **Quotes & Docs**, **Plans & Elevations**, or **Contractor Portal** when working with project files. Use the back arrow to return to PM Projects.\n\n## Create a project from an existing quote\nOpen the saved quote and select **Convert Quote**, then **Project Only** or **Project & Invoice** as appropriate. Review the resulting project rather than converting the same quote repeatedly. A conversion may first open the Project Detail page; you can return to PM Projects and open the project workspace for the PM tools.\n\n## Troubleshooting\n**Project not found** usually means the URL is missing its project identifier, the project was deleted, or your account cannot read it. Return to PM Projects and open the record from its card. Do not replace an inaccessible record by creating duplicates. On mobile, use the workspace dropdown rather than looking for a wide row of tabs.",
+    "answer_short": "Locate a project, open its workspace, and choose the right area for scheduling, staff, documents, formal client updates, and closeout checklists.",
+    "answer_long": "## Before you begin\nSign in to your company's workspace with a role that can manage projects. Project management pages show the company's projects; field team members use assigned work in Employee Portal. Have the project name, client or site address ready so you can distinguish similarly named jobs.\n\n## Open and navigate a project\n1. Open **PM Projects**. Each project card shows its name, status and available client, address, date or budget information.\n2. Select **Open** on the correct card and check the project heading and site address before changing anything.\n3. Use the dropdown underneath the heading to select a workspace area. The selected area appears on the button, including on phones.\n4. Choose **Overview** for project health, milestones, linked documents, status and quick additions. Choose **Phases** for phase details and **Phase Timeline** for the schedule.\n5. Choose **Staff & Tasks** for assignments and task editing. Use **Materials**, **Subcontractors** or **Permits** for those project records.\n6. Choose **Client Updates** for formal progress reports with completed work, upcoming work, a branded PDF, email/text delivery and Client Portal publishing. Choose **Client View** for the lighter dated timeline feed.\n7. Choose **Project Closeouts** to capture photographed deficiencies, assign subcontractors and deliver the branded closeout checklist. Use **Client Notes** for the notes feed and **Project Notes** for the project diary.\n8. Choose **Quotes & Docs**, **Plans & Elevations** or **Contractor Portal** when working with project files. Use the back arrow to return to PM Projects.\n\nThe global Project Management menu also links directly to **Client Updates** and **Project Closeouts** when you need to search or filter records across projects. A project must have a linked client before a formal client update or closeout can be created.\n\n## Create a project from an existing quote\nOpen the saved quote and select **Convert Quote**, then **Project Only** or **Project & Invoice** as appropriate. Review the resulting project rather than converting the same quote repeatedly. A conversion may first open Project Detail; return to PM Projects and open the project workspace for the PM tools.\n\n## Troubleshooting\n**Project not found** usually means the URL lacks its project identifier, the record was deleted, or your account cannot read it. Return to PM Projects and open the record from its card. Do not replace an inaccessible record by creating duplicates. If Client Updates or Project Closeouts has no selectable project, confirm the project is linked to a client. On mobile, use the workspace dropdown instead of looking for a wide row of tabs.",
     "route": "/PMProjects",
     "search_terms": [
       "project workspace",
       "PM projects",
       "open project",
       "project tabs",
-      "convert quote"
+      "convert quote",
+      "client updates",
+      "project closeouts"
     ],
     "priority": 85,
     "related_slugs": [
       "guide-project-overview",
-      "guide-project-import-quote"
+      "guide-project-import-quote",
+      "guide-project-client-updates",
+      "guide-project-closeouts"
     ],
     "source_files": [
       "src/pages/PMProjects.jsx",
@@ -27,7 +31,7 @@
     "requires_admin": false,
     "article_type": "guide",
     "read_minutes": 2,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "is_active": true
   },
   {
@@ -284,32 +288,40 @@
   {
     "slug": "guide-project-client-updates",
     "feature_area": "Client Timeline",
-    "question": "Post client-visible project updates and review the client feed",
-    "answer_short": "Create dated client updates and understand which phases, milestones, and issues appear in the Client View feed.",
-    "answer_long": "## Before you begin\nOpen the project workspace and choose **Client View**. This subscriber-side view is the **Client Timeline Feed**. It helps your team review information marked for clients; it is different from the Client Notes feed and does not itself send a support ticket or invite a new subscriber.\n\nCheck the linked client and ensure the wording is appropriate to share. Avoid placing private pricing discussions, employee matters, or internal troubleshooting in an update that will be client-visible.\n\n## Post an update\n1. Select **Post Update**, or **Post First Update** when the feed is empty.\n2. Enter the required **Event Title / Summary**. Use a concise description of the work or checkpoint.\n3. Set **Event Date** to the date the update relates to, rather than relying on the date when you happen to type it.\n4. Enter **Details & Notes** with the context the client needs, such as what was completed, what comes next, and any decisions required.\n5. Review **Visible to Client** before saving. Leave it on only when the update is intended for the client feed.\n6. Save the update and review its placement in the dated feed.\n\n## What else appears\nThe feed combines manual updates marked client-visible, milestones that have not been explicitly hidden, phases marked client-visible, and issues marked client-visible. It groups entries by date and presents the most recent dates first. Phase progress and milestone status are read from their underlying records.\n\nA client-invisible manual update will not appear in this visible feed, even though it may be saved. Phase dates use actual start when available, otherwise target start or the record's creation date. This explains why an old phase may appear on a different date than expected.\n\n## Troubleshooting and mobile use\nIf an entry is missing, check visibility and the relevant date in the source record. If the status or progress looks wrong, update the phase or milestone rather than posting a contradictory manual update. Saving an update does not prove an email or text was delivered. On phones, scroll the feed by date and review the visibility switch in the posting dialog before tapping Save.",
-    "route": "/PMProjects",
+    "question": "Create, publish, and send a professional Client Update",
+    "answer_short": "Create a searchable project report with completed work, upcoming work and client notes, then publish it, send it, or export a branded PDF.",
+    "answer_long": "## Before you begin\nOpen **Project Management → Client Updates**, or open a project and choose **Client Updates** from the workspace dropdown. The selected project must have a linked client. In the project selector, each option shows the project number/name and client name so you can confirm the recipient before writing.\n\nA formal Client Update is different from **Client View → Post Update**. Client View creates a lightweight timeline entry. Client Updates creates a dedicated, editable report that can be searched, published to the Client Portal and delivered as a branded PDF, email or text link.\n\n## Create and save the report\n1. Select **Create update** and choose the project.\n2. Enter the update title and update date.\n3. Write the **Project summary** with the overall status and important context.\n4. Enter **Completed work**, one item per line, then **Upcoming work**, one item per line.\n5. Add **Client notes** for decisions, access needs or information the client should know. Keep internal pricing, employee matters and private troubleshooting elsewhere.\n6. Choose **Save draft** when the report still needs review, or **Publish to portal** when it is ready for the client.\n\nSupported long fields include **AI Rewrite**, **Undo**, and **Expand / Collapse**. Enter accurate source facts first, review every rewrite before saving, and use Expand for a taller editor on a phone.\n\n## Find, review, and edit\nSearch by project, client, title or update content. Filter by **Draft** or **Published**. **Edit** reopens the form. **View** opens the formatted report in a new browser tab, so the Client Updates list remains available in the original tab. On mobile, the view leaves space for the app header and its Back action returns to Client Updates instead of the dashboard.\n\nUse **PDF** to download the professionally formatted report with company branding and available logo. Review the preview or saved view after editing; another tab cannot include changes that were never saved.\n\n## Email, text, and Client Portal\nChoose **Email** to review the recipient, subject and message, attach the branded PDF, and optionally send the company a copy. Choose **Text** to review the client's mobile number and send the secure portal link. Emailing or texting a Draft publishes it first. Wait for the send result rather than treating Published status as proof of message delivery.\n\nPublished updates appear in the client's portal and include a PDF download. If an action is disabled, confirm the project has a linked client and that the client has the required email or phone number. If a save or send fails, keep the text, inspect the saved list and retry only after checking the visible error.",
+    "route": "/ClientUpdates",
     "search_terms": [
-      "client view",
-      "client timeline",
-      "post client update",
-      "visible to client"
+      "client updates",
+      "project update",
+      "completed work",
+      "upcoming work",
+      "branded PDF",
+      "publish to client portal",
+      "email update",
+      "text update"
     ],
-    "priority": 75,
+    "priority": 96,
     "related_slugs": [
-      "guide-project-phases",
-      "guide-project-milestones",
-      "guide-project-notes"
+      "guide-project-workspace",
+      "guide-ai-writing-tools",
+      "guide-project-closeouts"
     ],
     "source_files": [
       "src/components/pm/PMClientTimelineTab.jsx",
       "src/pages/ClientUpdates.jsx",
-      "src/pages/PMProjectWorkspace.jsx"
+      "src/pages/ClientUpdateView.jsx",
+      "src/pages/PMProjectWorkspace.jsx",
+      "src/components/client-updates/ClientUpdatesWorkspace.jsx",
+      "src/components/client-updates/ClientUpdateFormDialog.jsx",
+      "src/components/client-updates/ClientUpdateDeliveryDialog.jsx"
     ],
     "audience": "office",
     "requires_admin": false,
     "article_type": "guide",
-    "read_minutes": 2,
-    "last_verified_at": "2026-10-04",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-05",
     "is_active": true
   },
   {

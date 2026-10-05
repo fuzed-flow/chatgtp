@@ -145,8 +145,8 @@
     "feature_area": "Documents",
     "audience": "all",
     "route": "/HelpArticles",
-    "answer_short": "Ask the sender for current access; the sender can create another request or renew a pending request link.",
-    "answer_long": "For a pending request, the sender can use **Renew link & remind** in **Reviews & signatures**. Earlier links stop working. For an expired request, use **Request again** and review the new document/recipient/expiry before sending. The recipient should use the original current secure link rather than an internal builder URL. A completed response remains recorded and cannot be overwritten by replaying its link.",
+    "answer_short": "Ask the sender for current access; the sender can renew a pending request or issue another request from the source document workflow.",
+    "answer_long": "Document Requests is not shown in the regular sidebar. Recipients should use the current private link from the email or notification. For a pending request, the sender opens the source document's **Reviews & signatures** area and uses **Renew link & remind**; earlier links stop working. For an expired request, use **Request again** and review the document, recipient and expiry before sending. A completed response remains recorded and cannot be overwritten by replaying its link.",
     "source_files": [
       "src/components/documents/DocumentWorkflows.jsx",
       "src/pages/DocumentResponse.jsx"
@@ -157,7 +157,7 @@
     "priority": 90,
     "requires_admin": false,
     "is_active": true,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "article_type": "faq",
     "read_minutes": 2,
     "related_slugs": []
