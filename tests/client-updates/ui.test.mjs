@@ -65,6 +65,14 @@ test("large textareas across the app inherit the shared rewrite and expansion UX
   assert.equal((base.match(/<textarea/g) || []).length, 1);
 });
 
+test("quote line-item descriptions and internal notes explicitly enable writing tools", () => {
+  const lineItem = readFileSync(new URL("../../src/components/quotes/LineItemRow.jsx", import.meta.url), "utf8");
+
+  assert.equal((lineItem.match(/writingTools/g) || []).length, 2);
+  assert.match(lineItem, /<Textarea\s+writingTools\s+value={localDesc}/);
+  assert.match(lineItem, /<Textarea\s+writingTools\s+value={localNotes}/);
+});
+
 test("client update View opens a mobile-safe authenticated page in a new tab", () => {
   const workspace = readFileSync(new URL("../../src/components/client-updates/ClientUpdatesWorkspace.jsx", import.meta.url), "utf8");
   const page = readFileSync(new URL("../../src/pages/ClientUpdateView.jsx", import.meta.url), "utf8");

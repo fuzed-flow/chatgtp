@@ -461,6 +461,7 @@ export default function LineItemRow({
             <div className="flex-1 space-y-3">
               {/* ⚡ Textareas feature resize-y for desktop AND auto-expanding on mobile */}
               <Textarea
+               writingTools
                value={localDesc}
                onChange={e => { 
                  setLocalDesc(e.target.value); 
@@ -471,6 +472,7 @@ export default function LineItemRow({
                className="text-sm bg-white border-slate-200 text-slate-900 min-h-[60px] shadow-sm font-medium overflow-hidden resize-y"
               />
               <Textarea
+               writingTools
                value={localNotes}
                onChange={e => { 
                  setLocalNotes(e.target.value); 
