@@ -31,5 +31,6 @@ test("the mobile client-update form keeps a large close control visible above it
   assert.match(dialog, /closeButtonClassName/);
   assert.match(form, /flex max-h-\[92dvh\][\s\S]*overflow-hidden/);
   assert.match(form, /closeButtonClassName="[^"]*h-11 w-11/);
+  assert.match(form, /DialogHeader className="[^"]*pt-7/);
   assert.match(form, /overflow-y-auto px-5/);
 });
