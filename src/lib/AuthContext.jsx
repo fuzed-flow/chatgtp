@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { clearNotificationPushOnSignOut } from '@/lib/notificationPush';
-
-const AuthContext = createContext({});
+import { AuthStateContext, useAuthState } from '@/lib/AuthStateContext';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -97,12 +96,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthStateContext.Provider value={value}>
       {children}
-    </AuthContext.Provider>
+    </AuthStateContext.Provider>
   );
 };
 
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = useAuthState;

@@ -7,6 +7,7 @@ import { Upload, Trash2, FileText, Copy, ExternalLink, CheckCircle2, Globe, Lock
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -231,7 +232,7 @@ export default function PMContractorPortalTab({ project }) {
 
           {isEditingScope ? (
             <div className="space-y-3 mt-4">
-              <textarea
+              <Textarea
                 className="w-full min-h-[150px] p-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 resize-y"
                 placeholder="Type your detailed scope of work, instructions, and expectations here..."
                 value={scopeText}

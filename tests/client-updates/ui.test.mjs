@@ -52,6 +52,19 @@ test("large client-update fields offer safe AI rewriting and responsive resizing
   assert.match(field, /max-h-\[60dvh\]/);
 });
 
+test("large textareas across the app inherit the shared rewrite and expansion UX", () => {
+  const textarea = readFileSync(new URL("../../src/components/ui/textarea.jsx", import.meta.url), "utf8");
+  const policy = readFileSync(new URL("../../src/lib/aiRewrite.js", import.meta.url), "utf8");
+  const base = readFileSync(new URL("../../src/components/ui/textarea-base.jsx", import.meta.url), "utf8");
+
+  assert.match(textarea, /shouldUseWritingTools/);
+  assert.match(textarea, /AIRewriteTextarea/);
+  assert.match(textarea, /rewriteField = "general_business_text"/);
+  assert.match(policy, /Number\(rows\) >= 3/);
+  assert.match(policy, /Number\(maxLength\) >= 1000/);
+  assert.equal((base.match(/<textarea/g) || []).length, 1);
+});
+
 test("client update View opens a mobile-safe authenticated page in a new tab", () => {
   const workspace = readFileSync(new URL("../../src/components/client-updates/ClientUpdatesWorkspace.jsx", import.meta.url), "utf8");
   const page = readFileSync(new URL("../../src/pages/ClientUpdateView.jsx", import.meta.url), "utf8");
