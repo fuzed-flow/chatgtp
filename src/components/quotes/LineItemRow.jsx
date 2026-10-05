@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label"; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Trash2, MoveRight, Image as ImageIcon, GripVertical, Search, ChevronDown, ChevronRight } from "lucide-react";
+import { Copy, Trash2, MoveRight, Image as ImageIcon, GripVertical, Search, ChevronRight, ChevronUp } from "lucide-react";
 import ProductSearchOrCreate from "./ProductSearchOrCreate";
 import ProductSearchDialog from "./ProductSearchDialog";
 
@@ -23,7 +23,6 @@ export default function LineItemRow({
   onPhotoUpload,
   clientSelections,
   dragHandleProps,
-  isGlobalCollapsed 
 }) {
   const { settings } = useAuth(); 
   const defaultMargin = settings?.default_margin ?? 20;
@@ -38,13 +37,6 @@ export default function LineItemRow({
     }
     return false;
   });
-
-  // Sync with parent's "Collapse All" button if provided
-  useEffect(() => {
-    if (typeof isGlobalCollapsed === 'boolean') {
-      setIsCollapsed(isGlobalCollapsed);
-    }
-  }, [isGlobalCollapsed]);
 
   // Local state for text display only
   const [localQty, setLocalQty] = useState(String(item.quantity || 1));
@@ -191,18 +183,13 @@ export default function LineItemRow({
     updateField("labor_cost", 0);
   };
 
-  // Auto-expand textarea helper for mobile
-  const handleAutoResize = (e) => {
-    e.target.style.height = 'auto';
-    e.target.style.height = `${e.target.scrollHeight}px`;
-  };
-
   const isItemModified = clientSelections && item.is_optional && item.id ? (() => {
     const clientSelected = clientSelections[item.id] !== false;
     return clientSelected !== (item.default_selected === true);
   })() : false;
 
   const itemTotal = (Number(localQty) * Number(localPrice)).toFixed(2);
+  const detailsId = `line-item-details-${phaseIdx}-${item.id || itemIdx}`;
 
   return (
     <div className={`rounded-lg border transition-all duration-200 ${isItemModified ? 'bg-red-50 border-red-500 border-2 shadow-sm' : 'bg-slate-50 border-slate-200 hover:border-amber-400 shadow-sm'} ${isCollapsed ? 'p-2' : 'p-3'}`}>
@@ -214,26 +201,26 @@ export default function LineItemRow({
             <GripVertical className="h-4 w-4 text-slate-400" />
           </div>
           
-          <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(false)} className="h-8 w-8 shrink-0 hover:bg-slate-200 text-slate-500">
+          <Button type="button" variant="ghost" size="icon" aria-label={`Expand ${item.name || "line item"}`} aria-expanded={false} aria-controls={detailsId} title="Expand line item" onClick={() => setIsCollapsed(false)} className="h-9 w-9 shrink-0 hover:bg-amber-100 hover:text-amber-800 text-slate-500">
             <ChevronRight className="h-5 w-5" />
           </Button>
 
-          <div className="flex-1 min-w-0 flex items-center justify-between gap-4 cursor-pointer" onClick={() => setIsCollapsed(false)}>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-slate-900 text-sm truncate">{item.name || "Unnamed Item"}</p>
-              <p className="text-xs text-slate-500 truncate">{localDesc || <span className="italic">No description</span>}</p>
-            </div>
-            <div className="text-right shrink-0 flex items-center gap-4">
-              <div className="hidden sm:block text-right">
-                <p className="text-[10px] font-black uppercase text-slate-400">Qty</p>
-                <p className="text-xs font-bold text-slate-700">{localQty} {localUnit}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black uppercase text-slate-400">Total</p>
-                <p className="text-sm font-black text-amber-600">${itemTotal}</p>
-              </div>
-            </div>
-          </div>
+          <button type="button" aria-expanded={false} aria-controls={detailsId} onClick={() => setIsCollapsed(false)} className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-between gap-4 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold text-slate-900">{item.name || "Unnamed Item"}</span>
+              <span className={`block truncate text-xs text-slate-500 ${localDesc ? "" : "italic"}`}>{localDesc || "No description"}</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-4 text-right">
+              <span className="hidden text-right sm:block">
+                <span className="block text-[10px] font-black uppercase text-slate-400">Qty</span>
+                <span className="block text-xs font-bold text-slate-700">{localQty} {localUnit}</span>
+              </span>
+              <span className="text-right">
+                <span className="block text-[10px] font-black uppercase text-slate-400">Total</span>
+                <span className="block text-sm font-black text-amber-600">${itemTotal}</span>
+              </span>
+            </span>
+          </button>
         </div>
       ) : (
         // ⚡ EXPANDED VIEW HEADER
@@ -269,15 +256,15 @@ export default function LineItemRow({
             </Button>
 
             {/* Collapse toggle (Mobile Top-Right) */}
-            <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(true)} className="h-8 w-8 shrink-0 sm:hidden hover:bg-slate-200 text-slate-500 ml-auto">
-              <ChevronDown className="h-5 w-5" />
+            <Button type="button" variant="ghost" size="icon" aria-label={`Collapse ${item.name || "line item"}`} aria-expanded={true} aria-controls={detailsId} title="Collapse line item" onClick={() => setIsCollapsed(true)} className="ml-auto h-9 w-9 shrink-0 text-slate-500 hover:bg-amber-100 hover:text-amber-800 sm:hidden">
+              <ChevronUp className="h-5 w-5" />
             </Button>
           </div>
 
           {/* Row 2 on Mobile (Duplicate / Delete) / Right side on Desktop */}
           <div className="flex items-center justify-between sm:justify-end gap-1 w-full sm:w-auto bg-white sm:bg-transparent p-1.5 sm:p-0 rounded-lg sm:rounded-none border sm:border-none border-slate-200 shadow-sm sm:shadow-none">
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 hover:bg-blue-50 hover:text-blue-600 rounded-md bg-slate-50 sm:bg-transparent border border-slate-200 sm:border-transparent" onClick={() => onDuplicate(phaseIdx, itemIdx)} title="Duplicate">
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 hover:bg-amber-50 hover:text-amber-700 rounded-md bg-slate-50 sm:bg-transparent border border-slate-200 sm:border-transparent" onClick={() => onDuplicate(phaseIdx, itemIdx)} title="Duplicate">
                 <Copy className="h-4 w-4" />
               </Button>
               {phases?.length > 1 && (
@@ -292,14 +279,14 @@ export default function LineItemRow({
                   </SelectContent>
                 </Select>
               )}
-              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 hover:bg-red-50 hover:text-red-600 rounded-md bg-slate-50 sm:bg-transparent border border-slate-200 sm:border-transparent" onClick={() => onRemove(phaseIdx, itemIdx)} title="Remove Item">
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 hover:bg-red-50 hover:text-red-600 rounded-md bg-slate-50 sm:bg-transparent border border-slate-200 sm:border-transparent" onClick={() => onRemove(phaseIdx, itemIdx)} title="Remove Item">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
             
             {/* Collapse toggle (Desktop Right side) */}
-            <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(true)} className="hidden sm:flex h-9 w-9 shrink-0 hover:bg-slate-200 text-slate-500">
-              <ChevronDown className="h-5 w-5" />
+            <Button type="button" variant="ghost" size="sm" aria-expanded={true} aria-controls={detailsId} title="Collapse line item" onClick={() => setIsCollapsed(true)} className="hidden h-9 shrink-0 gap-1.5 px-2 text-xs font-bold text-slate-600 hover:bg-amber-100 hover:text-amber-800 sm:flex">
+              <ChevronUp className="h-4 w-4" />Collapse
             </Button>
           </div>
         </div>
@@ -307,7 +294,7 @@ export default function LineItemRow({
 
       {/* ⚡ EXPANDED DETAILS (Hidden when collapsed) */}
       {!isCollapsed && (
-        <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+        <div id={detailsId} className="animate-in fade-in slide-in-from-top-2 duration-200">
           {isItemModified && (
             <div className="bg-red-600 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded mb-2 inline-block shadow-sm">
               CLIENT MODIFIED
@@ -459,28 +446,28 @@ export default function LineItemRow({
           
           <div className="flex gap-4 items-start">
             <div className="flex-1 space-y-3">
-              {/* ⚡ Textareas feature resize-y for desktop AND auto-expanding on mobile */}
+              {/* Writing tools provide Expand/Collapse on touch devices and vertical resizing on desktop. */}
               <Textarea
                writingTools
+               rows={3}
                value={localDesc}
                onChange={e => { 
                  setLocalDesc(e.target.value); 
                  updateField("description", e.target.value); 
-                 handleAutoResize(e); 
                }}
                placeholder="Description (shown to client on quote)..."
-               className="text-sm bg-white border-slate-200 text-slate-900 min-h-[60px] shadow-sm font-medium overflow-hidden resize-y"
+               className="min-h-[72px] bg-white text-sm font-medium text-slate-900"
               />
               <Textarea
                writingTools
+               rows={2}
                value={localNotes}
                onChange={e => { 
                  setLocalNotes(e.target.value); 
                  updateField("internal_notes", e.target.value); 
-                 handleAutoResize(e); 
                }}
                placeholder="Internal notes (hidden from client)..."
-               className="text-xs bg-amber-50/50 border-amber-200 text-slate-700 min-h-[40px] placeholder:text-amber-500/60 font-medium overflow-hidden resize-y"
+               className="min-h-[64px] bg-amber-50/50 text-xs font-medium text-slate-700 placeholder:text-amber-500/60"
               />
             </div>
             
@@ -488,7 +475,7 @@ export default function LineItemRow({
               {item.photo_url ? (
                 <div className="relative group">
                   <img src={item.photo_url} alt={item.name} className="h-28 w-28 object-cover rounded-xl border border-slate-200 shadow-md bg-white" />
-                  <button onClick={() => updateField("photo_url", "")} className="absolute -top-2 -right-2 bg-slate-900 hover:bg-red-600 text-white rounded-full h-6 w-6 flex items-center justify-center text-sm font-black opacity-0 group-hover:opacity-100 transition-all shadow-lg">×</button>
+                  <button type="button" onClick={() => updateField("photo_url", "")} className="absolute -top-2 -right-2 bg-slate-900 hover:bg-red-600 text-white rounded-full h-6 w-6 flex items-center justify-center text-sm font-black opacity-0 group-hover:opacity-100 transition-all shadow-lg">×</button>
                 </div>
               ) : (
                 <label className="h-28 w-28 border-2 border-dashed border-slate-300 bg-white rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-colors shadow-sm">

@@ -26,6 +26,20 @@ test("onsite workflow supports quick capture, guided save-next, trade delivery a
   assert.match(delivery, /generateProjectCloseoutPDF/);
 });
 
+test("closeout completion identifies blocking items and only enables a valid completion", async () => {
+  const [view, migration] = await Promise.all([
+    read("src/pages/ProjectCloseoutView.jsx"),
+    read("supabase/migrations/20261005140002_project_closeout_completion_gate.sql"),
+  ]);
+  assert.match(view, /blockingItems = useMemo/);
+  assert.match(view, /deficiencies are.*blocking completion/);
+  assert.match(view, /Every deficiency must have a status of Complete/);
+  assert.match(view, /disabled={!canComplete/);
+  assert.match(migration, /status <> 'Complete'/);
+  assert.match(migration, /Complete all deficiencies before marking the closeout complete/);
+  assert.match(migration, /closeout_row\.status = 'Completed' and new\.status <> 'Complete'/);
+});
+
 test("closeout navigation exists globally, within a project, and in the client portal", async () => {
   const [layout, workspace, portal] = await Promise.all([
     read("src/Layout.jsx"), read("src/pages/PMProjectWorkspace.jsx"), read("src/pages/ClientPortal.jsx"),

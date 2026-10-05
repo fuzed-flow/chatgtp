@@ -325,19 +325,21 @@
     "slug": "post-client-update",
     "feature_area": "Client Timeline",
     "audience": "contractor",
-    "question": "Can I post a manual project update for the client?",
-    "answer_short": "Yes. Use Post Update in the project Client View to save a dated title, details, and client-visibility choice.",
-    "answer_long": "1. Open **PM Projects**, select **Open** on the project, and choose **Client View**.\n2. Select **Post Update**, or **Post First Update** when the feed is empty.\n3. Enter **Event Title / Summary**, **Event Date**, and **Details & Notes**.\n4. Review **Visible to Client** and select **Post Update** to save.\n\nThe dialog does not include a category selector; manual posts use the Update category. Updates with client visibility switched off are not shown in the client-visible feed. Saving an update does not itself confirm delivery of an email or text.",
-    "route": "/PMProjects",
+    "question": "Can I post a quick timeline update instead of a formal Client Update?",
+    "answer_short": "Yes. Client View supports lightweight dated timeline posts; use Client Updates when you need a branded PDF, delivery controls, search and editing.",
+    "answer_long": "For a quick timeline entry, open **PM Projects**, select **Open**, choose **Client View**, and use **Post Update**. Enter the event title, date and details, review **Visible to Client**, and save. The feed also combines visible phases, milestones and issues. A timeline post does not create a branded report or send an email/text.\n\nFor a professional report, open **Project Management → Client Updates** or choose **Client Updates** in the project workspace. That module supports Draft and Published status, completed and upcoming work, client notes, search, edit, branded PDF, email, text and Client Portal publishing. Use it when the client needs a polished record of progress and what comes next.",
+    "route": "/ClientUpdates",
     "search_terms": [
       "post update",
       "client update",
       "timeline",
       "client update fields",
-      "visible to client"
+      "visible to client",
+      "formal client update",
+      "branded PDF"
     ],
     "requires_admin": false,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "priority": 50,
     "is_active": true,
     "id": "fixture-14",
@@ -2510,8 +2512,8 @@
     "feature_area": "Quotes",
     "audience": "contractor",
     "question": "Can I add notes to a quote that the client cannot see?",
-    "answer_short": "Use quote-level or phase-level internal notes for saved private reminders, and verify them after saving. Do not rely on line-item notes persisting.",
-    "answer_long": "Use the quote’s **Internal Notes** or the phase’s private notes field under **Settings** for saved team reminders. These fields are separate from the client-facing scope and message. Save and reopen the quote to confirm the notes you need are retained.\n\nThe line-item editor also displays an internal-notes field, but the current quote-save workflow does not retain that field with the saved line item. Copy important line-item reminders into the quote or phase internal notes before saving. Do not put private information in the item description, which is shown to the client.",
+    "answer_short": "Use quote- or phase-level internal notes for saved private reminders. AI writing tools also appear in line items, but do not rely on line-item Internal Notes persisting.",
+    "answer_long": "Use the quote's **Internal Notes** or the phase's private notes under **Settings** for saved team reminders. Supported larger fields include **AI Rewrite**, **Undo** and **Expand**. Review any rewrite, save, and reopen the quote to confirm important notes were retained.\n\nThe line-item editor also shows AI writing tools for **Description** and **Internal Notes**, but the current quote-save workflow does not retain line-item Internal Notes. Copy important reminders into quote- or phase-level internal notes before saving. Do not put private information in the item description, which is shown to the client.",
     "route": "/Quotes",
     "search_terms": [
       "internal notes",
@@ -2521,10 +2523,12 @@
       "phase notes",
       "private",
       "line item notes",
-      "not saved"
+      "not saved",
+      "AI Rewrite",
+      "Expand"
     ],
     "requires_admin": false,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "priority": 50,
     "is_active": true,
     "id": "fixture-108",
@@ -3731,15 +3735,15 @@
     "feature_area": "Documents",
     "audience": "all",
     "route": "/HelpArticles",
-    "answer_short": "Ask the sender for current access; the sender can create another request or renew a pending request link.",
-    "answer_long": "For a pending request, the sender can use **Renew link & remind** in **Reviews & signatures**. Earlier links stop working. For an expired request, use **Request again** and review the new document/recipient/expiry before sending. The recipient should use the original current secure link rather than an internal builder URL. A completed response remains recorded and cannot be overwritten by replaying its link.",
+    "answer_short": "Ask the sender for current access; the sender can renew a pending request or issue another request from the source document workflow.",
+    "answer_long": "Document Requests is not shown in the regular sidebar. Recipients should use the current private link from the email or notification. For a pending request, the sender opens the source document's **Reviews & signatures** area and uses **Renew link & remind**; earlier links stop working. For an expired request, use **Request again** and review the document, recipient and expiry before sending. A completed response remains recorded and cannot be overwritten by replaying its link.",
     "search_terms": [
       "document request link expired"
     ],
     "priority": 90,
     "requires_admin": false,
     "is_active": true,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "article_type": "faq",
     "read_minutes": 2,
     "related_slugs": []
@@ -3804,6 +3808,217 @@
     "requires_admin": false,
     "is_active": true,
     "last_verified_at": "2026-10-04",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "client-updates-formal-vs-timeline",
+    "feature_area": "Client Timeline",
+    "audience": "office",
+    "question": "Should I use Client Updates or the project Client View timeline?",
+    "answer_short": "Use Client Updates for a branded progress report you can search, edit, publish, email, text and export as PDF; use Client View for a lightweight timeline post.",
+    "answer_long": "Use **Project Management → Client Updates** for a formal client report. It records a summary, completed work, upcoming work and client notes; supports Draft and Published status; creates a branded PDF; and can be emailed, texted or published to the Client Portal. **View** opens the saved report in a new tab.\n\nUse **PM Projects → Open → Client View → Post Update** for a lightweight dated timeline item. That feed also combines visible phases, milestones and issues. A timeline post does not create the formal Client Update PDF or send an email/text. Choose the formal module when the client needs a polished project update and record of what comes next.",
+    "route": "/ClientUpdates",
+    "search_terms": [
+      "client update",
+      "formal update",
+      "timeline post",
+      "branded PDF",
+      "completed work",
+      "upcoming work"
+    ],
+    "priority": 94,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "project-closeout-capture-modes",
+    "feature_area": "Projects",
+    "audience": "office",
+    "question": "What is the difference between Quick photo capture and Guided walkthrough?",
+    "answer_short": "Quick capture saves photos for later completion; Guided walkthrough records the photo and deficiency details before moving to the next item.",
+    "answer_long": "Choose **Quick photo capture** when you need to move quickly around the site. Take the photo and select **Save photo & next**; description, deficiency type, subcontractor and due date can be added later from the office.\n\nChoose **Guided walkthrough** when the details should be completed on site. Add the photo, type, description, assigned subcontractor, status and optional due date, then select **Save & next**. In either mode, review the checklist's missing-description and unassigned counts before sending trade packages or publishing to the client.",
+    "route": "/ProjectCloseouts",
+    "search_terms": [
+      "quick photo capture",
+      "guided walkthrough",
+      "deficiency",
+      "save and next",
+      "walkthrough mode"
+    ],
+    "priority": 92,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "project-closeout-sharing",
+    "feature_area": "Projects",
+    "audience": "office",
+    "question": "How do I send a project closeout to subcontractors and the client?",
+    "answer_short": "Send trade-specific PDFs to assigned subcontractors, then publish, email or text the client checklist after reviewing every deficiency.",
+    "answer_long": "Open the closeout and select **Send to trades**. Each assigned subcontractor with an email receives a branded PDF containing only that company's deficiencies; recipients without email addresses are skipped.\n\nFor the client, use **Publish to portal**, **Email client** or **Text client**. Email can include the branded PDF and an optional company copy. Text includes the portal link. Emailing or texting a Draft publishes it first. **Mark complete** is a separate overall status and does not by itself send the checklist or mark every deficiency Complete.",
+    "route": "/ProjectCloseouts",
+    "search_terms": [
+      "send closeout",
+      "send to trades",
+      "subcontractor PDF",
+      "publish closeout",
+      "email client",
+      "text client"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "ai-rewrite-access-limits",
+    "feature_area": "Help & Support",
+    "audience": "office",
+    "question": "Which plans include AI Rewrite and what are the usage limits?",
+    "answer_short": "AI Rewrite is included with Professional and Business; existing active subscribers who previously had access remain enabled unless a company entitlement says otherwise.",
+    "answer_long": "The default limits are enforced by the server and isolated by company. **Professional** allows 30 rewrites per user per hour, 150 per company per hour and 500 per company per day. **Business** allows 60 per user per hour, 400 per company per hour and 2,000 per company per day. Supported input is 1–10,000 characters.\n\nExisting active, trialing or past-due subscribers who had access when plan enforcement was introduced are preserved unless an explicit company entitlement disables AI Rewrite; their assigned limits can differ by plan or override. Starter does not receive new access by default. If a limit is reached, keep the draft and follow the retry time shown in the message.",
+    "route": "/HelpArticles",
+    "search_terms": [
+      "AI Rewrite plan",
+      "Professional",
+      "Business",
+      "rate limit",
+      "usage limit",
+      "grandfathered subscriber"
+    ],
+    "priority": 96,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "ai-rewrite-undo-expand",
+    "feature_area": "Help & Support",
+    "audience": "office",
+    "question": "Can I undo an AI rewrite or make a large text box easier to edit?",
+    "answer_short": "Yes. Undo restores the text from before the most recent rewrite, and Expand opens a taller editor that works reliably on phones and desktops.",
+    "answer_long": "After a successful rewrite, select **Undo** before manually editing the new result to restore the prior text. Always review the result before saving because AI Rewrite changes the field draft, not the saved record.\n\nSelect **Expand** to make the editor taller and **Collapse** to return it to its normal size. On desktop, supported larger fields can also be resized vertically. Mobile uses the Expand control because dragging a resize handle is unreliable on a touch screen. Empty fields cannot be rewritten; enter the source facts first.",
+    "route": "/HelpArticles",
+    "search_terms": [
+      "undo AI rewrite",
+      "expand text box",
+      "collapse editor",
+      "resize text area",
+      "mobile text box"
+    ],
+    "priority": 90,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "ai-rewrite-line-items",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "question": "Can I use AI Rewrite in quote, change-order and invoice line items?",
+    "answer_short": "Yes. Supported line-item Description and Internal Notes fields include AI Rewrite and Expand, but important private notes must be verified after saving.",
+    "answer_long": "Open a line item in Quote Builder, Change Order Builder or Invoice Builder. Enter the source wording in **Description** or **Internal Notes**, then use **AI Rewrite**, review the result and save the document. The description is customer-facing, so do not place private information there.\n\nThe current builders do not consistently persist line-item Internal Notes. Keep important private reminders in a document- or phase-level internal-notes field and save/reopen to verify them. AI Rewrite improves the field draft; it does not change persistence rules or save the document for you.",
+    "route": "/Quotes",
+    "search_terms": [
+      "line item AI rewrite",
+      "quote description",
+      "change order line item",
+      "invoice line item",
+      "internal notes"
+    ],
+    "priority": 91,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "builder-unsaved-exit-options",
+    "feature_area": "Quotes",
+    "audience": "office",
+    "question": "What do Cancel, Leave without saving, and Save and exit do?",
+    "answer_short": "Cancel keeps you in the builder, Leave without saving discards current edits, and Save and exit saves before continuing to the selected destination.",
+    "answer_long": "The warning appears when Quote Builder, Change Order Builder or Invoice Builder has unsaved edits and you try to leave in the same tab. **Cancel** returns to the document with the edits intact. **Leave without saving** discards the current unsaved edits and continues. **Save and exit** runs the normal save, waits for it to finish, and then continues to the exact destination.\n\nIf saving fails or changes remain unsaved, the dialog stays open and shows an error. Refreshing or closing the browser uses the browser's standard unsaved-changes warning, so its wording may differ.",
+    "route": "/Quotes",
+    "search_terms": [
+      "leave without saving",
+      "save and exit",
+      "unsaved changes",
+      "quote exit",
+      "invoice exit",
+      "change order exit"
+    ],
+    "priority": 94,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "project-closeout-completion-gate",
+    "feature_area": "Projects",
+    "audience": "office",
+    "question": "Why can't I mark a project closeout complete?",
+    "answer_short": "Every deficiency must be Complete before the checklist can be marked complete; the closeout shows each blocking item so it can be corrected.",
+    "answer_long": "Open the closeout and review the amber completion panel. It lists every deficiency still marked **Open**, **In Progress**, or **Ready for Review**. Select a listed item, confirm the work and change its status to **Complete**. **Mark complete** becomes available only when the checklist contains at least one deficiency and every item is Complete.\n\nThe same rule is enforced by the database, so an outdated screen or direct request cannot bypass it. Publishing, emailing, texting and trade delivery remain available while work is unresolved. If a completed deficiency is later changed back to an unresolved status, the closeout automatically returns to **Published** and remains client-visible without incorrectly claiming completion. Editing a completed item's description or assignment while its status remains Complete does not reopen the checklist.",
+    "route": "/ProjectCloseouts",
+    "search_terms": [
+      "mark closeout complete",
+      "blocking deficiencies",
+      "unresolved items",
+      "reopen closeout",
+      "Published closeout"
+    ],
+    "priority": 96,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
+    "article_type": "faq",
+    "read_minutes": 2,
+    "related_slugs": []
+  },
+  {
+    "slug": "create-task-vendor-field",
+    "feature_area": "Tasks",
+    "audience": "office",
+    "question": "When can I assign a vendor or subcontractor in Create Task?",
+    "answer_short": "The optional Vendor / Subcontractor field links an external company to a CRM task; project tasks use the project's Subcontractors workspace instead.",
+    "answer_long": "In **Create Task**, first choose where the task belongs. For a CRM task linked to a lead or client, **Vendor / Subcontractor** is optional and identifies the external trade or supplier responsible for the task. The dropdown shows available vendor names and categories. Use **Assign To** separately for the internal team member responsible for follow-up.\n\nWhen a **Production Project** is selected, the CRM vendor field is disabled and cleared because project tasks do not store that link. Manage project trade relationships under **PM Projects → Open → Subcontractors**, then use the task description and internal assignee to communicate responsibility. If the required company is missing from a CRM task, add it in **Vendors** first.",
+    "route": "/Tasks",
+    "search_terms": [
+      "create task vendor",
+      "subcontractor task",
+      "CRM task vendor",
+      "project task vendor",
+      "assign external company"
+    ],
+    "priority": 84,
+    "requires_admin": false,
+    "is_active": true,
+    "last_verified_at": "2026-10-05",
     "article_type": "faq",
     "read_minutes": 2,
     "related_slugs": []
@@ -3964,10 +4179,10 @@
   },
   {
     "slug": "guide-approvals-review",
-    "question": "Reviewing quotes, change orders, and purchase orders in Approvals",
+    "question": "Review client documents and action items in Approvals",
     "feature_area": "Projects",
-    "answer_short": "Choose the approval record type, review its status, and distinguish approvals from document signing and delivery.",
-    "answer_long": "## Choose the record type\nOpen **Approvals** from Project Management. Use the view selector to choose **Quote Approvals**, **Change Orders**, or **Purchase Orders**. Each view uses its own search and status filters, so an empty list may simply reflect the selected view or filter.\n\nThis is an office/project coordination screen. Field users should ask their manager about approval status rather than expect the Approvals page in the Employee Portal.\n\n## Review a quote approval\n1. Choose **Quote Approvals**.\n2. Search for a quote or signer and choose the desired status filter.\n3. Compare the quote number, signer information, status, and dates with the intended quote.\n4. Open the related quote through the **Quotes** page when you need to inspect its current contents.\n5. Confirm customer-facing details before sending another customer link.\n\nThe quote approval list includes statuses such as **Pending**, **Sent**, **Viewed**, **Signed**, **Declined**, and **Expired**. A status label is a record state; it is not a guarantee that every document in the company has a captured signature.\n\n## Review change orders and purchase orders\nSwitch the view selector and search for the intended record. Use **View Details** to inspect the document. Where status controls are available, check the record and your authorization before changing an approval state. Return to the document and project to verify any associated values; an approval does not by itself prove all project, accounting, or external systems have synchronized.\n\n## Treat resend and copied-link actions carefully\nThe Approvals screen's **Resend Link** updates the stored approval status and sent time. It should not be treated as evidence that a message was actually delivered. The copied quote-approval URL from this screen is not a confirmed working customer route in the current app. Use the quote's supported preview/share/send workflow and verify the intended public view instead.\n\n## If an approval is missing or inconsistent\nClear the view's filters, confirm the source document and company, and compare the current status on the document. If a link does not open or approval information disagrees, keep the quote/change-order/purchase-order number and page name for support. Avoid repeated approvals while the issue is unresolved.\n\n## Internal review is separate from customer acceptance\nSaved Quote and Change Order builders offer **Actions → Request Internal Review** for eligible drafts/sent documents. It saves content before setting Pending Review. In **Approvals**, choose **Internal Review**, then **Open document**, **Approve for sending** or **Return for changes**. Both decisions return the document to Draft with the independent review result. Neither is customer acceptance or an electronic signature. Customer document pages separately support accepting, requesting changes and declining, including an optional reason.",
+    "answer_short": "Use Action queue, Client quotes, Change orders, or Purchase orders to find the customer-facing record and verify its current status.",
+    "answer_long": "## Choose the current view\nOpen **Approvals** from Project Management. The available views are **Action queue**, **Client quotes**, **Change orders**, and **Purchase orders**. Internal reviews are not shown in the Approvals hub, and document requests are not part of this page. Each view has its own search and status filters, so an empty list may reflect the selected view rather than missing records.\n\nThis is an office/project coordination screen. Field users should ask their manager about approval status rather than expect the Approvals page in Employee Portal.\n\n## Work through the Action queue\nUse **Action queue** to find customer-facing records that need attention. Review the document type, customer, project, status and due information before opening an item. Clear search and filters when expected work is absent. The queue is a coordination view; completing a task there does not itself prove that an email, text, payment or accounting synchronization occurred.\n\n## Review client quotes\n1. Choose **Client quotes**.\n2. Search for the quote or signer and select the appropriate status filter.\n3. Compare the quote number, signer information, status and dates with the intended quote.\n4. Open the related quote through **Quotes** when you need to inspect or edit its current contents.\n5. Use the quote builder's supported preview, email or text action when contacting the customer.\n\nQuote approval statuses can include **Pending**, **Sent**, **Viewed**, **Signed**, **Declined**, and **Expired**. A status label is a record state; it is not by itself proof of message delivery or a general electronic signature for another document.\n\n## Review change orders and purchase orders\nChoose **Change orders** or **Purchase orders**, search for the intended record, and use **View Details** where available. Check the record and your authorization before changing a state. Return to the source document and project to verify related totals, work or purchasing records; an approval does not guarantee that every downstream system synchronized.\n\n## If an approval is missing or inconsistent\nClear the current view's filters, confirm the company and source document, and compare its status on the source page. Client acceptance, document delivery and general document-signature requests are separate workflows. If a link does not open or the statuses disagree, keep the quote, change-order or purchase-order number and page name for support. Avoid repeating an approval or send action while the saved result is unclear.",
     "route": "/Approvals",
     "search_terms": [
       "approvals",
@@ -3977,7 +4192,9 @@
       "resend",
       "change order",
       "purchase order",
-      "status"
+      "status",
+      "action queue",
+      "client quotes"
     ],
     "related_slugs": [
       "guide-feature-availability",
@@ -3988,7 +4205,7 @@
     "priority": 80,
     "article_type": "guide",
     "read_minutes": 3,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "is_active": true,
     "id": "fixture-guide-5"
   },
@@ -4981,20 +5198,22 @@
     "feature_area": "Documents",
     "audience": "all",
     "route": "/DocumentRequests",
-    "answer_short": "Open Document requests for your assigned review/signature requests, or use the private link emailed to you. Inspect the saved version and explicitly record your name and consent.",
-    "answer_long": "## Your assigned document inbox\nSigned-in subscribers can open **Document requests** to find the review and signature requests they are allowed to access. A notification opens and highlights its exact request, including requests older than the recent list. Choose **View document version** to inspect the saved file. For a Pending request, **Open request** obtains limited access to its response page. Completed cards retain the recorded status, name, date and comments; **Activity record** shows the audit history.\n\n## Start from the message sent to you\nYour contractor or company sends a secure document request link addressed to the named recipient. Open that original link in a regular browser. You do not need access to the private company workspace to respond. Keep the link private because it is the capability that opens this particular document request.\n\nThe page identifies the company, document title, intended recipient, instructions and expiry. Check these details before taking action. If the name or document is unexpected, contact the sender instead of forwarding the private link to someone else.\n\n## Inspect and respond\n1. Select **Open** beside the document filename to inspect the file in a new tab.\n2. Return to the response page and enter **Your full name**.\n3. Add **Comments** if there is a qualification, question or information the sender needs to retain.\n4. For a signature request, read and check the consent statement agreeing to sign electronically using the name entered above. For a review request, check the acknowledgement that you reviewed the document.\n5. Choose **Sign document** or **Complete review** and wait for **Response recorded**.\n\nThe app records the full name, response time, comments, consent version and saved document reference/checksum where available. Do not leave while the button is saving. Once a response is recorded, repeating the action does not overwrite it with another decision.\n\n## Decline or request a correction\nSelect **Decline request** if you cannot complete the requested response. Enter your full name and use Comments to explain a correction or question. Declining does not require the positive signing-consent checkbox. The sender receives the recorded status and can issue a corrected new request when appropriate.\n\n## Expired or renewed links\nLinks have an expiry and can be cancelled or renewed by the sender. A renewed request link replaces earlier links. If the page reports that the link is invalid or expired, ask the sender for current access rather than guessing a different URL or opening a private builder page.\n\n## On a phone\nThe file opens separately from the response form. Return to the original browser tab after reviewing it, then scroll to the consent and response actions. Confirm that the recorded success message appears. If saving fails, retain the visible error and ask the sender for help; a ticked consent box alone does not mean a response was saved.",
+    "answer_short": "Use the private link sent by email or notification to inspect the saved document and explicitly record your name and consent; Document Requests is not shown in the regular sidebar.",
+    "answer_long": "## Open the assigned request\n**Document Requests is hidden from the regular sidebar.** Use the private link in the request email or the exact request opened from a notification. Authorized signed-in users with a direct request-page link can still review requests assigned to them, including older highlighted requests. Keep every request link private because it grants access to that specific document response.\n\nThe response page identifies the company, document title, intended recipient, instructions and expiry. Check these details before acting. You do not need access to the company's private workspace to respond from the secure recipient link. If the name or document is unexpected, contact the sender instead of forwarding the link.\n\n## Inspect and respond\n1. Select **Open** beside the filename to inspect the saved document in a new tab.\n2. Return to the response page and enter **Your full name**.\n3. Add **Comments** if there is a qualification, question or correction the sender should retain.\n4. For a signature request, read and check the consent statement agreeing to sign electronically with the entered name. For a review request, check the acknowledgement that you reviewed the document.\n5. Choose **Sign document** or **Complete review** and wait for **Response recorded**.\n\nThe app records the name, response time, comments, consent version and saved document reference/checksum where available. Do not leave while the response is saving. Repeating a completed action does not overwrite the recorded decision.\n\n## Decline or request a correction\nSelect **Decline request** when you cannot complete it. Enter your full name and use Comments to explain the correction or question. Declining does not require the positive consent checkbox. The sender receives the recorded status and can issue a corrected request when appropriate.\n\n## Expired or renewed links\nA request link can expire, be cancelled or be renewed by the sender. A renewed link replaces earlier links. If the page reports that access is invalid or expired, ask the sender for the current link rather than guessing a URL or opening a private builder page. The sender manages renewal or replacement from the source document's **Reviews & signatures** workflow.\n\n## On a phone\nThe file opens separately from the response form. Return to the original browser tab after reviewing it, then scroll to the consent and response actions. Confirm that the success message appears. If saving fails, retain the visible error and ask the sender for help; checking consent alone does not mean a response was saved.",
     "search_terms": [
       "sign document",
       "recipient",
       "consent",
       "decline document",
       "complete review",
-      "expired signature link"
+      "expired signature link",
+      "hidden from sidebar",
+      "notification link"
     ],
     "priority": 90,
     "requires_admin": false,
     "is_active": true,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "article_type": "guide",
     "read_minutes": 2,
     "related_slugs": [
@@ -5088,26 +5307,30 @@
     "slug": "guide-project-workspace",
     "feature_area": "Projects",
     "question": "Find your project and navigate the project workspace",
-    "answer_short": "Locate a project, open its workspace, and choose the right area for scheduling, staff, materials, documents, and client updates.",
-    "answer_long": "## Before you begin\nSign in to your company's workspace with a role that can manage projects. Project management pages show the company's projects; field team members use their assigned work in Employee Portal. Have the project name, client, or site address ready so you can distinguish similarly named jobs.\n\n## Open and navigate a project\n1. Open **PM Projects**. Each project card shows its name, status, and any saved client, address, dates, or budget.\n2. Select **Open** on the correct project card. Check the project heading and site address before making changes.\n3. Use the dropdown underneath the project heading to select a workspace area. The selected area is shown on the button, which also works on phones.\n4. Choose **Overview** for project health, milestones, linked documents, status, and quick additions. Choose **Phases** to maintain phase details and **Phase Timeline** to review the phase schedule.\n5. Choose **Staff & Tasks** for assignments, task editing, and the assignee filter. Use **Materials**, **Subcontractors**, or **Permits** for the related project records.\n6. Choose **Client View** for client-visible timeline updates, **Client Notes** for the notes feed, and **Project Notes** for the project diary. These areas serve different purposes.\n7. Choose **Quotes & Docs**, **Plans & Elevations**, or **Contractor Portal** when working with project files. Use the back arrow to return to PM Projects.\n\n## Create a project from an existing quote\nOpen the saved quote and select **Convert Quote**, then **Project Only** or **Project & Invoice** as appropriate. Review the resulting project rather than converting the same quote repeatedly. A conversion may first open the Project Detail page; you can return to PM Projects and open the project workspace for the PM tools.\n\n## Troubleshooting\n**Project not found** usually means the URL is missing its project identifier, the project was deleted, or your account cannot read it. Return to PM Projects and open the record from its card. Do not replace an inaccessible record by creating duplicates. On mobile, use the workspace dropdown rather than looking for a wide row of tabs.",
+    "answer_short": "Locate a project, open its workspace, and choose the right area for scheduling, staff, documents, formal client updates, and closeout checklists.",
+    "answer_long": "## Before you begin\nSign in to your company's workspace with a role that can manage projects. Project management pages show the company's projects; field team members use assigned work in Employee Portal. Have the project name, client or site address ready so you can distinguish similarly named jobs.\n\n## Open and navigate a project\n1. Open **PM Projects**. Each project card shows its name, status and available client, address, date or budget information.\n2. Select **Open** on the correct card and check the project heading and site address before changing anything.\n3. Use the dropdown underneath the heading to select a workspace area. The selected area appears on the button, including on phones.\n4. Choose **Overview** for project health, milestones, linked documents, status and quick additions. Choose **Phases** for phase details and **Phase Timeline** for the schedule.\n5. Choose **Staff & Tasks** for assignments and task editing. Use **Materials**, **Subcontractors** or **Permits** for those project records.\n6. Choose **Client Updates** for formal progress reports with completed work, upcoming work, a branded PDF, email/text delivery and Client Portal publishing. Choose **Client View** for the lighter dated timeline feed.\n7. Choose **Project Closeouts** to capture photographed deficiencies, assign subcontractors and deliver the branded closeout checklist. Use **Client Notes** for the notes feed and **Project Notes** for the project diary.\n8. Choose **Quotes & Docs**, **Plans & Elevations** or **Contractor Portal** when working with project files. Use the back arrow to return to PM Projects.\n\nThe global Project Management menu also links directly to **Client Updates** and **Project Closeouts** when you need to search or filter records across projects. A project must have a linked client before a formal client update or closeout can be created.\n\n## Create a project from an existing quote\nOpen the saved quote and select **Convert Quote**, then **Project Only** or **Project & Invoice** as appropriate. Review the resulting project rather than converting the same quote repeatedly. A conversion may first open Project Detail; return to PM Projects and open the project workspace for the PM tools.\n\n## Troubleshooting\n**Project not found** usually means the URL lacks its project identifier, the record was deleted, or your account cannot read it. Return to PM Projects and open the record from its card. Do not replace an inaccessible record by creating duplicates. If Client Updates or Project Closeouts has no selectable project, confirm the project is linked to a client. On mobile, use the workspace dropdown instead of looking for a wide row of tabs.",
     "route": "/PMProjects",
     "search_terms": [
       "project workspace",
       "PM projects",
       "open project",
       "project tabs",
-      "convert quote"
+      "convert quote",
+      "client updates",
+      "project closeouts"
     ],
     "priority": 85,
     "related_slugs": [
       "guide-project-overview",
-      "guide-project-import-quote"
+      "guide-project-import-quote",
+      "guide-project-client-updates",
+      "guide-project-closeouts"
     ],
     "audience": "office",
     "requires_admin": false,
     "article_type": "guide",
     "read_minutes": 2,
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-05",
     "is_active": true,
     "id": "fixture-guide-44"
   },
@@ -5338,27 +5561,31 @@
   {
     "slug": "guide-project-client-updates",
     "feature_area": "Client Timeline",
-    "question": "Post client-visible project updates and review the client feed",
-    "answer_short": "Create dated client updates and understand which phases, milestones, and issues appear in the Client View feed.",
-    "answer_long": "## Before you begin\nOpen the project workspace and choose **Client View**. This subscriber-side view is the **Client Timeline Feed**. It helps your team review information marked for clients; it is different from the Client Notes feed and does not itself send a support ticket or invite a new subscriber.\n\nCheck the linked client and ensure the wording is appropriate to share. Avoid placing private pricing discussions, employee matters, or internal troubleshooting in an update that will be client-visible.\n\n## Post an update\n1. Select **Post Update**, or **Post First Update** when the feed is empty.\n2. Enter the required **Event Title / Summary**. Use a concise description of the work or checkpoint.\n3. Set **Event Date** to the date the update relates to, rather than relying on the date when you happen to type it.\n4. Enter **Details & Notes** with the context the client needs, such as what was completed, what comes next, and any decisions required.\n5. Review **Visible to Client** before saving. Leave it on only when the update is intended for the client feed.\n6. Save the update and review its placement in the dated feed.\n\n## What else appears\nThe feed combines manual updates marked client-visible, milestones that have not been explicitly hidden, phases marked client-visible, and issues marked client-visible. It groups entries by date and presents the most recent dates first. Phase progress and milestone status are read from their underlying records.\n\nA client-invisible manual update will not appear in this visible feed, even though it may be saved. Phase dates use actual start when available, otherwise target start or the record's creation date. This explains why an old phase may appear on a different date than expected.\n\n## Troubleshooting and mobile use\nIf an entry is missing, check visibility and the relevant date in the source record. If the status or progress looks wrong, update the phase or milestone rather than posting a contradictory manual update. Saving an update does not prove an email or text was delivered. On phones, scroll the feed by date and review the visibility switch in the posting dialog before tapping Save.",
-    "route": "/PMProjects",
+    "question": "Create, publish, and send a professional Client Update",
+    "answer_short": "Create a searchable project report with completed work, upcoming work and client notes, then publish it, send it, or export a branded PDF.",
+    "answer_long": "## Before you begin\nOpen **Project Management → Client Updates**, or open a project and choose **Client Updates** from the workspace dropdown. The selected project must have a linked client. In the project selector, each option shows the project number/name and client name so you can confirm the recipient before writing.\n\nA formal Client Update is different from **Client View → Post Update**. Client View creates a lightweight timeline entry. Client Updates creates a dedicated, editable report that can be searched, published to the Client Portal and delivered as a branded PDF, email or text link.\n\n## Create and save the report\n1. Select **Create update** and choose the project.\n2. Enter the update title and update date.\n3. Write the **Project summary** with the overall status and important context.\n4. Enter **Completed work**, one item per line, then **Upcoming work**, one item per line.\n5. Add **Client notes** for decisions, access needs or information the client should know. Keep internal pricing, employee matters and private troubleshooting elsewhere.\n6. Choose **Save draft** when the report still needs review, or **Publish to portal** when it is ready for the client.\n\nSupported long fields include **AI Rewrite**, **Undo**, and **Expand / Collapse**. Enter accurate source facts first, review every rewrite before saving, and use Expand for a taller editor on a phone.\n\n## Find, review, and edit\nSearch by project, client, title or update content. Filter by **Draft** or **Published**. **Edit** reopens the form. **View** opens the formatted report in a new browser tab, so the Client Updates list remains available in the original tab. On mobile, the view leaves space for the app header and its Back action returns to Client Updates instead of the dashboard.\n\nUse **PDF** to download the professionally formatted report with company branding and available logo. Review the preview or saved view after editing; another tab cannot include changes that were never saved.\n\n## Email, text, and Client Portal\nChoose **Email** to review the recipient, subject and message, attach the branded PDF, and optionally send the company a copy. Choose **Text** to review the client's mobile number and send the secure portal link. Emailing or texting a Draft publishes it first. Wait for the send result rather than treating Published status as proof of message delivery.\n\nPublished updates appear in the client's portal and include a PDF download. If an action is disabled, confirm the project has a linked client and that the client has the required email or phone number. If a save or send fails, keep the text, inspect the saved list and retry only after checking the visible error.",
+    "route": "/ClientUpdates",
     "search_terms": [
-      "client view",
-      "client timeline",
-      "post client update",
-      "visible to client"
+      "client updates",
+      "project update",
+      "completed work",
+      "upcoming work",
+      "branded PDF",
+      "publish to client portal",
+      "email update",
+      "text update"
     ],
-    "priority": 75,
+    "priority": 96,
     "related_slugs": [
-      "guide-project-phases",
-      "guide-project-milestones",
-      "guide-project-notes"
+      "guide-project-workspace",
+      "guide-ai-writing-tools",
+      "guide-project-closeouts"
     ],
     "audience": "office",
     "requires_admin": false,
     "article_type": "guide",
-    "read_minutes": 2,
-    "last_verified_at": "2026-10-04",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-05",
     "is_active": true,
     "id": "fixture-guide-53"
   },
@@ -5749,6 +5976,96 @@
     "id": "fixture-guide-67"
   },
   {
+    "slug": "guide-project-closeouts",
+    "feature_area": "Projects",
+    "question": "Create and deliver a project closeout deficiency checklist",
+    "answer_short": "Capture deficiencies during a walkthrough, complete trade assignments and details, then share a branded checklist with subcontractors and the client.",
+    "answer_long": "## Start the checklist\nOpen **Project Management → Project Closeouts**, or open a project and choose **Project Closeouts** from its workspace dropdown. Select a project that has a linked client, enter a checklist title and walkthrough date, and add general notes when the whole walkthrough needs context. You can save and continue from a phone or return from the office.\n\nChoose **Quick photo capture** when speed on site matters. Take each photo and use **Save photo & next**; trade, description and due date can be completed later. Choose **Guided walkthrough** when you want to finish each deficiency before moving on. Add the photo, deficiency type, description, assigned subcontractor, status and optional due date, then use **Save & next**.\n\n## Complete every deficiency\nOpen **View** to review the checklist in a separate tab, or **Edit** to update the checklist. Each deficiency can be edited or deleted. Use clear descriptions that identify the room or area, required correction and expected finish. The status choices are **Open**, **In Progress**, **Ready for Review** and **Complete**.\n\nThe progress panel shows total deficiencies, completed items, missing descriptions and unassigned work. Resolve missing descriptions and assignments before distributing the checklist. The subcontractor selector uses the company's vendor/subcontractor directory; add or correct that directory record when a trade is missing or has no email address.\n\n## Send trade-specific packages\nSelect **Send to trades** after assigning deficiencies. Each subcontractor with an email address receives a branded PDF containing only the items assigned to that company, including photos, descriptions, due dates and current status. Subcontractors without an email address are skipped, so review the recipient list before sending. Wait for the success result rather than treating the button click as proof of delivery.\n\n## Publish and share with the client\nUse **Publish to portal** to make the checklist available in the Client Portal. **Email client** can attach the branded PDF and optionally send the company a copy. **Text client** sends the secure portal link. Emailing or texting a Draft publishes it first. Review client contact information, checklist contents and photos before sending.\n\n**Mark complete** records the overall closeout as completed; it is separate from completing each deficiency and separate from sending or publishing. Confirm the individual item statuses before marking the checklist complete. Published closeouts remain available to the client with a PDF download.\n\n## Mobile and troubleshooting\nOn a phone, grant camera access when prompted, keep the device connected until each photo saves, and use the large next action to continue. If a photo or save fails, keep the original image and check the checklist before retrying. If sending is disabled, confirm that the checklist has at least one deficiency and that the client or assigned subcontractor has the required email or phone number.",
+    "route": "/ProjectCloseouts",
+    "search_terms": [
+      "project closeout",
+      "deficiency checklist",
+      "punch list",
+      "walkthrough photos",
+      "quick capture",
+      "guided walkthrough",
+      "send to trades",
+      "client portal closeout"
+    ],
+    "priority": 94,
+    "related_slugs": [
+      "guide-project-workspace",
+      "guide-project-contractor-portal"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-05",
+    "is_active": true,
+    "id": "fixture-guide-68"
+  },
+  {
+    "slug": "guide-ai-writing-tools",
+    "feature_area": "Help & Support",
+    "question": "Use AI Rewrite, Undo, and expanded text fields safely",
+    "answer_short": "Polish long business text, review every rewritten detail, undo the result when needed, and expand the editor for comfortable writing.",
+    "answer_long": "## Where writing tools appear\nSupported larger text fields show a footer with **AI Rewrite** and **Expand**. This includes the main narrative fields in Client Updates and supported long descriptions throughout the app. Quote, change-order and invoice line-item editors also provide the controls for **Description** and **Internal Notes**. A signed-in user must enter text before AI Rewrite becomes available.\n\n## Rewrite and review\n1. Enter the facts, dates, amounts, measurements, names and qualifications that must remain accurate.\n2. Select **AI Rewrite** and wait for the rewritten text to replace the draft.\n3. Read the entire result before saving or sending. The rewrite is designed to improve professional tone and clarity while preserving supplied facts, but the person sending the document remains responsible for accuracy.\n4. Select **Undo** to restore the pre-rewrite text. Undo is available until you manually edit the rewritten result or start another change.\n5. Select **Expand** for a taller editor and **Collapse** when finished. On desktop, supported fields can also be dragged vertically from the lower edge; on smaller screens, Expand gives a more reliable editing area.\n\nDo not use AI Rewrite to invent scope, commitments, prices, dates or completion claims. Keep private information out of customer-facing descriptions. If an important internal note must persist, save the document and reopen it to verify the field; current line-item Internal Notes should not be relied on as the only stored copy.\n\n## Plans and usage protection\nAI Rewrite is available to Professional and Business plans. Current active subscribers who had access before plan enforcement keep access unless a company entitlement explicitly disables it. The server checks subscription and company access for every request, applies per-user and per-company limits, and isolates usage by company. Text between 1 and 10,000 characters is supported.\n\nWhen a limit is reached, the app displays a retry time. Keep your draft and try again after that period; repeated clicks do not bypass the limit. The usage log stores lightweight request metadata and status rather than the source text.\n\n## If rewriting is unavailable\nA plan message means the company is not currently entitled. A usage-limit message includes when to retry. A sign-in message means the current session must be restored. For a temporary service error, keep the original text and retry once later. Never assume a failed request changed the saved document; AI Rewrite changes the field draft, and the form still needs its normal Save action.",
+    "route": "/HelpArticles",
+    "search_terms": [
+      "AI Rewrite",
+      "rewrite text",
+      "professional writing",
+      "undo rewrite",
+      "expand text box",
+      "resize textarea",
+      "AI usage limit",
+      "Professional Business plan"
+    ],
+    "priority": 95,
+    "related_slugs": [
+      "guide-project-client-updates",
+      "guide-quotes-create-save"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 3,
+    "last_verified_at": "2026-10-05",
+    "is_active": true,
+    "id": "fixture-guide-69"
+  },
+  {
+    "slug": "guide-builder-unsaved-changes",
+    "feature_area": "Quotes",
+    "question": "Exit a quote, change order, or invoice with unsaved changes",
+    "answer_short": "Choose whether to keep editing, discard the current unsaved edits, or save them before continuing to the selected destination.",
+    "answer_long": "## When the warning appears\nQuote Builder, Change Order Builder and Invoice Builder track document changes. When you follow an in-app link or another same-tab destination while edits are unsaved, the **Unsaved changes** dialog pauses navigation. The destination you selected is retained while you decide what to do.\n\nThe dialog does not replace the browser's own warning for refreshing the page, closing the tab or closing the browser. Browsers control that message and may not show custom wording. Opening an intentional new-tab link or downloading a file does not replace the current builder tab, so those actions are not treated the same as leaving it.\n\n## Choose the correct action\nSelect **Cancel** to close the warning and keep editing the current document. Nothing is discarded and the attempted navigation is cancelled.\n\nSelect **Leave without saving** to discard the current unsaved edits and continue to the destination you chose. Use this only when those changes are no longer needed. This action does not create a backup or a recoverable draft.\n\nSelect **Save and exit** to run the builder's normal save process, wait for persistence, and then continue to the exact destination. While saving, the actions are disabled to prevent duplicate saves. If the save fails or some edits are still unsaved, the dialog stays open and shows an error; cancel to review the document or try the save again.\n\n## Work safely on mobile\nThe three actions use full-height touch targets and the dialog can scroll on a small screen. Read the document name in the warning before choosing **Leave without saving**. If the on-screen keyboard covers the footer, close the keyboard or scroll the dialog. Avoid using the device's Back gesture repeatedly while a save is running.\n\n## Confirm the outcome\nAfter **Save and exit**, reopen the document when the changes are important and verify the saved values. After **Leave without saving**, the prior stored version remains unchanged. A document's Draft, Sent or Approved status is separate from this navigation warning; the warning protects unsaved editor state and does not send, approve or publish the document.",
+    "route": "/Quotes",
+    "search_terms": [
+      "unsaved changes",
+      "leave without saving",
+      "save and exit",
+      "cancel exit",
+      "quote builder exit",
+      "change order builder exit",
+      "invoice builder exit"
+    ],
+    "priority": 92,
+    "related_slugs": [
+      "guide-quotes-create-save",
+      "guide-change-order-draft",
+      "guide-invoices-create-edit"
+    ],
+    "audience": "office",
+    "requires_admin": false,
+    "article_type": "guide",
+    "read_minutes": 2,
+    "last_verified_at": "2026-10-05",
+    "is_active": true,
+    "id": "fixture-guide-70"
+  },
+  {
     "slug": "guide-quotes-create-save",
     "feature_area": "Quotes",
     "audience": "office",
@@ -5777,7 +6094,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-68"
+    "id": "fixture-guide-71"
   },
   {
     "slug": "guide-quotes-phases-items",
@@ -5809,7 +6126,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-69"
+    "id": "fixture-guide-72"
   },
   {
     "slug": "guide-quotes-pricing-tax-discount",
@@ -5842,7 +6159,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-70"
+    "id": "fixture-guide-73"
   },
   {
     "slug": "guide-quotes-review-send",
@@ -5878,7 +6195,7 @@
     "read_minutes": 4,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-71"
+    "id": "fixture-guide-74"
   },
   {
     "slug": "guide-quotes-client-options-approval",
@@ -5909,7 +6226,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-72"
+    "id": "fixture-guide-75"
   },
   {
     "slug": "guide-quotes-convert-project-invoice",
@@ -5939,7 +6256,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-73"
+    "id": "fixture-guide-76"
   },
   {
     "slug": "guide-quotes-find-duplicate-archive",
@@ -5970,7 +6287,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-74"
+    "id": "fixture-guide-77"
   },
   {
     "slug": "guide-templates-quote-library",
@@ -5999,7 +6316,7 @@
     "read_minutes": 3,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-75"
+    "id": "fixture-guide-78"
   },
   {
     "slug": "guide-templates-phase-library",
@@ -6027,7 +6344,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-76"
+    "id": "fixture-guide-79"
   },
   {
     "slug": "guide-pricebook-create-maintain",
@@ -6060,7 +6377,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-77"
+    "id": "fixture-guide-80"
   },
   {
     "slug": "guide-pricebook-import-export",
@@ -6089,7 +6406,7 @@
     "read_minutes": 3,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-78"
+    "id": "fixture-guide-81"
   },
   {
     "slug": "guide-resource-library-upload-attach",
@@ -6119,7 +6436,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-79"
+    "id": "fixture-guide-82"
   },
   {
     "slug": "guide-leads-create-follow-up",
@@ -6150,7 +6467,7 @@
     "read_minutes": 3,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-80"
+    "id": "fixture-guide-83"
   },
   {
     "slug": "guide-leads-pipeline-find-import",
@@ -6179,7 +6496,7 @@
     "read_minutes": 3,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-81"
+    "id": "fixture-guide-84"
   },
   {
     "slug": "guide-leads-detail-convert",
@@ -6210,7 +6527,7 @@
     "read_minutes": 3,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-82"
+    "id": "fixture-guide-85"
   },
   {
     "slug": "guide-clients-create-organize",
@@ -6241,7 +6558,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-83"
+    "id": "fixture-guide-86"
   },
   {
     "slug": "guide-clients-detail-workflows",
@@ -6273,7 +6590,7 @@
     "read_minutes": 3,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-84"
+    "id": "fixture-guide-87"
   },
   {
     "slug": "guide-invoices-create-edit",
@@ -6304,7 +6621,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-85"
+    "id": "fixture-guide-88"
   },
   {
     "slug": "guide-invoices-milestones-ledger",
@@ -6335,7 +6652,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-86"
+    "id": "fixture-guide-89"
   },
   {
     "slug": "guide-invoices-share-customer-pay",
@@ -6370,7 +6687,7 @@
     "read_minutes": 3,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-87"
+    "id": "fixture-guide-90"
   },
   {
     "slug": "guide-payments-history-corrections-receipts",
@@ -6401,7 +6718,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-88"
+    "id": "fixture-guide-91"
   },
   {
     "slug": "guide-payments-connect-and-refunds",
@@ -6432,7 +6749,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-89"
+    "id": "fixture-guide-92"
   },
   {
     "slug": "guide-reports-review-reconcile",
@@ -6464,7 +6781,7 @@
     "read_minutes": 2,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-90"
+    "id": "fixture-guide-93"
   },
   {
     "slug": "guide-reports-availability-export",
@@ -6495,7 +6812,7 @@
     "read_minutes": 3,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-91"
+    "id": "fixture-guide-94"
   },
   {
     "slug": "guide-dashboard-sales-navigation",
@@ -6526,6 +6843,6 @@
     "read_minutes": 3,
     "last_verified_at": "2026-10-04",
     "is_active": true,
-    "id": "fixture-guide-92"
+    "id": "fixture-guide-95"
   }
 ]

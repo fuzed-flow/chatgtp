@@ -69,8 +69,12 @@ test("quote line-item descriptions and internal notes explicitly enable writing 
   const lineItem = readFileSync(new URL("../../src/components/quotes/LineItemRow.jsx", import.meta.url), "utf8");
 
   assert.equal((lineItem.match(/writingTools/g) || []).length, 2);
-  assert.match(lineItem, /<Textarea\s+writingTools\s+value={localDesc}/);
-  assert.match(lineItem, /<Textarea\s+writingTools\s+value={localNotes}/);
+  assert.match(lineItem, /<Textarea\s+writingTools\s+rows=\{3\}\s+value=\{localDesc\}/);
+  assert.match(lineItem, /<Textarea\s+writingTools\s+rows=\{2\}\s+value=\{localNotes\}/);
+  assert.match(lineItem, /aria-expanded={false}/);
+  assert.match(lineItem, /aria-expanded={true}/);
+  assert.match(lineItem, /ChevronUp/);
+  assert.doesNotMatch(lineItem, /handleAutoResize|overflow-hidden resize-y/);
 });
 
 test("client update View opens a mobile-safe authenticated page in a new tab", () => {

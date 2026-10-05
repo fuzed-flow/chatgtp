@@ -1,9 +1,9 @@
 {
-  "verified_at": "2026-10-04",
+  "verified_at": "2026-10-05",
   "source_commit": null,
-  "guide_count": 93,
-  "guide_words": 37387,
-  "corrected_faq_count": 32,
+  "guide_count": 96,
+  "guide_words": 38639,
+  "corrected_faq_count": 41,
   "topics": [
     "Account",
     "Change Orders",
@@ -103,7 +103,7 @@
       "guides": [
         {
           "slug": "guide-approvals-review",
-          "title": "Reviewing quotes, change orders, and purchase orders in Approvals"
+          "title": "Review client documents and action items in Approvals"
         }
       ],
       "status": "documented"
@@ -119,6 +119,10 @@
         {
           "slug": "guide-change-order-approval",
           "title": "Review change order approval, change requests, and invoice conversion"
+        },
+        {
+          "slug": "guide-builder-unsaved-changes",
+          "title": "Exit a quote, change order, or invoice with unsaved changes"
         }
       ],
       "status": "documented"
@@ -187,12 +191,23 @@
       "status": "documented"
     },
     {
+      "page": "ClientUpdateView",
+      "source": "src/pages/ClientUpdateView.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-client-updates",
+          "title": "Create, publish, and send a professional Client Update"
+        }
+      ],
+      "status": "documented"
+    },
+    {
       "page": "ClientUpdates",
       "source": "src/pages/ClientUpdates.jsx",
       "guides": [
         {
           "slug": "guide-project-client-updates",
-          "title": "Post client-visible project updates and review the client feed"
+          "title": "Create, publish, and send a professional Client Update"
         }
       ],
       "status": "documented"
@@ -432,6 +447,10 @@
           "title": "Connect client payments and manage your FuzedFlow subscription"
         },
         {
+          "slug": "guide-builder-unsaved-changes",
+          "title": "Exit a quote, change order, or invoice with unsaved changes"
+        },
+        {
           "slug": "guide-invoices-create-edit",
           "title": "Create or edit an invoice and review the saved billing scope"
         },
@@ -578,7 +597,7 @@
         },
         {
           "slug": "guide-project-client-updates",
-          "title": "Post client-visible project updates and review the client feed"
+          "title": "Create, publish, and send a professional Client Update"
         },
         {
           "slug": "guide-project-notes",
@@ -650,6 +669,28 @@
         {
           "slug": "guide-pricebook-import-export",
           "title": "Import, export, and safely update Pricebook CSV files"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ProjectCloseoutView",
+      "source": "src/pages/ProjectCloseoutView.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-closeouts",
+          "title": "Create and deliver a project closeout deficiency checklist"
+        }
+      ],
+      "status": "documented"
+    },
+    {
+      "page": "ProjectCloseouts",
+      "source": "src/pages/ProjectCloseouts.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-closeouts",
+          "title": "Create and deliver a project closeout deficiency checklist"
         }
       ],
       "status": "documented"
@@ -777,6 +818,10 @@
         {
           "slug": "guide-stripe-and-subscription",
           "title": "Connect client payments and manage your FuzedFlow subscription"
+        },
+        {
+          "slug": "guide-builder-unsaved-changes",
+          "title": "Exit a quote, change order, or invoice with unsaved changes"
         },
         {
           "slug": "guide-quotes-create-save",
