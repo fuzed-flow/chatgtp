@@ -15,12 +15,14 @@ import { formatCurrencyUSD } from "../components/utils/formatCurrency";
 import { ClientUpdatePreview } from "@/components/client-updates/ClientUpdatePreviewDialog";
 import { generateClientUpdatePDF, generateProjectCloseoutPDF } from "@/components/pdf/PDFGenerator";
 import ProjectCloseoutPreview from "@/components/closeouts/ProjectCloseoutPreview";
+import { buildPublicQuoteUrl } from "@/lib/quoteSharing";
 
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
   const clientId = params.get("id");
   const requestedUpdateId = params.get("update");
   const requestedCloseoutId = params.get("closeout");
+  const quoteAccessToken = params.get("quote_token");
 
   // --- UI STATE ---
   const [activeTab, setActiveTab] = useState(() => params.get("tab") || "quotes");
@@ -63,7 +65,9 @@ export default function ClientPortal() {
 
         const [companyRes, quotesRes, coRes, invoicesRes, updatesRes, closeoutsRes] = await Promise.all([
           supabase.from("companies").select("*").eq("id", clientData.company_id).maybeSingle(),
-          supabase.from("quotes").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
+          quoteAccessToken
+            ? supabase.rpc("get_client_portal_quotes", { p_client: clientId, p_token: quoteAccessToken })
+            : Promise.resolve({ data: [], error: null }),
           supabase.from("change_orders").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
           supabase.from("invoices").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
           supabase.rpc("get_client_portal_updates", { p_client: clientId }),
@@ -89,11 +93,11 @@ export default function ClientPortal() {
     };
 
     fetchPortalData();
-  }, [clientId]);
+  }, [clientId, quoteAccessToken]);
 
   // --- EXTRACT PORTAL SETTINGS ---
   const portalSettings = company?.settings?.client_portal || {};
-  const showQuotes = portalSettings.show_quotes !== false;
+  const showQuotes = portalSettings.show_quotes !== false && Boolean(quoteAccessToken);
   const showCOs = portalSettings.show_change_orders !== false;
   const showInvoices = portalSettings.show_invoices !== false;
   const showDocs = portalSettings.show_documents !== false;
@@ -350,7 +354,7 @@ export default function ClientPortal() {
                           </div>
                         </div>
                         <Button 
-                          onClick={() => window.open(createPageUrl(`PublicQuoteView?id=${quote.id}`), "_blank")}
+                          onClick={() => window.open(buildPublicQuoteUrl(window.location.origin, quote.id, quote.approval_token), "_blank", "noopener,noreferrer")}
                           className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-md rounded-lg h-11 px-6"
                         >
                           <Eye className="w-4 h-4 mr-2" /> View & Accept Quote

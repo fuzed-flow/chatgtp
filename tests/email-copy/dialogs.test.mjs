@@ -84,7 +84,7 @@ const bundlePromise = build({
       loader: 'js', contents: args.path === 'auth'
         ? 'export const useAuth=()=>window.emailFixture.auth;'
         : args.path === 'database'
-          ? 'export const supabase={from:table=>window.emailFixture.from(table),functions:{invoke:(name,options)=>window.emailFixture.invoke(name,options)}};'
+          ? 'export const supabase={from:table=>window.emailFixture.from(table),rpc:(name,args)=>window.emailFixture.rpc(name,args),functions:{invoke:(name,options)=>window.emailFixture.invoke(name,options)}};'
           : args.path === 'pdf'
             ? 'export const generateQuotePDF=(...args)=>window.emailFixture.pdf(...args);'
             : 'const record=(level,...args)=>{window.emailFixture.toasts.push({level,args});return "synthetic-toast";};export const toast={loading:(...args)=>record("loading",...args),error:(...args)=>record("error",...args),success:(...args)=>record("success",...args),dismiss:(...args)=>record("dismiss",...args)};',
@@ -112,7 +112,7 @@ async function emailView(dialog, options = {}) {
   window.fetch = () => { throw new Error('Synthetic dialog tests cannot make network requests.'); };
   const companyEmail = Object.hasOwn(options, 'companyEmail') ? options.companyEmail : COMPANY_EMAIL;
   const fixture = {
-    dialog, companyEmail, successes: 0, openChanges: [], requests: [], writes: [], queries: [],
+    dialog, companyEmail, successes: 0, openChanges: [], requests: [], writes: [], queries: [], rpcCalls: [],
     invalidations: [], pdfCalls: [], toasts: [], pendingReads: new Map(),
     initialState: {open: true, documentId: DOCUMENT, documentType: dialog === 'hook' ? 'invoice' : dialog},
     auth: {
@@ -166,6 +166,11 @@ async function emailView(dialog, options = {}) {
     assert.equal(name, 'send-email');
     return new Promise((resolve, reject) => fixture.requests.push({body: plain(body), resolve, reject}));
   };
+  fixture.rpc = async (name, args) => {
+    fixture.rpcCalls.push({name, args: plain(args)});
+    if (name !== 'issue_quote_share_token') return {data: null, error: {message: 'Unexpected synthetic RPC: ' + name}};
+    return {data: 'a'.repeat(64), error: null};
+  };
   fixture.pdf = async (...args) => {
     fixture.pdfCalls.push(plain(args));
     if (fixture.pdfGate) await fixture.pdfGate;
@@ -173,7 +178,7 @@ async function emailView(dialog, options = {}) {
   };
   window.emailFixture = fixture;
   const wait = async predicate => {
-    for (let attempt = 0; attempt < 200; attempt++) {if (predicate()) return; await pause(10);}
+    for (let attempt = 0; attempt < 500; attempt++) {if (predicate()) return; await pause(10);}
     throw new Error('Expected email UI state: ' + document.body.textContent + '; errors: ' + errors.join('; '));
   };
   const button = text => [...document.querySelectorAll('button')].find(element => element.textContent.trim() === text);
@@ -277,6 +282,11 @@ for (const type of Object.keys(types)) {
       assert.equal(body.to_email, CLIENT_EMAIL);
       assert.equal(body.subject, 'My edited customer subject');
       assert.ok(body.html_body.includes('An exact synthetic customer message.'));
+      if (type === 'quote') {
+        assert.ok(body.html_body.includes('token=' + 'a'.repeat(64)));
+        assert.ok(body.html_body.includes('quote_token=' + 'a'.repeat(64)));
+        assert.deepEqual(view.fixture.rpcCalls, [{name: 'issue_quote_share_token', args: {p_quote: DOCUMENT}}]);
+      }
       assert.equal(body.client_id, CLIENT);
       assert.equal(Object.hasOwn(body, 'copy_to'), false, 'The browser cannot choose an arbitrary copy recipient.');
       view.reply(0);

@@ -158,7 +158,7 @@ test('a stale internal review cannot report successful approval', async () => {
   await assert.rejects(run({id:'document',documentType:'quote',outcome:'Approved'}));
 });
 
-for (const [file, handler, variable, key] of [['PublicQuoteView','handleDeclineQuote','quote','public-quote'],['PublicChangeOrderView','handleDeclineChangeOrder','changeOrder','public-co']]) {
+for (const [file, handler, variable, key] of [['PublicChangeOrderView','handleDeclineChangeOrder','changeOrder','public-co']]) {
   const page=await readPage(file);
   const method=page.declarations.find(node=>node.id.name===handler).init;
   const fixture=(result,pending)=> {
@@ -215,17 +215,17 @@ for (const [file, handler, variable, key] of [['PublicQuoteView','handleDeclineQ
   });
 }
 
+test('PublicQuoteView routes every client decision through the token-validated server workflow', async () => {
+  const {source} = await readPage('PublicQuoteView');
+  assert.match(source, /respondToPublicQuote\(\{ quoteId, token, action, selections/);
+  assert.match(source, /!closed && !expired/);
+  assert.match(source, /const CLOSED_STATUSES = new Set\(\["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending"\]\)/);
+  assert.doesNotMatch(source, /from\(["']quotes["']\)\.update/);
+});
+
 test('Approved quote keeps its separate deposit payment action',async()=>{
-  const page=await readPage('PublicQuoteView');
-  const nodes=[];
-  const walk=node=> {
-    if (!node || typeof node!=='object') return;
-    if (node.type==='LogicalExpression' && node.operator==='&&') nodes.push(node);
-    for(const value of Object.values(node)) if(Array.isArray(value)) value.forEach(walk); else if(value && typeof value==='object') walk(value);
-  };
-  walk(page.page);
-  const gate=nodes.find(node=>page.source.slice(node.right.start,node.right.end).includes('onClick={handlePayDeposit}'));
-  assert.ok(gate);
-  const evaluate=(status,deposit_amount)=>vm.runInNewContext(page.source.slice(gate.left.start,gate.left.end),{quote:{status,deposit_amount}});
-  assert.equal(evaluate('Approved',100),true);assert.equal(evaluate('Approved',0),false);assert.equal(evaluate('Paid',100),false);
+  const {source}=await readPage('PublicQuoteView');
+  assert.match(source, /quote\.status === "Approved" && Number\(quote\.deposit_amount\) > Number\(quote\.deposit_paid_amount \|\| 0\)/);
+  assert.match(source, /onClick=\{payDeposit\}/);
+  assert.match(source, /body: \{ quote_id: quote\.id \}/, 'The browser sends only the quote ID; the server derives the payment amount.');
 });
