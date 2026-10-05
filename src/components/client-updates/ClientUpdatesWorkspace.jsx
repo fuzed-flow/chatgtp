@@ -119,7 +119,9 @@ export default function ClientUpdatesWorkspace({ fixedProject = null }) {
 
   const isLoading = projectsQuery.isPending || clientsQuery.isPending || updatesQuery.isPending;
   const loadError = projectsQuery.error || clientsQuery.error || updatesQuery.error;
-  const eligibleProjects = projects.filter(project => project.client_id);
+  const eligibleProjects = useMemo(() => projects
+    .filter(project => project.client_id)
+    .map(project => ({ ...project, client_name: clientById[project.client_id]?.name || "Client" })), [projects, clientById]);
   const openPreview = update => setPreview(update);
   const openDelivery = (update, mode) => setDelivery({ update, mode });
   const related = update => ({ project: projectById[update.project_id], client: clientById[update.client_id] });
@@ -178,4 +180,3 @@ export default function ClientUpdatesWorkspace({ fixedProject = null }) {
     </div>
   );
 }
-

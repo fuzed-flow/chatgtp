@@ -68,7 +68,9 @@ export default function ClientUpdateFormDialog({ open, onOpenChange, update, pro
               >
                 <option value="">Choose a project</option>
                 {projects.map(project => (
-                  <option key={project.id} value={project.id}>{project.project_number ? `${project.project_number} - ` : ""}{project.name}</option>
+                  <option key={project.id} value={project.id}>
+                    {project.project_number ? `${project.project_number} - ` : ""}{project.name}{project.client_name ? ` — ${project.client_name}` : ""}
+                  </option>
                 ))}
               </select>
             </div>
@@ -122,4 +124,3 @@ export default function ClientUpdateFormDialog({ open, onOpenChange, update, pro
     </Dialog>
   );
 }
-

@@ -15,3 +15,11 @@ test("client updates are available from project management and the client portal
   assert.match(delivery, /document_type: "client_update"/);
   assert.match(delivery, /generateClientUpdatePDF/);
 });
+
+test("the client update project dropdown identifies the linked client", () => {
+  const form = readFileSync(new URL("../../src/components/client-updates/ClientUpdateFormDialog.jsx", import.meta.url), "utf8");
+  const workspace = readFileSync(new URL("../../src/components/client-updates/ClientUpdatesWorkspace.jsx", import.meta.url), "utf8");
+
+  assert.match(form, /project\.client_name/);
+  assert.match(workspace, /client_name: clientById\[project\.client_id\]\?\.name/);
+});
