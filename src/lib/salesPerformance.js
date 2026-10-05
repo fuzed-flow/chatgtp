@@ -76,11 +76,15 @@ const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const quoteEventDate = quote => quote.signed_at || quote.updated_at || quote.sent_at || quote.issue_date || quote.created_at;
 const paymentEventDate = payment => payment.payment_date || payment.created_at;
 const leadAssignee = lead => lead.assigned_to_user_id || lead.assigned_to || "unassigned";
+const leadCreator = lead => lead.created_by_user_id || "unknown_creator";
+const quoteStatus = quote => String(quote.status || "").trim().toLowerCase();
+const LOST_SENT_STATUSES = new Set(["sent", "viewed", "pending", "pending approval", "declined"]);
+const PIPELINE_EXCLUDED_QUOTE_STATUSES = new Set(["draft", "declined", "expired", "cancelled", "canceled"]);
 
 function filterLeads(leads, filters, range) {
   return leads.filter(lead => {
     if (!isDateInRange(lead.created_at, range)) return false;
-    if (filters.rep !== "all" && String(leadAssignee(lead)) !== String(filters.rep)) return false;
+    if (filters.rep !== "all" && String(leadCreator(lead)) !== String(filters.rep)) return false;
     if (filters.source !== "all" && (lead.source || "Other") !== filters.source) return false;
     if (filters.stage !== "all" && normalizeSalesStage(lead.pipeline_stage) !== filters.stage) return false;
     return true;
@@ -91,7 +95,7 @@ function filterRelated(records, leadMap, filters, range, dateSelector) {
   return records.filter(record => {
     if (!isDateInRange(dateSelector(record), range)) return false;
     const lead = record.lead_id ? leadMap.get(record.lead_id) : null;
-    if (filters.rep !== "all" && (!lead || String(leadAssignee(lead)) !== String(filters.rep))) return false;
+    if (filters.rep !== "all" && (!lead || String(leadCreator(lead)) !== String(filters.rep))) return false;
     if (filters.source !== "all" && (!lead || (lead.source || "Other") !== filters.source)) return false;
     if (filters.stage !== "all" && (!lead || normalizeSalesStage(lead.pipeline_stage) !== filters.stage)) return false;
     return true;
@@ -100,13 +104,37 @@ function filterRelated(records, leadMap, filters, range, dateSelector) {
 
 function leadValue(lead, quotesByLead) {
   const linked = quotesByLead.get(lead.id) || [];
-  const usable = linked.filter(quote => !quote.is_template && !["Draft", "Declined", "Expired", "Cancelled", "Canceled"].includes(quote.status));
+  const usable = linked.filter(quote => !quote.is_template && !PIPELINE_EXCLUDED_QUOTE_STATUSES.has(quoteStatus(quote)));
   return usable.length ? Math.max(...usable.map(quote => number(quote.total))) : number(lead.value_estimate);
+}
+
+function approvedQuoteValue(lead, quotesByLead) {
+  return (quotesByLead.get(lead.id) || [])
+    .filter(quote => !quote.is_template && quoteStatus(quote) === "approved")
+    .reduce((sum, quote) => sum + number(quote.total), 0);
+}
+
+function maxQuoteValue(quotes) {
+  return quotes.length ? Math.max(...quotes.map(quote => number(quote.total))) : null;
+}
+
+export function lostOpportunityValue(lead, quotesByLead) {
+  const linked = (quotesByLead.get(lead.id) || []).filter(quote => !quote.is_template);
+  const approved = linked.filter(quote => quoteStatus(quote) === "approved");
+  if (approved.length) return { value: approved.reduce((sum, quote) => sum + number(quote.total), 0), source: "Approved quote" };
+
+  const sentValue = maxQuoteValue(linked.filter(quote => LOST_SENT_STATUSES.has(quoteStatus(quote))));
+  if (sentValue != null) return { value: sentValue, source: "Sent quote" };
+
+  const draftValue = maxQuoteValue(linked.filter(quote => quoteStatus(quote) === "draft"));
+  if (draftValue != null) return { value: draftValue, source: "Draft quote" };
+
+  return { value: number(lead.value_estimate), source: "Lead estimate" };
 }
 
 function wonDate(lead, quotesByLead) {
   if (lead.won_at) return recordDate(lead.won_at);
-  const approved = (quotesByLead.get(lead.id) || []).filter(quote => quote.status === "Approved").map(quoteEventDate).map(recordDate).filter(Boolean);
+  const approved = (quotesByLead.get(lead.id) || []).filter(quote => quoteStatus(quote) === "approved").map(quoteEventDate).map(recordDate).filter(Boolean);
   return approved.length ? approved.sort((a, b) => b - a)[0] : null;
 }
 
@@ -118,33 +146,32 @@ function stageReached(lead, stage, quotesByLead) {
   if (stage === "Contacted") return (current !== "New" && current !== "Lost") || !!lead.first_contact_at;
   if (stage === "Qualified") return !!lead.qualified_at || ["Qualified", "Booked Visit", "Quoted", "Negotiation", "Won"].includes(current);
   if (stage === "Booked Visit") return !!lead.appointment_at || !!lead.next_meeting_date || ["Booked Visit", "Quoted", "Negotiation", "Won"].includes(current);
-  if (stage === "Quoted") return !!lead.quote_sent_at || (quotesByLead.get(lead.id) || []).some(quote => !quote.is_template && quote.status !== "Draft") || ["Quoted", "Negotiation", "Won"].includes(current);
+  if (stage === "Quoted") return !!lead.quote_sent_at || (quotesByLead.get(lead.id) || []).some(quote => !quote.is_template && quoteStatus(quote) !== "draft") || ["Quoted", "Negotiation", "Won"].includes(current);
   if (stage === "Negotiation") return ["Negotiation", "Won"].includes(current);
   return false;
 }
 
-function aggregateRepPerformance(leads, quotes, profiles, activities, quotesByLead) {
+function aggregateRepPerformance(leads, quotes, profiles, activities, quotesByLead, allLeadMap) {
   const profileMap = new Map(profiles.map(profile => [String(profile.id), profile]));
-  const leadMap = new Map(leads.map(lead => [lead.id, lead]));
   const reps = new Map();
   const ensure = key => {
-    if (!reps.has(key)) reps.set(key, { id: key, name: profileMap.get(String(key))?.full_name || (key === "unassigned" ? "Unassigned" : String(key)), leads: 0, appointments: 0, quotes: 0, won: 0, revenue: 0, calls: 0, closeRate: 0 });
+    if (!reps.has(key)) reps.set(key, { id: key, name: profileMap.get(String(key))?.full_name || (key === "unknown_creator" ? "Unknown creator" : String(key)), leads: 0, appointments: 0, quotes: 0, won: 0, revenue: 0, calls: 0, closeRate: 0 });
     return reps.get(key);
   };
   leads.forEach(lead => {
-    const row = ensure(String(leadAssignee(lead)));
+    const row = ensure(String(leadCreator(lead)));
     row.leads += 1;
     if (stageReached(lead, "Booked Visit", quotesByLead)) row.appointments += 1;
     if (stageReached(lead, "Quoted", quotesByLead)) row.quotes += 1;
     if (normalizeSalesStage(lead.pipeline_stage) === "Won") row.won += 1;
   });
-  quotes.filter(quote => quote.status === "Approved").forEach(quote => {
-    const lead = leadMap.get(quote.lead_id);
-    if (lead) ensure(String(leadAssignee(lead))).revenue += number(quote.total);
+  quotes.filter(quote => quoteStatus(quote) === "approved").forEach(quote => {
+    const lead = allLeadMap.get(quote.lead_id);
+    if (lead) ensure(String(leadCreator(lead))).revenue += number(quote.total);
   });
   activities.filter(activity => activity.activity_type === "call").forEach(activity => {
-    const lead = leadMap.get(activity.lead_id);
-    if (lead) ensure(String(leadAssignee(lead))).calls += 1;
+    const lead = allLeadMap.get(activity.lead_id);
+    if (lead) ensure(String(leadCreator(lead))).calls += 1;
   });
   return [...reps.values()].map(rep => ({ ...rep, closeRate: rep.leads ? (rep.won / rep.leads) * 100 : 0 })).sort((a, b) => b.revenue - a.revenue || b.won - a.won);
 }
@@ -170,7 +197,7 @@ function buildFlow(leads, quotes, payments, activities, range, interval = "daily
     if (activity.activity_type === "appointment" || (activity.activity_type === "stage_changed" && ["Booked Visit", "Appointment Scheduled"].includes(activity.metadata?.to))) row.appointments += 1;
     if (activity.activity_type === "deal_won") row.won += 1;
   });
-  quotes.filter(quote => quote.status !== "Draft" && !quote.is_template).forEach(quote => { const date = recordDate(quote.sent_at || quote.issue_date || quote.created_at); if (date) ensure(date).quotes += 1; });
+  quotes.filter(quote => quoteStatus(quote) !== "draft" && !quote.is_template).forEach(quote => { const date = recordDate(quote.sent_at || quote.issue_date || quote.created_at); if (date) ensure(date).quotes += 1; });
   payments.forEach(payment => { const date = recordDate(paymentEventDate(payment)); if (date) ensure(date).revenue += number(payment.amount); });
   return [...buckets.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
@@ -202,8 +229,8 @@ export function calculateSalesPerformance(data, options) {
   const previousActive = previousLeads.filter(lead => !CLOSED_STAGES.has(normalizeSalesStage(lead.pipeline_stage)));
   const pipelineValue = activeLeads.reduce((sum, lead) => sum + leadValue(lead, quotesByLead), 0);
   const previousPipelineValue = previousActive.reduce((sum, lead) => sum + leadValue(lead, quotesByLead), 0);
-  const approvedQuotes = currentQuotes.filter(quote => quote.status === "Approved");
-  const previousApproved = previousQuotes.filter(quote => quote.status === "Approved");
+  const approvedQuotes = currentQuotes.filter(quote => quoteStatus(quote) === "approved");
+  const previousApproved = previousQuotes.filter(quote => quoteStatus(quote) === "approved");
   const revenueWon = approvedQuotes.reduce((sum, quote) => sum + number(quote.total), 0);
   const previousRevenueWon = previousApproved.reduce((sum, quote) => sum + number(quote.total), 0);
   const appointments = currentLeads.filter(lead => isDateInRange(lead.appointment_at || lead.next_meeting_date, range)).length;
@@ -223,7 +250,15 @@ export function calculateSalesPerformance(data, options) {
 
   const funnelStages = [...SALES_STAGE_ORDER, "Lost"].map(stage => {
     const stageLeads = currentLeads.filter(lead => stageReached(lead, stage, quotesByLead));
-    return { stage, count: stageLeads.length, value: stageLeads.reduce((sum, lead) => sum + leadValue(lead, quotesByLead), 0), percent: currentLeads.length ? (stageLeads.length / currentLeads.length) * 100 : 0, records: stageLeads };
+    const records = stageLeads.map(lead => {
+      if (stage === "Won") return { ...lead, value: approvedQuoteValue(lead, quotesByLead), value_source: "Approved quote" };
+      if (stage === "Lost") {
+        const lostValue = lostOpportunityValue(lead, quotesByLead);
+        return { ...lead, value: lostValue.value, value_source: lostValue.source };
+      }
+      return { ...lead, value: leadValue(lead, quotesByLead), value_source: "Opportunity value" };
+    });
+    return { stage, count: records.length, value: records.reduce((sum, lead) => sum + number(lead.value), 0), percent: currentLeads.length ? (records.length / currentLeads.length) * 100 : 0, records };
   });
   const progressStages = funnelStages.filter(item => item.stage !== "Lost");
   const conversions = progressStages.slice(1).map((item, index) => {
@@ -242,7 +277,7 @@ export function calculateSalesPerformance(data, options) {
   approvedQuotes.forEach(quote => { const source = allLeadMap.get(quote.lead_id)?.source || "Other"; if (sources.has(source)) sources.get(source).revenue += number(quote.total); });
   const sourceBreakdown = [...sources.values()].map(row => ({ ...row, percent: currentLeads.length ? (row.leads / currentLeads.length) * 100 : 0, conversion: row.leads ? (row.won / row.leads) * 100 : 0 })).sort((a, b) => b.leads - a.leads);
 
-  const repPerformance = aggregateRepPerformance(currentLeads, currentQuotes, profiles, currentActivities, quotesByLead);
+  const repPerformance = aggregateRepPerformance(currentLeads, currentQuotes, profiles, currentActivities, quotesByLead, allLeadMap);
   const pipelineByStage = SALES_STAGE_ORDER.filter(stage => !["Won"].includes(stage)).map(stage => {
     const rows = activeLeads.filter(lead => normalizeSalesStage(lead.pipeline_stage) === stage);
     return { stage, count: rows.length, value: rows.reduce((sum, lead) => sum + leadValue(lead, quotesByLead), 0) };
@@ -270,13 +305,14 @@ export function calculateSalesPerformance(data, options) {
 
   const lostReasons = new Map();
   currentLeads.filter(lead => normalizeSalesStage(lead.pipeline_stage) === "Lost").forEach(lead => {
-    const reason = lead.lost_reason || (quotesByLead.get(lead.id) || []).find(quote => quote.status === "Declined")?.decline_reason || "Not recorded";
-    if (!lostReasons.has(reason)) lostReasons.set(reason, { reason, count: 0, value: 0 });
-    const row = lostReasons.get(reason); row.count += 1; row.value += leadValue(lead, quotesByLead);
+    const reason = lead.lost_reason || (quotesByLead.get(lead.id) || []).find(quote => quoteStatus(quote) === "declined")?.decline_reason || "Not recorded";
+    if (!lostReasons.has(reason)) lostReasons.set(reason, { reason, count: 0, value: 0, sources: {} });
+    const lostValue = lostOpportunityValue(lead, quotesByLead);
+    const row = lostReasons.get(reason); row.count += 1; row.value += lostValue.value; row.sources[lostValue.source] = (row.sources[lostValue.source] || 0) + 1;
   });
 
   const targetAmount = number(target?.revenue_target);
-  const monthRevenue = quotes.filter(quote => quote.status === "Approved" && isDateInRange(quoteEventDate(quote), { start: startOfMonth(new Date()), end: endOfMonth(new Date()) })).reduce((sum, quote) => sum + number(quote.total), 0);
+  const monthRevenue = quotes.filter(quote => quoteStatus(quote) === "approved" && isDateInRange(quoteEventDate(quote), { start: startOfMonth(new Date()), end: endOfMonth(new Date()) })).reduce((sum, quote) => sum + number(quote.total), 0);
   const remainingTarget = Math.max(0, targetAmount - monthRevenue);
   const daysRemaining = Math.max(1, differenceInCalendarDays(endOfMonth(new Date()), new Date()) + 1);
 
@@ -285,6 +321,24 @@ export function calculateSalesPerformance(data, options) {
   if (followUp.overdue) insights.push({ tone: "warning", text: `${followUp.overdue} lead${followUp.overdue === 1 ? "" : "s"} require overdue follow-up.`, action: "Review follow-ups", stage: null });
   if (hotLeads.length) insights.push({ tone: "positive", text: `${hotLeads[0].contact_name} is the highest-priority active opportunity at ${hotLeads[0].score}% engagement score.`, action: "View lead", leadId: hotLeads[0].id });
   if (sourceBreakdown[0]?.leads) insights.push({ tone: "neutral", text: `${sourceBreakdown[0].source} is your largest lead source with ${sourceBreakdown[0].leads} lead${sourceBreakdown[0].leads === 1 ? "" : "s"} in this period.`, action: "View source", source: sourceBreakdown[0].source });
+
+  const activeRecords = activeLeads.map(lead => ({ ...lead, value: leadValue(lead, quotesByLead), value_source: "Opportunity value" }));
+  const cohortWonRecords = currentLeads.filter(lead => normalizeSalesStage(lead.pipeline_stage) === "Won").map(lead => ({ ...lead, value: approvedQuoteValue(lead, quotesByLead), value_source: "Approved quote" }));
+  const revenueRecordMap = new Map();
+  approvedQuotes.forEach(quote => {
+    const lead = allLeadMap.get(quote.lead_id);
+    if (!lead) return;
+    const existing = revenueRecordMap.get(lead.id) || { ...lead, value: 0, value_source: "Approved quote" };
+    existing.value += number(quote.total);
+    revenueRecordMap.set(lead.id, existing);
+  });
+  const revenueWonRecords = [...revenueRecordMap.values()];
+  const appointmentRecords = currentLeads.filter(lead => isDateInRange(lead.appointment_at || lead.next_meeting_date, range)).map(lead => ({ ...lead, value: leadValue(lead, quotesByLead), value_source: "Opportunity value" }));
+  const closedRecords = currentLeads.filter(lead => CLOSED_STAGES.has(normalizeSalesStage(lead.pipeline_stage))).map(lead => {
+    if (normalizeSalesStage(lead.pipeline_stage) === "Won") return { ...lead, value: approvedQuoteValue(lead, quotesByLead), value_source: "Approved quote" };
+    const lostValue = lostOpportunityValue(lead, quotesByLead);
+    return { ...lead, value: lostValue.value, value_source: lostValue.source };
+  });
 
   return {
     range, filters, currentLeads, currentQuotes, currentPayments, currentActivities,
@@ -307,7 +361,20 @@ export function calculateSalesPerformance(data, options) {
     target: { amount: targetAmount, current: monthRevenue, remaining: remainingTarget, progress: targetAmount ? Math.min(100, (monthRevenue / targetAmount) * 100) : 0, daysRemaining, requiredDaily: remainingTarget / daysRemaining, periodStart: currentMonthStart },
     followUp, hotLeads, lostReasons: [...lostReasons.values()].sort((a, b) => b.count - a.count), insights,
     activity: currentActivities.slice().sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at)).slice(0, 20),
-    filterOptions: { sources: [...new Set(leads.map(lead => lead.source || "Other"))].sort(), reps: profiles.filter(profile => profile.is_active !== false) },
+    drilldowns: {
+      leads: currentLeads.map(lead => ({ ...lead, value: leadValue(lead, quotesByLead), value_source: "Opportunity value" })),
+      conversion: cohortWonRecords,
+      pipeline: activeRecords,
+      won: revenueWonRecords,
+      appointments: appointmentRecords,
+      average: revenueWonRecords,
+      velocity: cohortWonRecords.filter(lead => !!wonDate(lead, quotesByLead)),
+      close: closedRecords,
+    },
+    filterOptions: {
+      sources: [...new Set(leads.map(lead => lead.source || "Other"))].sort(),
+      reps: [...profiles.filter(profile => profile.is_active !== false), ...(leads.some(lead => !lead.created_by_user_id) ? [{ id: "unknown_creator", full_name: "Unknown creator" }] : [])],
+    },
     dataQuality: { velocitySample: velocityValues.length, historicalTrackingComplete: currentLeads.every(lead => !!lead.stage_changed_at) },
   };
 }

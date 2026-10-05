@@ -14,6 +14,7 @@ test("sales performance is available as a page and the Reports sales tab", async
   assert.match(reports, /label: "Sales Performance"/);
   assert.match(reports, /<SalesPerformanceDashboard embedded/);
   for (const section of ["Sales funnel", "Lead flow over time", "Sales rep performance", "Revenue forecast", "Monthly sales target", "Hot leads", "Why are we losing deals?"]) assert.match(dashboard, new RegExp(section.replace(/[?]/g, "\\?")));
+  for (const behavior of ["Customize dashboard", "All lead creators", "Attributed to lead creator", "DEFAULT_DASHBOARD_LAYOUT", "hiddenPanels"]) assert.match(dashboard, new RegExp(behavior));
 });
 
 test("mobile navigation uses four primary destinations and an accessible More sheet", async () => {

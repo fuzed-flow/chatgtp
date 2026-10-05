@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { calculateSalesPerformance, getSalesDateRange, normalizeSalesStage } from "../../src/lib/salesPerformance.js";
+import { calculateSalesPerformance, getSalesDateRange, lostOpportunityValue, normalizeSalesStage } from "../../src/lib/salesPerformance.js";
 
 const range = getSalesDateRange("month", new Date("2026-10-05T12:00:00Z"));
 const lead = (id, stage, createdAt, extra = {}) => ({
@@ -11,7 +11,8 @@ const lead = (id, stage, createdAt, extra = {}) => ({
   created_at: createdAt,
   source: "Referral",
   value_estimate: 1000,
-  assigned_to_user_id: "rep-1",
+  created_by_user_id: "rep-1",
+  assigned_to_user_id: "rep-2",
   stage_changed_at: createdAt,
   ...extra,
 });
@@ -35,7 +36,7 @@ const data = {
   activities: [
     { id: "a1", lead_id: "quoted", activity_type: "stage_changed", title: "Visit booked", metadata: { to: "Booked Visit" }, occurred_at: "2026-10-03T10:00:00Z" },
   ],
-  profiles: [{ id: "rep-1", full_name: "Jordan Lee", is_active: true }],
+  profiles: [{ id: "rep-1", full_name: "Jordan Lee", is_active: true }, { id: "rep-2", full_name: "Assigned Teammate", is_active: true }],
   reminders: [],
   target: { revenue_target: 20000 },
 };
@@ -65,7 +66,10 @@ test("calculates current and previous KPIs without double-counting lead estimate
 test("funnel, event flow and filters remain internally consistent", () => {
   const report = calculate();
   const funnel = Object.fromEntries(report.funnelStages.map(stage => [stage.stage, stage.count]));
+  const funnelValue = Object.fromEntries(report.funnelStages.map(stage => [stage.stage, stage.value]));
   assert.deepEqual(funnel, { New: 3, Contacted: 2, Qualified: 2, "Booked Visit": 2, Quoted: 2, Negotiation: 1, Won: 1, Lost: 1 });
+  assert.equal(funnelValue.Won, 12000, "won dollars only use approved quote totals");
+  assert.equal(funnelValue.Lost, 3000, "lost dollars fall back to the lead estimate when no quote exists");
   assert.equal(report.flow.reduce((total, bucket) => total + bucket.appointments, 0), 1);
   assert.deepEqual(report.lostReasons.map(reason => [reason.reason, reason.count]), [["Budget", 1]]);
 
@@ -73,4 +77,28 @@ test("funnel, event flow and filters remain internally consistent", () => {
   assert.equal(website.currentLeads.length, 1);
   assert.equal(website.collectedRevenue, 0, "lead filters also constrain related payments");
   assert.equal(website.kpis.find(metric => metric.id === "pipeline").value, 7000);
+});
+
+test("lost opportunity value follows approved, sent, draft, then lead priority", () => {
+  const lostLead = lead("lost-priority", "Lost", "2026-10-03T12:00:00Z", { value_estimate: 1000 });
+  const quotesByLead = new Map([[lostLead.id, [{ status: "Draft", total: 2000 }, { status: "Sent", total: 3000 }, { status: "Approved", total: 4000 }, { status: "Approved", total: 500 }]]]);
+  assert.deepEqual(lostOpportunityValue(lostLead, quotesByLead), { value: 4500, source: "Approved quote" });
+
+  quotesByLead.set(lostLead.id, [{ status: "Draft", total: 2000 }, { status: "Sent", total: 3000 }]);
+  assert.deepEqual(lostOpportunityValue(lostLead, quotesByLead), { value: 3000, source: "Sent quote" });
+
+  quotesByLead.set(lostLead.id, [{ status: "Draft", total: 2000 }]);
+  assert.deepEqual(lostOpportunityValue(lostLead, quotesByLead), { value: 2000, source: "Draft quote" });
+
+  quotesByLead.set(lostLead.id, []);
+  assert.deepEqual(lostOpportunityValue(lostLead, quotesByLead), { value: 1000, source: "Lead estimate" });
+});
+
+test("rep performance is attributed to lead creator, not assignee", () => {
+  const report = calculate();
+  const creator = report.repPerformance.find(rep => rep.id === "rep-1");
+  assert.equal(creator.leads, 3);
+  assert.equal(creator.revenue, 12000);
+  assert.equal(report.repPerformance.some(rep => rep.id === "rep-2"), false);
+  assert.equal(calculate({ rep: "rep-2" }).currentLeads.length, 0);
 });
