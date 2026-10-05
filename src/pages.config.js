@@ -56,6 +56,7 @@ import ClientDetail from './pages/ClientDetail';
 import ClientForms from './pages/ClientForms';
 import ClientPortal from './pages/ClientPortal';
 import ClientUpdates from './pages/ClientUpdates';
+import ProjectCloseouts from './pages/ProjectCloseouts';
 import Clients from './pages/Clients';
 import Dashboard from './pages/Dashboard';
 import HumanResources from './pages/HumanResources';
@@ -106,6 +107,7 @@ export const PAGES = {
     "ClientForms": ClientForms,
     "ClientPortal": ClientPortal,
     "ClientUpdates": ClientUpdates,
+    "ProjectCloseouts": ProjectCloseouts,
     "Clients": Clients,
     "Dashboard": Dashboard,
     "HumanResources": HumanResources,

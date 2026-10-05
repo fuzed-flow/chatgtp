@@ -4,6 +4,7 @@ const definitions = {
   change_order: { table: 'change_orders', related: 'ChangeOrder', number: 'change_order_number', prefix: 'co' },
   invoice: { table: 'invoices', related: 'Invoice', number: 'invoice_number', prefix: 'invoice' },
   client_update: { table: 'client_updates', related: 'ClientUpdate', number: 'title', prefix: 'client_update' },
+  project_closeout: { table: 'project_closeouts', related: 'ProjectCloseout', number: 'title', prefix: 'project_closeout' },
 };
 
 export async function savedDeliveryContext(db, companyId, body) {
