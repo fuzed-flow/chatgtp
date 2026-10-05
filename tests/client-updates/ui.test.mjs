@@ -34,3 +34,20 @@ test("the mobile client-update form keeps a large close control visible above it
   assert.match(form, /DialogHeader className="[^"]*pt-7/);
   assert.match(form, /overflow-y-auto px-5/);
 });
+
+test("large client-update fields offer safe AI rewriting and responsive resizing", () => {
+  const form = readFileSync(new URL("../../src/components/client-updates/ClientUpdateFormDialog.jsx", import.meta.url), "utf8");
+  const field = readFileSync(new URL("../../src/components/shared/AIRewriteTextarea.jsx", import.meta.url), "utf8");
+
+  assert.equal((form.match(/<AIRewriteTextarea/g) || []).length, 4);
+  for (const name of ["project_summary", "completed_work", "upcoming_work", "client_notes"]) {
+    assert.match(form, new RegExp(`rewriteField="${name}"`));
+  }
+  assert.match(field, /functions\.invoke\("rewrite-text"/);
+  assert.match(field, /AI Rewrite/);
+  assert.match(field, /Undo/);
+  assert.match(field, /Expand/);
+  assert.match(field, /Collapse/);
+  assert.match(field, /resize-none[^"]*sm:resize-y/);
+  assert.match(field, /max-h-\[60dvh\]/);
+});
