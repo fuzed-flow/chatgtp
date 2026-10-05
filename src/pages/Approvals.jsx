@@ -32,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { buildQuoteApprovalRows, matchesApprovalSearch, pendingTotal, quotePublicUrl } from "@/lib/approvalHub";
 import { useAuth } from "@/lib/AuthContext";
 import { purchaseOrderStatusUpdate } from "@/lib/costNotificationWorkflows";
+import { issueQuoteShareToken } from "@/lib/quoteSharing";
 
 const VIEWS = [
   { id: "action_queue", label: "Action queue" },
@@ -118,7 +119,7 @@ export default function Approvals() {
     ...queryOptions,
     queryFn: async () => {
       const { data, error } = await supabase.from("quote_approvals")
-        .select("id, quote_id, client_id, approval_status, signer_name, sent_at, viewed_at, signed_at, created_at")
+        .select("id, quote_id, client_id, approval_token, approval_status, signer_name, sent_at, viewed_at, signed_at, created_at")
         .eq("company_id", companyId).order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -358,7 +359,8 @@ export default function Approvals() {
 
   const copyQuoteLink = async quote => {
     try {
-      await navigator.clipboard.writeText(quotePublicUrl(window.location.origin, quote.id));
+      const token = quote.approval_token || await issueQuoteShareToken(quote.id);
+      await navigator.clipboard.writeText(quotePublicUrl(window.location.origin, quote.id, token));
       toast.success("Client quote link copied.");
     } catch {
       toast.error("The link could not be copied. Open the quote and copy the address instead.");
@@ -462,9 +464,9 @@ export default function Approvals() {
         <section id="approval-panel-quotes" role="tabpanel" className="space-y-4">
           <div>
             <h2 className="text-lg font-black text-slate-950">Client quote activity</h2>
-            <p className="mt-1 text-sm text-slate-600">Track sent, viewed, approved, declined and expired quotes in one place.</p>
+            <p className="mt-1 text-sm text-slate-600">Track sent, viewed, change-requested, approved, declined and expired quotes in one place.</p>
           </div>
-          <FilterBar search={searchQuotes} onSearchChange={setSearchQuotes} searchLabel="Search client quotes" placeholder="Search quote, client, signer or site…" status={filterQuotes} onStatusChange={setFilterQuotes} statuses={["Sent", "Viewed", "Approved", "Declined", "Expired"]} />
+          <FilterBar search={searchQuotes} onSearchChange={setSearchQuotes} searchLabel="Search client quotes" placeholder="Search quote, client, signer or site…" status={filterQuotes} onStatusChange={setFilterQuotes} statuses={["Sent", "Viewed", "Changes Requested", "Approved", "Declined", "Expired"]} />
           {isLoading ? <LoadingCard label="client quotes" /> : filteredQuotes.length === 0 ? (
             <EmptyResults icon={FileCheck} title="No quote activity found" description="Quotes appear here after they are sent to a client." />
           ) : (

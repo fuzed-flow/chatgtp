@@ -12,11 +12,13 @@ test("sent quotes appear without a legacy quote approval row", () => {
 test("client views and final quote decisions produce the useful hub status", () => {
   const rows = buildQuoteApprovalRows([
     { id: "viewed", status: "Sent", created_at: "2026-10-01" },
+    { id: "viewed-status", status: "Viewed", created_at: "2026-10-01" },
+    { id: "changes", status: "Pending", updated_at: "2026-10-04" },
     { id: "approved", status: "Approved", signed_at: "2026-10-03" },
     { id: "draft", status: "Draft" },
     { id: "template", status: "Sent", is_template: true },
   ], [], [{ quote_id: "viewed", viewed_at: "2026-10-02", viewer_type: "client" }]);
-  assert.deepEqual(rows.map(row => [row.id, row.approval_status]), [["approved", "Approved"], ["viewed", "Viewed"]]);
+  assert.deepEqual(rows.map(row => [row.id, row.approval_status]), [["changes", "Changes Requested"], ["approved", "Approved"], ["viewed", "Viewed"], ["viewed-status", "Viewed"]]);
 });
 
 test("the latest legacy send record is attached without duplicating a quote", () => {
@@ -28,7 +30,8 @@ test("the latest legacy send record is attached without duplicating a quote", ()
 });
 
 test("approval utilities use the live public quote route and safe numeric totals", () => {
-  assert.equal(quotePublicUrl("https://app.fuzedflow.com", "quote id"), "https://app.fuzedflow.com/PublicQuoteView?id=quote+id");
+  assert.equal(quotePublicUrl("https://app.fuzedflow.com", "quote id", "secure-token"), "https://app.fuzedflow.com/PublicQuoteView?id=quote+id&token=secure-token");
+  assert.throws(() => quotePublicUrl("https://app.fuzedflow.com", "quote id"), /secure quote token/i);
   assert.equal(matchesApprovalSearch(["LBProjects", "Q-100"], "q-100"), true);
   assert.equal(pendingTotal([{ status: "Pending Approval", total: 10 }, { status: "Draft", total: 90 }], ["Pending Approval"]), 10);
 });

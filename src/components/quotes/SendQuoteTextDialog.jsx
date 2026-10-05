@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { MessageSquare, Send, Link as LinkIcon, Lock } from "lucide-react";
 import { toast } from "sonner";
-import { createPageUrl } from "../../utils";
+import { buildPublicQuoteUrl, issueQuoteShareToken } from "@/lib/quoteSharing";
 
 export default function SendQuoteTextDialog({ open, onOpenChange, quoteId, quoteName, clientName, clientPhone, onSuccess }) {
   const { settings, profile } = useAuth();
@@ -32,10 +32,17 @@ export default function SendQuoteTextDialog({ open, onOpenChange, quoteId, quote
   useEffect(() => {
     if (open && quoteId) {
       setPhone(clientPhone || "");
+      setPortalLink("");
+      let active = true;
+      issueQuoteShareToken(quoteId)
+        .then(token => { if (active) setPortalLink(buildPublicQuoteUrl(window.location.origin, quoteId, token)); })
+        .catch(() => { if (active) toast.error("Could not create a secure quote link. Close this dialog and try again."); });
+      return () => { active = false; };
+    }
+  }, [open, quoteId, clientPhone]);
 
-      const link = `${window.location.origin}${createPageUrl(`PublicQuoteView?id=${quoteId}`)}`;
-      setPortalLink(link);
-
+  useEffect(() => {
+    if (open && quoteId) {
       const cName = clientName ? clientName.split(' ')[0] : 'there';
       const qNum = quoteData?.quote_number || "Draft";
       const qTitle = quoteData?.title || quoteName || "Project";
@@ -50,11 +57,12 @@ export default function SendQuoteTextDialog({ open, onOpenChange, quoteId, quote
       
       setMessage(personalizedMessage.trim());
     }
-  }, [open, quoteId, quoteData, clientName, clientPhone, quoteName, settings]);
+  }, [open, quoteId, quoteData, clientName, quoteName, settings]);
 
   const handleSend = async (e) => {
     e.preventDefault();
     if (!phone.trim()) { toast.error("Phone number is required"); return; }
+    if (!portalLink) { toast.error("The secure quote link is still loading. Please wait a moment."); return; }
 
     setSaving(true);
     const loadingToast = toast.loading("Sending SMS...");
@@ -121,7 +129,7 @@ export default function SendQuoteTextDialog({ open, onOpenChange, quoteId, quote
 
           <div className="flex justify-end gap-3 p-4 bg-white border-t border-slate-200 shrink-0">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
-            <Button type="submit" disabled={saving} className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6">
+            <Button type="submit" disabled={saving || !portalLink} className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6">
               {saving ? "Sending..." : <><Send className="h-4 w-4 mr-2" /> Send Text</>}
             </Button>
           </div>

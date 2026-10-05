@@ -1,4 +1,4 @@
-const QUOTE_WORKFLOW_STATUSES = new Set(["Sent", "Approved", "Declined", "Expired"]);
+const QUOTE_WORKFLOW_STATUSES = new Set(["Sent", "Viewed", "Pending", "Approved", "Declined", "Expired"]);
 const QUOTE_FINAL_STATUSES = new Set(["Approved", "Declined", "Expired"]);
 
 const timestamp = value => {
@@ -29,18 +29,23 @@ export function buildQuoteApprovalRows(quotes = [], approvalEvents = [], quoteVi
       const approval = latestApproval.get(quote.id);
       const view = latestView.get(quote.id);
       const viewedAt = view?.viewed_at || approval?.viewed_at || quote.viewed_at || null;
-      const status = QUOTE_FINAL_STATUSES.has(quote.status)
+      const status = quote.status === "Pending"
+        ? "Changes Requested"
+        : QUOTE_FINAL_STATUSES.has(quote.status)
         ? quote.status
-        : viewedAt ? "Viewed" : "Sent";
+        : quote.status === "Viewed" || viewedAt ? "Viewed" : "Sent";
       const activityAt = QUOTE_FINAL_STATUSES.has(status)
         ? (status === "Approved" ? quote.signed_at || approval?.signed_at : null) || quote.updated_at || quote.created_at
-        : status === "Viewed"
+        : status === "Changes Requested"
+          ? quote.updated_at || approval?.created_at || quote.created_at
+          : status === "Viewed"
           ? viewedAt
           : approval?.sent_at || quote.sent_at || quote.issue_date || quote.created_at;
 
       return {
         ...quote,
         approval_id: approval?.id || null,
+        approval_token: approval?.approval_token || null,
         approval_status: status,
         signer_name: approval?.signer_name || null,
         sent_at: approval?.sent_at || quote.sent_at || null,
@@ -52,9 +57,11 @@ export function buildQuoteApprovalRows(quotes = [], approvalEvents = [], quoteVi
     .sort((a, b) => timestamp(b.activity_at) - timestamp(a.activity_at));
 }
 
-export function quotePublicUrl(origin, quoteId) {
+export function quotePublicUrl(origin, quoteId, token) {
+  if (!token) throw new Error("A secure quote token is required.");
   const url = new URL("/PublicQuoteView", origin);
   url.searchParams.set("id", quoteId);
+  url.searchParams.set("token", token);
   return url.toString();
 }
 

@@ -10,6 +10,8 @@ import { Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 import { createPageUrl } from "../../utils";
 import { useDocumentEmailSend } from "@/lib/emailCopy";
+import { buildClientPortalQuoteUrl, buildPublicQuoteUrl, issueQuoteShareToken } from "@/lib/quoteSharing";
+import { readableBrandText } from "@/components/quotes/QuotePresentation";
 
 export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quoteName, clientName, clientEmail, onSuccess }) {
   const { profile, settings: authSettings } = useAuth();
@@ -169,8 +171,11 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
       const customMessageHtml = (message || "").replace(/\n/g, '<br>');
       const sigHtml = (signature || "").replace(/\n/g, '<br>');
       const baseUrl = window.location.origin;
-      const quoteUrl = `${baseUrl}${createPageUrl(`PublicQuoteView?id=${quoteId}`)}`;
-      const portalUrl = `${baseUrl}${createPageUrl(`ClientPortal?id=${quoteData?.client_id}`)}`; 
+      const secureToken = await issueQuoteShareToken(quoteId);
+      const quoteUrl = buildPublicQuoteUrl(baseUrl, quoteId, secureToken);
+      const portalUrl = quoteData?.client_id
+        ? buildClientPortalQuoteUrl(baseUrl, quoteData.client_id, secureToken)
+        : `${baseUrl}${createPageUrl("ClientPortal")}`;
       
       const companyName = companyData?.name || authSettings?.company_name || authSettings?.name || "Your Contractor";
       const logoUrl = companyData?.logo_url || companyData?.company_logo_url || "https://ochqexofahdssmarnict.supabase.co/storage/v1/object/public/logos/fuzed-flow-logo.png";
@@ -178,6 +183,7 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
       
       // Extract color safely from JSON, default to FuzedFlow Amber
       const buttonColor = companyData?.settings?.pdf?.brand_color || "#f59e0b";
+      const buttonTextColor = readableBrandText(buttonColor);
 
       // 🚀 PREMIUM SAAS EMAIL TEMPLATE
       const emailHtml = `
@@ -202,7 +208,7 @@ export default function SendQuoteEmailDialog({ open, onOpenChange, quoteId, quot
                   ${displayTitle}
                 </p>
                 
-                <a href="${quoteUrl}" target="_blank" style="font-size: 16px; font-weight: 700; font-family: Helvetica, Arial, sans-serif; color: #ffffff; background-color: ${buttonColor}; text-decoration: none; border-radius: 999px; padding: 16px 32px; display: inline-block; margin-bottom: 15px; border: 1px solid ${buttonColor};">
+                <a href="${quoteUrl}" target="_blank" style="font-size: 16px; font-weight: 700; font-family: Helvetica, Arial, sans-serif; color: ${buttonTextColor}; background-color: ${buttonColor}; text-decoration: none; border-radius: 999px; padding: 16px 32px; display: inline-block; margin-bottom: 15px; border: 1px solid ${buttonColor};">
                   View & Accept Quote
                 </a>
                 <br/>

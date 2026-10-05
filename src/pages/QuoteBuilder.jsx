@@ -24,6 +24,7 @@ import SendQuoteEmailDialog from "../components/quotes/SendQuoteEmailDialog";
 import SendQuoteTextDialog from "../components/quotes/SendQuoteTextDialog";
 import { useDocumentChanges, useDocumentState } from "@/hooks/useDocumentChanges";
 import UnsavedChangesGuard from "@/components/shared/UnsavedChangesGuard";
+import { issueQuoteShareToken } from "@/lib/quoteSharing";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -987,13 +988,7 @@ export default function QuoteBuilder() {
       const savedQuoteId = await handleSave("Sent", false, true);
       if (!savedQuoteId) throw new Error("Could not save the base quote.");
 
-      const cleanClientId = (form.client_id && form.client_id.length > 10) ? form.client_id : null;
-      const uniqueToken = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-      
-      const { error } = await supabase.from("quote_approvals").insert([{
-        company_id: companyId, quote_id: savedQuoteId, client_id: cleanClientId, approval_token: uniqueToken, approval_status: "Sent", sent_at: new Date().toISOString()
-      }]);
-      if (error) throw error; 
+      await issueQuoteShareToken(savedQuoteId);
       
       toast.success("Quote dispatched! It is now tracking in your Approvals Hub.");
       setEmailDialog(false);

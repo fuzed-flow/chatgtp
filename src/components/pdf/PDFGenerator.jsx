@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
-import { formatCurrency } from '../utils/formatCurrency';
+import { formatCurrency, getCompanyCurrency } from '../utils/formatCurrency';
 import { deficiencyPhotoUrls } from '../../lib/projectCloseouts';
 
 // --- HEX TO RGB CONVERTER ---
@@ -62,6 +62,8 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
   let yPos = margin + 5;
 
   const settings = organization?.settings || {};
+  const currencyCode = getCompanyCurrency(organization);
+  const quoteMoney = (amount) => `${currencyCode} ${formatCurrency(amount)}`;
   const brandColorHex = settings?.pdf?.brand_color || '#f59e0b';
   const showItemPrices = settings?.pdf?.show_item_prices !== false;
   
@@ -232,6 +234,12 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
     yPos += scopeLines.length * 4 + 6;
   }
 
+  if (quote?.hero_image_url) {
+    checkPageBreak(56);
+    const heroAdded = await safelyAddImage(doc, quote.hero_image_url, 'JPEG', margin, yPos, pageWidth - margin * 2, 50);
+    if (heroAdded) yPos += 56;
+  }
+
   addLine();
   yPos += 4;
 
@@ -349,10 +357,10 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
         doc.setFont(undefined, 'normal');
         doc.setTextColor(...colors.text);
         doc.text(`${item.quantity || 1} ${item.unit || ''}`.trim(), pageWidth - margin - 65, yPos, { align: 'right' });
-        doc.text(`$${formatCurrency(item.unit_price || 0)}`, pageWidth - margin - 35, yPos, { align: 'right' });
+        doc.text(quoteMoney(item.unit_price || 0), pageWidth - margin - 35, yPos, { align: 'right' });
       }
       doc.setFont(undefined, 'bold');
-      doc.text(`$${formatCurrency(itemTotal)}`, pageWidth - margin, yPos, { align: 'right' });
+      doc.text(quoteMoney(itemTotal), pageWidth - margin, yPos, { align: 'right' });
 
       let itemY = yPos + 4;
       
@@ -422,17 +430,17 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
 
   doc.text('Subtotal:', totalsX, yPos);
   doc.setFont(undefined, 'bold');
-  doc.text(`$${formatCurrency(pdfSubtotal)}`, pageWidth - margin, yPos, { align: 'right' });
+  doc.text(quoteMoney(pdfSubtotal), pageWidth - margin, yPos, { align: 'right' });
   yPos += 6;
 
   doc.setFont(undefined, 'normal');
   doc.text(`${taxLabel} (${(GST_RATE * 100).toFixed(1)}%):`, totalsX, yPos);
-  doc.text(`$${formatCurrency(pdfGST)}`, pageWidth - margin, yPos, { align: 'right' });
+  doc.text(quoteMoney(pdfGST), pageWidth - margin, yPos, { align: 'right' });
   yPos += 6;
 
   if (settings?.enable_secondary_tax) {
     doc.text(`${secondaryTaxLabel} (${(PST_RATE * 100).toFixed(1)}%):`, totalsX, yPos);
-    doc.text(`$${formatCurrency(pdfPST)}`, pageWidth - margin, yPos, { align: 'right' });
+    doc.text(quoteMoney(pdfPST), pageWidth - margin, yPos, { align: 'right' });
     yPos += 6;
   }
 
@@ -442,7 +450,7 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
     const discLabel = quote?.discount_type === "percentage" ? `Discount (${quote.discount_percentage}%):` : 'Discount:';
     doc.text(discLabel, totalsX, yPos);
     doc.setFont(undefined, 'bold');
-    doc.text(`-$${formatCurrency(discountAmt)}`, pageWidth - margin, yPos, { align: 'right' });
+    doc.text(`-${quoteMoney(discountAmt)}`, pageWidth - margin, yPos, { align: 'right' });
     yPos += 6;
   }
 
@@ -454,7 +462,7 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
   doc.setTextColor(...colors.primary); 
   doc.text('TOTAL:', totalsX, yPos + 2);
   doc.setTextColor(255, 255, 255); 
-  doc.text(`$${formatCurrency(pdfTotal)}`, pageWidth - margin - 2, yPos + 2, { align: 'right' });
+  doc.text(quoteMoney(pdfTotal), pageWidth - margin - 2, yPos + 2, { align: 'right' });
   
   yPos += 12;
 
@@ -464,7 +472,7 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
     doc.setFontSize(8.5);
     doc.setTextColor(...colors.accent);
     doc.setFont(undefined, 'bold');
-    doc.text(`Deposit Required: $${formatCurrency(quote.deposit_amount)}`, margin, yPos);
+    doc.text(`Deposit Required: ${quoteMoney(quote.deposit_amount)}`, margin, yPos);
     yPos += 8;
   }
 
@@ -501,8 +509,8 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
         
         doc.setTextColor(...colors.accent);
         const amountText = item.amount_type === "percentage" 
-          ? `$${formatCurrency(displayAmount)} (${item.percentage}%)`
-          : `$${formatCurrency(displayAmount)}`;
+          ? `${quoteMoney(displayAmount)} (${item.percentage}%)`
+          : quoteMoney(displayAmount);
         doc.text(amountText, pageWidth - margin - 2, yPos, { align: 'right' });
         
         if (item.due_event) {
