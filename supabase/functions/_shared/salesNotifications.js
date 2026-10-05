@@ -3,6 +3,7 @@ const definitions = {
   quote: { table: 'quotes', related: 'Quote', number: 'quote_number', prefix: 'quote' },
   change_order: { table: 'change_orders', related: 'ChangeOrder', number: 'change_order_number', prefix: 'co' },
   invoice: { table: 'invoices', related: 'Invoice', number: 'invoice_number', prefix: 'invoice' },
+  client_update: { table: 'client_updates', related: 'ClientUpdate', number: 'title', prefix: 'client_update' },
 };
 
 export async function savedDeliveryContext(db, companyId, body) {

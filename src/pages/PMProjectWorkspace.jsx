@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 import { 
   ArrowLeft, LayoutDashboard, GitBranch, Users, Wrench, Package, 
   MessageSquare, Eye, CalendarRange, ShieldCheck, FileText, 
-  FileImage, Globe, ChevronDown, BookOpen 
+  FileImage, Globe, ChevronDown, BookOpen, Newspaper
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import PermitsTab from "@/components/projects/PermitsTab";
@@ -23,6 +23,7 @@ import PMPlansElevationsTab from "@/components/pm/PMPlansElevationsTab.jsx";
 import PMContractorPortalTab from "@/components/pm/PMContractorPortalTab.jsx";
 import PMDailyLogsTab from "@/components/pm/PMDailyLogsTab.jsx";
 import PMMaterialsTab from "@/components/pm/PMMaterialsTab.jsx";
+import ClientUpdatesWorkspace from "@/components/client-updates/ClientUpdatesWorkspace.jsx";
 
 // ⚡ NEW: Importing the unified Notes Feed!
 import NotesFeed from "@/components/shared/NotesFeed.jsx";
@@ -31,6 +32,7 @@ const ALL_TABS = [
   { value: "overview", label: "Overview", icon: LayoutDashboard },
   { value: "phases", label: "Phases", icon: GitBranch },
   { value: "client-timeline", label: "Client View", icon: Eye },
+  { value: "client-updates", label: "Client Updates", icon: Newspaper },
   { value: "schedule", label: "Phase Timeline", icon: CalendarRange },
   { value: "subs", label: "Subcontractors", icon: Wrench },
   { value: "materials", label: "Materials", icon: Package },
@@ -118,6 +120,7 @@ export default function PMProjectWorkspace() {
           <TabsContent value="overview" className="m-0 h-full"><PMProjectOverview project={project} /></TabsContent>
           <TabsContent value="phases" className="m-0 h-full"><PMPhasesTab project={project} /></TabsContent>
           <TabsContent value="client-timeline" className="m-0 h-full"><PMClientTimelineTab project={project} /></TabsContent>
+          <TabsContent value="client-updates" className="m-0 h-full"><ClientUpdatesWorkspace fixedProject={project} /></TabsContent>
           <TabsContent value="schedule" className="m-0 h-full"><PMScheduleTrackerTab project={project} /></TabsContent>
           <TabsContent value="subs" className="m-0 h-full"><PMSubcontractorsTab project={project} /></TabsContent>
           <TabsContent value="materials" className="m-0 h-full"><PMMaterialsTab projectId={project.id} /></TabsContent>

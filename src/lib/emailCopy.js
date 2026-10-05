@@ -7,6 +7,12 @@ const DOCUMENTS = {
   quote: { table: "quotes", detailKeys: ["quote"], listKeys: ["quotes"] },
   change_order: { table: "change_orders", detailKeys: ["change-order", "change_order"], listKeys: ["change-orders", "change_orders"] },
   invoice: { table: "invoices", detailKeys: ["invoice", "invoice_client_view"], listKeys: ["invoices"] },
+  client_update: {
+    table: "client_updates",
+    detailKeys: ["client-update"],
+    listKeys: ["client-updates"],
+    sentPatch: () => ({ status: "Published", published_at: new Date().toISOString(), email_sent_at: new Date().toISOString() }),
+  },
 };
 const SAFE_RETRY_AGE_MS = (24 * 60 - 5) * 60 * 1000;
 
@@ -133,7 +139,7 @@ export function useDocumentEmailSend({
 
       const document = DOCUMENTS[intent.payload.document_type];
       if (!intent.statusSaved) {
-        const { error } = await supabase.from(document.table).update({ status: "Sent" }).eq("id", intent.payload.document_id);
+        const { error } = await supabase.from(document.table).update(document.sentPatch ? document.sentPatch() : { status: "Sent" }).eq("id", intent.payload.document_id);
         if (error) throw new Error("The client email was sent, but the document status could not be saved. Retry to finish safely.");
         intent.statusSaved = true;
         for (const key of document.detailKeys) queryClient.invalidateQueries({ queryKey: [key, intent.payload.document_id] });

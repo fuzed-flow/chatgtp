@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Save, UserCircle, FileText, Receipt, FilePlus, Download, Image as ImageIcon } from 'lucide-react';
+import { Save, UserCircle, FileText, Receipt, FilePlus, Download, Image as ImageIcon, Newspaper } from 'lucide-react';
 
 export default function ClientPortalSettings() {
   const { company, settings } = useAuth();
@@ -16,6 +16,7 @@ export default function ClientPortalSettings() {
 
   const [features, setFeatures] = useState({
     portal_active: true,
+    show_client_updates: true,
     show_quotes: true,
     show_change_orders: true,
     show_invoices: true,
@@ -28,6 +29,7 @@ export default function ClientPortalSettings() {
     if (settings?.client_portal) {
       setFeatures({
         portal_active: settings.client_portal.portal_active !== false,
+        show_client_updates: settings.client_portal.show_client_updates !== false,
         show_quotes: settings.client_portal.show_quotes !== false,
         show_change_orders: settings.client_portal.show_change_orders !== false,
         show_invoices: settings.client_portal.show_invoices !== false,
@@ -102,6 +104,18 @@ export default function ClientPortalSettings() {
         <h3 className="text-lg font-black text-slate-900 border-b pb-2">Visible Modules</h3>
         
         <div className={`space-y-4 ${!features.portal_active ? 'opacity-50 pointer-events-none' : ''}`}>
+          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 bg-white border border-slate-200 shadow-sm rounded-lg flex items-center justify-center">
+                <Newspaper className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <Label className="text-base font-bold text-slate-900 block mb-0.5">Project Updates Tab</Label>
+                <p className="text-xs font-medium text-slate-500">Show published progress, completed work, and upcoming work.</p>
+              </div>
+            </div>
+            <Switch checked={features.show_client_updates} onCheckedChange={(v) => handleToggle('show_client_updates', v)} />
+          </div>
           
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
             <div className="flex items-center gap-4">

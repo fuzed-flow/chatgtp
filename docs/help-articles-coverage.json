@@ -187,6 +187,17 @@
       "status": "documented"
     },
     {
+      "page": "ClientUpdates",
+      "source": "src/pages/ClientUpdates.jsx",
+      "guides": [
+        {
+          "slug": "guide-project-client-updates",
+          "title": "Post client-visible project updates and review the client feed"
+        }
+      ],
+      "status": "documented"
+    },
+    {
       "page": "ClientView",
       "source": "src/pages/ClientView.jsx",
       "guides": [],

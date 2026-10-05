@@ -12,6 +12,7 @@ const documents = {
   quote: { table: "quotes", number: "quote_number", label: "Quote", fields: "quote_number,client_id,lead_id" },
   change_order: { table: "change_orders", number: "change_order_number", label: "Change Order", fields: "change_order_number,client_id,project_id" },
   invoice: { table: "invoices", number: "invoice_number", label: "Invoice", fields: "invoice_number,client_id" },
+  client_update: { table: "client_updates", number: "title", label: "Client Update", fields: "title,client_id" },
 };
 
 // Keep company-contact validation aligned with src/lib/emailCopy.js.
@@ -67,9 +68,10 @@ async function copyContext(supabase: any, companyId: string, body: any) {
   if (!companyName || !number || !clientName) {
     throw new Error("Save the company name, document number and client name before requesting a copy.");
   }
+  const documentLabel = body.document_type === "client_update" ? number : `${definition.label} #${number}`;
   return {
     recipient: company.settings.email.trim(), clientId,
-    subject: `[COPY] ${definition.label} from ${companyName} - ${definition.label} #${number} for ${clientName}`,
+    subject: `[COPY] ${definition.label} from ${companyName} - ${documentLabel} for ${clientName}`,
   };
 }
 

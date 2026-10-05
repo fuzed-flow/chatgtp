@@ -7,7 +7,7 @@ import {
   CalendarDays, ListChecks, Receipt, Package,
   Settings, ChevronLeft, ChevronRight, Menu, X,
   LogOut, HardHat, FileCheck, BarChart3, FileStack,
-  Building2, ShoppingCart, DollarSign, FileSignature, MoreVertical, FolderKanban, ChevronDown, File, Contact
+  Building2, ShoppingCart, DollarSign, FileSignature, MoreVertical, FolderKanban, ChevronDown, File, Contact, Newspaper
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { name: "PM Dashboard", icon: FolderKanban, page: "PMDashboard", permissionKey: "projects", section: "pm" },
   { name: "PM Projects", icon: FolderKanban, page: "PMProjects", permissionKey: "projects", section: "pm" },
   { name: "Project Timeline", icon: CalendarDays, page: "PMTimeline", permissionKey: "projects", section: "pm" },
+  { name: "Client Updates", icon: Newspaper, page: "ClientUpdates", permissionKey: "projects", section: "pm" },
   { name: "Approvals", icon: FileCheck, page: "Approvals", permissionKey: "approvals", section: "pm" },
   { name: "Invoices & Payments", icon: Receipt, page: "Invoices", permissionKey: "invoices", adminOnly: true, section: "financial" },
   { name: "Purchase Orders", icon: ShoppingCart, page: "PurchaseOrders", permissionKey: "purchase_orders", section: "financial" },
