@@ -54,7 +54,7 @@ export default function PublicQuoteView() {
 
   const bundle = bundleQuery.data;
   const quote = bundle?.quote;
-  const client = bundle?.client;
+  const client = bundle?.recipient || bundle?.client;
   const company = bundle?.company;
   const phases = bundle?.phases || [];
   const items = bundle?.items || [];
