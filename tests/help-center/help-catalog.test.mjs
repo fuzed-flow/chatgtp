@@ -22,6 +22,7 @@ const migrations = await Promise.all([
   '20261004164956_document_email_company_copy_help.sql',
   '20261004180636_subscriber_notification_workflow_help.sql',
   '20261005140001_recent_feature_help.sql',
+  '20261005193000_recent_feature_help.sql',
 ].map(name => fs.readFile(local('../../supabase/migrations/' + name), 'utf8')));
 const schema = await fs.readFile(local('./schema.sql'), 'utf8');
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -128,6 +129,9 @@ test('AI retrieves useful current sections for real notification, expense, prici
       {query: 'project closeout assigned subcontractor trade-specific PDF package', slug: 'guide-project-closeouts', content: /## Send trade-specific packages[\s\S]*only the items assigned/},
       {query: 'AI Rewrite Professional Business usage limit undo expand', slug: 'guide-ai-writing-tools', content: /## Plans and usage protection[\s\S]*Professional and Business[\s\S]*10,000 characters/},
       {query: 'quote change order invoice leave without saving save and exit', slug: 'guide-builder-unsaved-changes', content: /Leave without saving[\s\S]*Save and exit/},
+      {query: 'sales performance funnel pipeline value velocity monthly target', slug: 'guide-sales-performance', content: /## Set and use a monthly target[\s\S]*Edit target[\s\S]*approved quote value/},
+      {query: 'phone bottom navigation Dashboard Leads Projects Tasks More', slug: 'guide-mobile-navigation', content: /## Use the bottom navigation[\s\S]*Dashboard[\s\S]*More/},
+      {query: 'live sales funnel team performance Professional plan', slug: 'sales-performance-dashboard', content: /saved leads, quotes, payments[\s\S]*Professional and Business plans/},
     ];
     for (const example of cases) {
       const results = (await db.query('select * from search_help_articles($1,null,null,4)', [example.query])).rows;
