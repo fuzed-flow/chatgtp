@@ -5,6 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 
 const id = value => `10000000-0000-4000-8000-${String(value).padStart(12, "0")}`;
 const migration = await readFile(new URL("../../supabase/migrations/20261005183000_sales_performance_foundation.sql", import.meta.url), "utf8");
+const creatorMigration = await readFile(new URL("../../supabase/migrations/20261005224734_sales_performance_creator_attribution.sql", import.meta.url), "utf8");
 
 async function database() {
   const db = new PGlite();
@@ -31,6 +32,7 @@ async function database() {
     grant all on leads,quotes,quote_views,client_communications,invoices,payments to authenticated,service_role;
   `);
   await db.exec(migration);
+  await db.exec(creatorMigration);
   await db.query("insert into companies(id) values($1),($2)", [id(1), id(2)]);
   await db.query("insert into profiles(id,company_id,full_name,email,role) values($1,$2,'Owner A','a@example.test','owner'),($3,$4,'Owner B','b@example.test','owner')", [id(10), id(1), id(20), id(2)]);
   return db;
@@ -47,8 +49,12 @@ test("lead transitions are timestamped and append tenant-scoped activity", async
   try {
     await actor(db, id(10));
     await db.query("insert into leads(id,company_id,contact_name,source,pipeline_stage,value_estimate,assigned_to) values($1,$2,'Homeowner','Referral','New',25000,$3)", [id(30), id(1), id(10)]);
-    assert.equal((await db.query("select assigned_to_user_id from leads where id=$1", [id(30)])).rows[0].assigned_to_user_id, id(10));
-    assert.equal((await db.query("select activity_type from sales_activities where lead_id=$1", [id(30)])).rows[0].activity_type, "lead_created");
+    const attribution = (await db.query("select assigned_to_user_id,created_by_user_id from leads where id=$1", [id(30)])).rows[0];
+    assert.equal(attribution.assigned_to_user_id, id(10));
+    assert.equal(attribution.created_by_user_id, id(10));
+    const createdActivity = (await db.query("select activity_type,user_id from sales_activities where lead_id=$1", [id(30)])).rows[0];
+    assert.equal(createdActivity.activity_type, "lead_created");
+    assert.equal(createdActivity.user_id, id(10));
 
     const won = (await db.query("update leads set pipeline_stage='Won' where id=$1 returning won_at,stage_changed_at", [id(30)])).rows[0];
     assert.ok(won.won_at);
@@ -56,6 +62,20 @@ test("lead transitions are timestamped and append tenant-scoped activity", async
     const activities = (await db.query("select activity_type,metadata from sales_activities where lead_id=$1 order by occurred_at", [id(30)])).rows;
     assert.deepEqual(activities.map(row => row.activity_type), ["lead_created", "deal_won"]);
     assert.equal(activities[1].metadata.to, "Won");
+  } finally {
+    await db.close();
+  }
+});
+
+test("lead creator is tenant-safe and immutable after insert", async () => {
+  const db = await database();
+  try {
+    await actor(db, id(10));
+    await db.query("insert into leads(id,company_id,contact_name,pipeline_stage,created_by_user_id) values($1,$2,'Attributed lead','New',$3)", [id(33), id(1), id(20)]);
+    assert.equal((await db.query("select created_by_user_id from leads where id=$1", [id(33)])).rows[0].created_by_user_id, id(10), "authenticated actor overrides a spoofed creator");
+
+    await db.query("update leads set created_by_user_id=$1 where id=$2", [id(20), id(33)]);
+    assert.equal((await db.query("select created_by_user_id from leads where id=$1", [id(33)])).rows[0].created_by_user_id, id(10), "creator attribution cannot be reassigned");
   } finally {
     await db.close();
   }

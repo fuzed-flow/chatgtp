@@ -108,6 +108,15 @@ test("the real Sales Performance component renders its responsive dashboard shel
     const text = dom.window.document.body.textContent;
     for (const expected of ["Sales Performance", "Total leads", "Sales funnel", "Lead flow over time", "Sales rep performance", "Monthly sales target", "Casey Homeowner", "Website visitor analytics are not connected"]) assert.match(text, new RegExp(expected));
     assert.equal(dom.window.document.querySelectorAll("button").length > 10, true);
+    [...dom.window.document.querySelectorAll("button")].find(button => button.textContent.includes("Customize"))?.click();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const customizeDialog = dom.window.document.querySelector('[role="dialog"]');
+    assert.match(customizeDialog?.textContent || "", /Customize dashboard/);
+    const totalLeadsToggle = [...customizeDialog.querySelectorAll("button")].find(button => button.textContent.includes("Total leads"));
+    assert.equal(totalLeadsToggle?.getAttribute("aria-pressed"), "true");
+    totalLeadsToggle.click();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    assert.match(dom.window.localStorage.getItem("fuzedflow:sales-dashboard:v1:company-1:rep-1") || "", /metric:leads/);
     assert.deepEqual(messages, []);
   } finally {
     dom.window.close();
