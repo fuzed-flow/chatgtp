@@ -131,6 +131,7 @@ async function emailView(dialog, options = {}) {
     id: DOCUMENT, company_id: COMPANY, title: 'Synthetic ' + type, client_id: CLIENT,
     project_id: 'synthetic-project', projects: {client_id: CLIENT}, [info.numberField]: info.number,
   };
+  if (dialog === 'quote' && Object.hasOwn(options, 'quoteClientId')) rows.quotes.client_id = options.quoteClientId;
   const statusErrors = [...(options.statusErrors || [])];
   fixture.from = table => {
     const record = {table, mode: 'select', filters: []};
@@ -210,6 +211,24 @@ async function emailView(dialog, options = {}) {
     return {dom, window, document, fixture, wait, button, submit, input, copy, reply, fail, errors, rows, close};
   } catch (error) {close(); throw error;}
 }
+
+test('quote: lead-only email keeps the secure quote link and omits the unavailable client portal link', async () => {
+  const view = await emailView('quote', {quoteClientId: null});
+  try {
+    view.submit();
+    await view.wait(() => view.fixture.requests.length === 1);
+    const body = view.fixture.requests[0].body;
+    assert.equal(body.client_id, null);
+    assert.ok(body.html_body.includes('/PublicQuoteView?'));
+    assert.ok(body.html_body.includes('token=' + 'a'.repeat(64)));
+    assert.ok(!body.html_body.includes('/ClientPortal'));
+    assert.ok(!body.html_body.includes('quote_token='));
+    assert.ok(!body.html_body.includes('Access Client Portal'));
+    view.reply(0);
+    await view.wait(() => view.fixture.successes === 1);
+    assert.deepEqual(view.errors, []);
+  } finally {view.close();}
+});
 
 function assertInvalidations(view, type) {
   const actual = plain(view.fixture.invalidations);
