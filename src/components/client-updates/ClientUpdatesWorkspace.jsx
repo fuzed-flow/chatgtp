@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Download, Edit3, Eye, Mail, MessageSquare, Plus, Search } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { supabase } from "@/api/supabaseClient";
@@ -24,6 +25,7 @@ export default function ClientUpdatesWorkspace({ fixedProject = null }) {
   const { profile, company } = useAuth();
   const companyId = profile?.company_id;
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [formState, setFormState] = useState(null);
@@ -73,6 +75,14 @@ export default function ClientUpdatesWorkspace({ fixedProject = null }) {
   const projectById = useMemo(() => Object.fromEntries(projects.map(project => [project.id, project])), [projects]);
   const clientById = useMemo(() => Object.fromEntries((clientsQuery.data || []).map(client => [client.id, client])), [clientsQuery.data]);
   const updates = updatesQuery.data || [];
+  const requestedPreviewId = searchParams.get("preview");
+
+  useEffect(() => {
+    if (!requestedPreviewId) return;
+    const requested = updates.find(update => update.id === requestedPreviewId);
+    if (requested) setPreview(current => current?.id === requested.id ? current : requested);
+  }, [requestedPreviewId, updates]);
+
   const filtered = useMemo(() => updates.filter(update => {
     const project = projectById[update.project_id];
     const client = clientById[update.client_id];
@@ -122,9 +132,17 @@ export default function ClientUpdatesWorkspace({ fixedProject = null }) {
   const eligibleProjects = useMemo(() => projects
     .filter(project => project.client_id)
     .map(project => ({ ...project, client_name: clientById[project.client_id]?.name || "Client" })), [projects, clientById]);
-  const openPreview = update => setPreview(update);
   const openDelivery = (update, mode) => setDelivery({ update, mode });
   const related = update => ({ project: projectById[update.project_id], client: clientById[update.client_id] });
+
+  const closePreview = open => {
+    if (open) return;
+    setPreview(null);
+    if (!requestedPreviewId) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("preview");
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
@@ -161,7 +179,11 @@ export default function ClientUpdatesWorkspace({ fixedProject = null }) {
                     <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs font-semibold text-slate-500"><span>{update.completed_work?.length || 0} completed</span><span>{update.upcoming_work?.length || 0} upcoming</span>{update.email_sent_at && <span>Email sent</span>}{update.sms_sent_at && <span>Text sent</span>}</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:max-w-md lg:justify-end">
-                    <Button variant="outline" size="sm" onClick={() => openPreview(update)}><Eye className="mr-1.5 h-4 w-4" />View</Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={`/ClientUpdates?preview=${encodeURIComponent(update.id)}`} target="_blank" rel="noopener noreferrer" aria-label={`View ${update.title} in a new tab`}>
+                        <Eye className="mr-1.5 h-4 w-4" />View
+                      </a>
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => setFormState({ update })}><Edit3 className="mr-1.5 h-4 w-4" />Edit</Button>
                     <Button variant="outline" size="sm" onClick={() => generateClientUpdatePDF(update, project, client, company)}><Download className="mr-1.5 h-4 w-4" />PDF</Button>
                     <Button variant="outline" size="sm" disabled={!client?.email} onClick={() => openDelivery(update, "email")}><Mail className="mr-1.5 h-4 w-4" />Email</Button>
@@ -175,7 +197,7 @@ export default function ClientUpdatesWorkspace({ fixedProject = null }) {
       )}
 
       <ClientUpdateFormDialog open={!!formState} onOpenChange={open => { if (!open) setFormState(null); }} update={formState?.update} projects={eligibleProjects} fixedProject={fixedProject} saving={saveMutation.isPending} onSave={payload => saveMutation.mutate(payload)} />
-      <ClientUpdatePreviewDialog open={!!preview} onOpenChange={open => { if (!open) setPreview(null); }} update={preview} project={preview ? related(preview).project : null} client={preview ? related(preview).client : null} company={company} />
+      <ClientUpdatePreviewDialog open={!!preview} onOpenChange={closePreview} update={preview} project={preview ? related(preview).project : null} client={preview ? related(preview).client : null} company={company} />
       <ClientUpdateDeliveryDialog open={!!delivery} onOpenChange={open => { if (!open) setDelivery(null); }} mode={delivery?.mode} update={delivery?.update} project={delivery ? related(delivery.update).project : null} client={delivery ? related(delivery.update).client : null} company={company} onSent={() => queryClient.invalidateQueries({ queryKey: ["client-updates", companyId] })} />
     </div>
   );

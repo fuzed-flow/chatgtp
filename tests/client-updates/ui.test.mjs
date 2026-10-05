@@ -51,3 +51,13 @@ test("large client-update fields offer safe AI rewriting and responsive resizing
   assert.match(field, /resize-none[^"]*sm:resize-y/);
   assert.match(field, /max-h-\[60dvh\]/);
 });
+
+test("client update View opens an authenticated preview in a new tab", () => {
+  const workspace = readFileSync(new URL("../../src/components/client-updates/ClientUpdatesWorkspace.jsx", import.meta.url), "utf8");
+
+  assert.match(workspace, /href={`\/ClientUpdates\?preview=\$\{encodeURIComponent\(update\.id\)\}`}/);
+  assert.match(workspace, /target="_blank"/);
+  assert.match(workspace, /rel="noopener noreferrer"/);
+  assert.match(workspace, /searchParams\.get\("preview"\)/);
+  assert.match(workspace, /updates\.find\(update => update\.id === requestedPreviewId\)/);
+});
