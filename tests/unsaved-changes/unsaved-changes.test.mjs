@@ -154,6 +154,23 @@ test('Cancel keeps the requested link destination blocked and preserves all edit
   } finally { view.dom.window.close(); }
 });
 
+test('Leave without saving discards edits and continues to the requested in-app destination', async () => {
+  const view = await builderView('change order');
+  try {
+    await view.edit('Discard this change order');
+    view.window.documentFixture.navigate('/Reports?filter=drafts#documents');
+    await view.wait(() => view.prompt());
+    assert.match(view.prompt().textContent, /leave without saving/i);
+    view.button('Leave without saving').click();
+    await view.wait(() => view.heading() === 'Reports');
+    assert.equal(view.window.fixtureRouter.state.location.pathname, '/Reports');
+    assert.equal(view.window.fixtureRouter.state.location.search, '?filter=drafts');
+    assert.equal(view.window.fixtureRouter.state.location.hash, '#documents');
+    assert.equal(view.window.saveRequests.length, 0);
+    assert.deepEqual(view.errors, []);
+  } finally { view.dom.window.close(); }
+});
+
 test('Save and exit awaits persistence then resumes the exact requested route, without duplicate saves', async () => {
   const view = await builderView('invoice');
   try {
@@ -362,6 +379,19 @@ test('an external link exits only after the document has actually been saved', a
     await view.wait(() => view.navigationAttempts.length === 1);
     assert.equal(view.window.documentFixture.dirty(), false);
     assert.equal(view.window.savedSnapshots[0].title, 'Save before external navigation');
+    assert.deepEqual(view.errors, []);
+  } finally { view.dom.window.close(); }
+});
+
+test('Leave without saving permits a same-tab external destination without requesting a save', async () => {
+  const view = await builderView('invoice');
+  try {
+    await view.edit('Discard this invoice');
+    view.link('External link').click();
+    await view.wait(() => view.prompt());
+    view.button('Leave without saving').click();
+    await view.wait(() => view.navigationAttempts.length === 1);
+    assert.equal(view.window.saveRequests.length, 0);
     assert.deepEqual(view.errors, []);
   } finally { view.dom.window.close(); }
 });

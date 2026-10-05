@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBlocker } from "react-router-dom";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, LogOut, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -126,6 +126,20 @@ export default function UnsavedChangesGuard({ isDirty, saving, onSave, documentN
     }
   };
 
+  const leaveWithoutSaving = () => {
+    if (saveInFlight.current || latest.current.saving) return;
+
+    const destination = latest.current.externalDestination;
+    allowDocumentExit.current = true;
+    setSaveError("");
+
+    if (destination !== null) {
+      window.location.assign(destination);
+    } else if (latestBlocker.current.state === "blocked") {
+      latestBlocker.current.proceed();
+    }
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) cancelExit(); }}>
       <AlertDialogContent className="max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] max-w-md overflow-y-auto rounded-xl border-amber-200 bg-white p-5 sm:p-6">
@@ -135,7 +149,7 @@ export default function UnsavedChangesGuard({ isDirty, saving, onSave, documentN
           </div>
           <AlertDialogTitle className="text-xl text-slate-900">Unsaved changes</AlertDialogTitle>
           <AlertDialogDescription className="text-sm leading-relaxed text-slate-600">
-            Your {documentName} has unsaved changes. Would you like to save and exit, or cancel to keep editing?
+            Your {documentName} has unsaved changes. Save before exiting, leave without saving, or cancel to keep editing.
           </AlertDialogDescription>
         </AlertDialogHeader>
         {saveError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{saveError}</p>}
@@ -143,6 +157,10 @@ export default function UnsavedChangesGuard({ isDirty, saving, onSave, documentN
           <AlertDialogCancel onClick={cancelExit} disabled={busy} className="mt-0 min-h-12 touch-manipulation rounded-lg">
             Cancel
           </AlertDialogCancel>
+          <Button type="button" variant="outline" onClick={leaveWithoutSaving} disabled={busy} className="min-h-12 touch-manipulation gap-2 rounded-lg border-red-200 text-red-700 hover:border-red-300 hover:bg-red-50 hover:text-red-800 focus-visible:ring-red-500">
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            Leave without saving
+          </Button>
           <Button type="button" onClick={saveAndExit} disabled={busy} className="min-h-12 touch-manipulation gap-2 rounded-lg bg-amber-500 text-slate-900 hover:bg-amber-600 focus-visible:ring-amber-500">
             {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
             {busy ? "Saving…" : "Save and exit"}
