@@ -35,7 +35,7 @@ async function fixture(builder, options = {}) {
     form: { title: 'Old blurred title', project_id: 'project-one', client_id: 'client-0000000001', lead_id: 'none', quote_id: 'none', status: 'Draft',
       quote_number: options.newDocument ? '' : 'QT-1001', change_order_number: options.newDocument ? '' : 'CO-101',
       has_payment_schedule: true, due_terms: 'net_30', show_notes: true },
-    phases: [{ phase_name: 'Phase', sort_order: 0, items: [{ name: 'Item', quantity: 2, unit_price: 25, unit_cost: 10, supplier: 'Focused supplier', is_material: true, taxable: true }] }],
+    phases: options.phases || [{ phase_name: 'Phase', sort_order: 0, items: [{ name: 'Item', quantity: 2, unit_price: 25, unit_cost: 10, supplier: 'Focused supplier', is_material: true, taxable: true }] }],
     paymentScheduleItems: [{ payment_name: 'Payment', due_event: 'Completion', amount: 50, amount_type: 'fixed' }],
     manualItems: [{ name: 'Manual charge', amount: 5 }],
     pdfSettings: {}, currentMarginAmount: 0, effectiveSubtotal: 50, grandTax: 0, grandTotal: 50,
@@ -105,6 +105,23 @@ for (const builder of builders) {
       assert.equal(parent.payload.title, 'Focused title', 'Current focused text is saved without requiring blur.');
       assert.equal(parent.payload.notes, 'Focused notes');
     }
+  });
+
+  test(`${builder.name} persists the current phase order instead of stale sort values`, async () => {
+    const view = await fixture(builder, { phases: [
+      { phase_name: 'Third moved first', sort_order: 2, items: [] },
+      { phase_name: 'First moved second', sort_order: 0, items: [] },
+      { phase_name: 'Second moved third', sort_order: 1, items: [] },
+    ] });
+
+    assert.equal(await view.save(), 'document-one');
+    const phaseWrites = view.calls.filter(call => call.table === builder.children[1] && call.action === 'insert');
+    assert.deepEqual(phaseWrites.map(call => call.payload[0].phase_name), [
+      'Third moved first',
+      'First moved second',
+      'Second moved third',
+    ]);
+    assert.deepEqual(phaseWrites.map(call => call.payload[0].sort_order), [0, 1, 2]);
   });
 
   for (const table of builder.children) for (const action of ['delete', 'insert']) {

@@ -21,6 +21,7 @@ import SendChangeOrderEmailDialog from "../components/change-orders/SendChangeOr
 import SendChangeOrderTextDialog from "../components/change-orders/SendChangeOrderTextDialog";
 import { useDocumentChanges, useDocumentState } from "@/hooks/useDocumentChanges";
 import UnsavedChangesGuard from "@/components/shared/UnsavedChangesGuard";
+import { normalizePhaseOrder } from "@/lib/phaseOrdering";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -188,11 +189,11 @@ export default function ChangeOrderBuilder() {
   ));
 
   const addPhase = () => {
-    setPhases([...phases, {
+    setPhases(current => normalizePhaseOrder([...current, {
       id: `temp-phase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       phase_name: `Change Order Items`, scope_of_work: "", show_scope_to_client: true, internal_notes: "",
-      photos: [], sort_order: phases.length, is_optional: false, items: []
-    }]);
+      photos: [], sort_order: current.length, is_optional: false, items: []
+    }]));
   };
 
   const updatePhase = (idx, field, value) => { 
@@ -253,7 +254,7 @@ export default function ChangeOrderBuilder() {
     toast.success("Item split into material and labor");
   };
 
-  const removePhase = (idx) => setPhases(phases.filter((_, i) => i !== idx));
+  const removePhase = (idx) => setPhases(current => normalizePhaseOrder(current.filter((_, i) => i !== idx)));
 
   const { duplicatePhase, reorderLineItems, reorderPhases } = usePhaseFunctions(phases, setPhases);
 
@@ -487,12 +488,12 @@ export default function ChangeOrderBuilder() {
         if (deletePhasesError) throw new Error(`Remove Phases: ${deletePhasesError.message}`);
       }
 
-      for (const phase of phases) {
+      for (const [phaseIndex, phase] of phases.entries()) {
         const { data: insertedPhase, error: phaseError } = await supabase.from("change_order_phases").insert([{
           company_id: companyId, change_order_id: savedId, phase_name: phase.phase_name || "Unnamed Phase",
           scope_of_work: phase.scope_of_work || "", show_scope_to_client: Boolean(phase.show_scope_to_client),
           internal_notes: phase.internal_notes || "", photos: Array.isArray(phase.photos) ? phase.photos : [],
-          sort_order: safeNum(phase.sort_order), is_optional: Boolean(phase.is_optional), default_selected: Boolean(phase.default_selected)
+          sort_order: phaseIndex, is_optional: Boolean(phase.is_optional), default_selected: Boolean(phase.default_selected)
         }]).select().single();
         if (phaseError) throw new Error(`Phase Table: ${phaseError.message}`);
 

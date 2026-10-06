@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { normalizePhaseOrder } from "@/lib/phaseOrdering";
 
 export const usePhaseFunctions = (phases, setPhases, onAutoSave = null) => {
   const duplicatePhase = (idx) => {
@@ -10,7 +11,7 @@ export const usePhaseFunctions = (phases, setPhases, onAutoSave = null) => {
       sort_order: phases.length,
       items: phaseToDuplicate.items?.map(item => ({ ...item, id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` })) || []
     };
-    setPhases([...phases, duplicatedPhase]);
+    setPhases(current => normalizePhaseOrder([...current, duplicatedPhase]));
     toast.success("Phase duplicated");
   };
 
@@ -27,10 +28,12 @@ export const usePhaseFunctions = (phases, setPhases, onAutoSave = null) => {
   };
 
   const reorderPhases = (sourceIdx, destIdx) => {
-    const updated = [...phases];
-    const [removed] = updated.splice(sourceIdx, 1);
-    updated.splice(destIdx, 0, removed);
-    setPhases(updated);
+    setPhases(current => {
+      const updated = [...current];
+      const [removed] = updated.splice(sourceIdx, 1);
+      updated.splice(destIdx, 0, removed);
+      return normalizePhaseOrder(updated);
+    });
   };
 
   return { duplicatePhase, reorderLineItems, reorderPhases };

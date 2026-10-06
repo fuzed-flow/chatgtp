@@ -25,6 +25,7 @@ import SendQuoteTextDialog from "../components/quotes/SendQuoteTextDialog";
 import { useDocumentChanges, useDocumentState } from "@/hooks/useDocumentChanges";
 import UnsavedChangesGuard from "@/components/shared/UnsavedChangesGuard";
 import { issueQuoteShareToken } from "@/lib/quoteSharing";
+import { normalizePhaseOrder } from "@/lib/phaseOrdering";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -394,19 +395,20 @@ export default function QuoteBuilder() {
   }, [templateId, quoteId, templateScheduleItems, templateScheduleFetched, templateScheduleLoadError]);
 
   const addPhase = () => {
-    setPhases([...phases, {
+    setPhases(current => normalizePhaseOrder([...current, {
       id: `temp-phase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      phase_name: `Phase ${phases.length + 1}`, scope_of_work: "", show_scope_to_client: true, internal_notes: "",
-      photos: [], sort_order: phases.length, is_optional: false, items: []
-    }]);
+      phase_name: `Phase ${current.length + 1}`, scope_of_work: "", show_scope_to_client: true, internal_notes: "",
+      photos: [], sort_order: current.length, is_optional: false, items: []
+    }]));
   };
 
   const addPhaseFromTemplate = (template) => {
     let lineItems = [];
     try { lineItems = JSON.parse(template.line_items_json || "[]"); } catch (e) {}
-    setPhases([...phases, {
+    setPhases(current => normalizePhaseOrder([...current, {
+      id: `temp-phase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       phase_name: template.phase_name, scope_of_work: template.scope_of_work || "", show_scope_to_client: true,
-      internal_notes: "", photos: [], sort_order: phases.length, is_optional: false,
+      internal_notes: "", photos: [], sort_order: current.length, is_optional: false,
       items: lineItems.map((item, idx) => {
         const matchedProduct = products.find(p => p.name === item.name);
         return {
@@ -421,12 +423,12 @@ export default function QuoteBuilder() {
           is_material: item.is_material || matchedProduct?.is_material || false, supplier: item.supplier || matchedProduct?.supplier || null
         };
       })
-    }]);
+    }]));
     toast.success(`Added ${template.phase_name} from template`);
   };
 
   const updatePhase = (idx, field, value) => { const updated = [...phases]; updated[idx] = { ...updated[idx], [field]: value }; setPhases(updated); };
-  const removePhase = (idx) => setPhases(phases.filter((_, i) => i !== idx));
+  const removePhase = (idx) => setPhases(current => normalizePhaseOrder(current.filter((_, i) => i !== idx)));
 
   const { duplicatePhase, reorderLineItems, reorderPhases } = usePhaseFunctions(phases, setPhases);
 
@@ -870,12 +872,12 @@ export default function QuoteBuilder() {
         if (deleteScheduleError) throw new Error(`Payment Schedule Delete: ${deleteScheduleError.message}`);
       }
 
-      for (const phase of phases) {
+      for (const [phaseIndex, phase] of phases.entries()) {
         const { data: insertedPhase, error: phaseError } = await supabase.from("quote_phases").insert([{
           company_id: companyId, quote_id: savedQuoteId, phase_name: phase.phase_name || "Unnamed Phase",
           scope_of_work: phase.scope_of_work || "", show_scope_to_client: Boolean(phase.show_scope_to_client),
           internal_notes: phase.internal_notes || "", photos: Array.isArray(phase.photos) ? phase.photos : [],
-          sort_order: safeNum(phase.sort_order), is_optional: Boolean(phase.is_optional), default_selected: Boolean(phase.default_selected)
+          sort_order: phaseIndex, is_optional: Boolean(phase.is_optional), default_selected: Boolean(phase.default_selected)
         }]).select().single();
         if (phaseError) throw new Error(`Phase Table: ${phaseError.message}`);
 
@@ -1088,10 +1090,10 @@ export default function QuoteBuilder() {
     await supabase.from("companies").update({ next_invoice_number: safeNum(company?.next_invoice_number || 1001) + 1 }).eq("id", companyId);
 
     const invoicePhasesMap = {};
-    for (const phase of phases) {
-      if (!isPhaseActive(phase)) continue;
+    const activePhases = phases.filter(isPhaseActive);
+    for (const [phaseIndex, phase] of activePhases.entries()) {
       const { data: newPhase } = await supabase.from("invoice_phases").insert([{
-        company_id: companyId, invoice_id: invoiceRef.id, phase_name: phase.phase_name, scope_of_work: phase.scope_of_work || "", sort_order: phase.sort_order || 0,
+        company_id: companyId, invoice_id: invoiceRef.id, phase_name: phase.phase_name, scope_of_work: phase.scope_of_work || "", sort_order: phaseIndex,
       }]).select().single();
       if (newPhase) invoicePhasesMap[phase.id] = newPhase.id;
     }
@@ -1979,7 +1981,16 @@ export default function QuoteBuilder() {
                         const { data: templateItemsData } = await supabase.from("quote_line_items").select("*").eq("quote_id", template.id).order("display_order", { ascending: true });
                         const { data: templateScheduleData } = await supabase.from("quote_payment_schedules").select("*").eq("quote_id", template.id).order("sort_order", { ascending: true });
 
-                        const importedPhases = (templatePhasesData || []).map(phase => ({
+                        const importedPhases = (templatePhasesData || []).map((phase, importedIndex) => ({
+                          id: `temp-phase-${Date.now()}-${importedIndex}-${Math.random().toString(36).substr(2, 9)}`,
+                          phase_name: phase.phase_name,
+                          scope_of_work: phase.scope_of_work || "",
+                          show_scope_to_client: phase.show_scope_to_client !== false,
+                          internal_notes: phase.internal_notes || "",
+                          photos: Array.isArray(phase.photos) ? phase.photos : [],
+                          sort_order: phases.length + importedIndex,
+                          is_optional: phase.is_optional === true,
+                          default_selected: phase.default_selected === true,
                           items: (templateItemsData || []).filter(item => item.phase_id === phase.id).map(item => ({
                             id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                             name: item.name, description: item.description || "", quantity: Number(item.quantity) || 1, unit: item.unit || "ea",
@@ -1991,7 +2002,7 @@ export default function QuoteBuilder() {
                           }))
                         }));
 
-                        setPhases([...phases, ...importedPhases]);
+                        setPhases(current => normalizePhaseOrder([...current, ...importedPhases]));
 
                         if (templateScheduleData?.length > 0) {
                           const importedSchedule = templateScheduleData.map(item => ({

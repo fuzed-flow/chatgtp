@@ -29,6 +29,7 @@ import PhaseCard from "../components/quotes/PhaseCard";
 import { usePhaseFunctions } from "../components/quotes/usePhaseManagement";
 import { useDocumentChanges, useDocumentState } from "@/hooks/useDocumentChanges";
 import UnsavedChangesGuard from "@/components/shared/UnsavedChangesGuard";
+import { normalizePhaseOrder } from "@/lib/phaseOrdering";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -228,9 +229,9 @@ export default function InvoiceBuilder() {
   // --- PHASE & GRID HANDLERS ---
   const { duplicatePhase, reorderLineItems, reorderPhases } = usePhaseFunctions(phases, setPhases);
 
-  const addPhase = () => setPhases([...phases, { id: `temp-phase-${Date.now()}`, phase_name: `Phase ${phases.length + 1}`, scope_of_work: "", show_scope_to_client: true, sort_order: phases.length, items: [] }]);
+  const addPhase = () => setPhases(current => normalizePhaseOrder([...current, { id: `temp-phase-${Date.now()}`, phase_name: `Phase ${current.length + 1}`, scope_of_work: "", show_scope_to_client: true, sort_order: current.length, items: [] }]));
   const updatePhase = (idx, field, value) => { const updated = [...phases]; updated[idx] = { ...updated[idx], [field]: value }; setPhases(updated); };
-  const removePhase = (idx) => setPhases(phases.filter((_, i) => i !== idx));
+  const removePhase = (idx) => setPhases(current => normalizePhaseOrder(current.filter((_, i) => i !== idx)));
   const movePhaseUp = (idx) => { if (idx > 0) reorderPhases(idx, idx - 1); };
   const movePhaseDown = (idx) => { if (idx < phases.length - 1) reorderPhases(idx, idx + 1); };
 
@@ -494,10 +495,9 @@ export default function InvoiceBuilder() {
       const { error: phasesDeleteError } = await supabase.from("invoice_phases").delete().eq("invoice_id", savedId).eq("company_id", companyId);
       if (phasesDeleteError) throw phasesDeleteError;
       
-      for (const phase of phases) {
-        if (!isPhaseActive(phase)) continue;
+      for (const [phaseIndex, phase] of phases.filter(isPhaseActive).entries()) {
         const { data: newPhase, error: pErr } = await supabase.from("invoice_phases").insert([{
-          company_id: companyId, invoice_id: savedId, phase_name: phase.phase_name, scope_of_work: phase.scope_of_work || "", sort_order: phase.sort_order || 0,
+          company_id: companyId, invoice_id: savedId, phase_name: phase.phase_name, scope_of_work: phase.scope_of_work || "", sort_order: phaseIndex,
         }]).select().single();
 
         if (pErr) throw pErr;
