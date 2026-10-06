@@ -2,9 +2,10 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { X } from "lucide-react"
+import { MessageCircle, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useAIHelp } from "@/components/shared/AIHelpContext"
 
 const Dialog = DialogPrimitive.Root
 
@@ -13,6 +14,28 @@ const DialogTrigger = DialogPrimitive.Trigger
 const DialogPortal = DialogPrimitive.Portal
 
 const DialogClose = DialogPrimitive.Close
+
+const DialogAIHelpTrigger = () => {
+  const { isAvailable, openHelp, registerModalDialog } = useAIHelp()
+
+  React.useEffect(() => registerModalDialog(), [registerModalDialog])
+
+  if (!isAvailable) return null
+
+  return (
+    <button
+      type="button"
+      aria-label="Ask AI Help about this form"
+      title="Ask AI Help"
+      data-ai-help-dialog-trigger
+      onClick={(event) => openHelp({ returnFocusTarget: event.currentTarget })}
+      className="absolute right-14 top-2 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full text-amber-700 transition-colors hover:bg-amber-50 hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+    >
+      <MessageCircle className="h-5 w-5" aria-hidden="true" />
+      <span className="sr-only">Ask AI Help about this form</span>
+    </button>
+  )
+}
 
 const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
@@ -35,6 +58,7 @@ const DialogContent = React.forwardRef(({ className, children, closeButtonClassN
         className
       )}
       {...props}>
+      <DialogAIHelpTrigger />
       {children}
       <DialogPrimitive.Close
         className={cn(

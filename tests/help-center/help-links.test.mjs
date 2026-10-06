@@ -197,7 +197,9 @@ const widgetBundle = build({
     import {BrowserRouter} from 'react-router-dom';
     import {Context} from 'test-help-auth';
     import AIHelpWidget from './src/components/shared/AIHelpWidget.jsx';
-    function Fixture(){const [profile,setProfile]=useState({id:'first-user',role:'owner'});window.changeHelpProfile=setProfile;return <Context.Provider value={{profile}}><BrowserRouter><nav aria-label={window.helpNavigationLabel||"Primary mobile navigation"} data-testid="mobile-navigation"/><AIHelpWidget/></BrowserRouter></Context.Provider>;}
+    import {AIHelpProvider} from './src/components/shared/AIHelpContext.jsx';
+    import {Dialog,DialogContent,DialogHeader,DialogTitle} from './src/components/ui/dialog.jsx';
+    function Fixture(){const [profile,setProfile]=useState({id:'first-user',role:'owner'});const [formOpen,setFormOpen]=useState(false);window.changeHelpProfile=setProfile;return <Context.Provider value={{profile}}><AIHelpProvider><BrowserRouter><nav aria-label={window.helpNavigationLabel||"Primary mobile navigation"} data-testid="mobile-navigation"/><button type="button" data-testid="open-test-form" onClick={()=>setFormOpen(true)}>Open form</button><Dialog open={formOpen} onOpenChange={setFormOpen}><DialogContent><DialogHeader><DialogTitle>New note/photo</DialogTitle></DialogHeader><input aria-label="Photo description" /></DialogContent></Dialog><AIHelpWidget/></BrowserRouter></AIHelpProvider></Context.Provider>;}
     createRoot(document.getElementById('root')).render(<Fixture/>);
   ` },
   bundle: true, write: false, platform: 'browser', format: 'iife', define: { 'process.env.NODE_ENV': '"test"' },
@@ -311,6 +313,27 @@ test('mobile AI Help opens on a tap and moves within the screen after a press an
 
     trigger.click();
     await view.wait(() => view.document.querySelector('[role="dialog"]'));
+    assert.deepEqual(view.errors, []);
+  } finally { view.dom.window.close(); }
+});
+
+test('a form dialog provides its own AI Help trigger and restores focus when help closes', async () => {
+  const view = await browserDom(widgetBundle);
+  try {
+    await view.wait(() => view.document.querySelector('[aria-label="Open AI help"]'));
+    const floatingTrigger = view.document.querySelector('[aria-label="Open AI help"]');
+    view.document.querySelector('[data-testid="open-test-form"]').click();
+    await view.wait(() => view.document.querySelector('[data-ai-help-dialog-trigger]'));
+
+    const dialogTrigger = view.document.querySelector('[data-ai-help-dialog-trigger]');
+    assert.ok(floatingTrigger.classList.contains('pointer-events-none'), 'The inaccessible floating control is suppressed while the form modal is open.');
+    dialogTrigger.click();
+    await view.wait(() => view.document.querySelector('[aria-label="Your question"]'));
+
+    view.document.querySelector('[aria-label="Close AI help"]').click();
+    await view.wait(() => !view.document.querySelector('[aria-label="Your question"]'));
+    await view.wait(() => view.document.activeElement === dialogTrigger);
+    assert.ok(view.document.querySelector('[role="dialog"]'), 'Closing AI Help returns the user to the still-open form.');
     assert.deepEqual(view.errors, []);
   } finally { view.dom.window.close(); }
 });
