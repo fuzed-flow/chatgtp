@@ -3,20 +3,15 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
-  Target, FileText, FolderKanban, Receipt, CalendarDays,
-  Plus, ArrowRight, Clock, AlertTriangle, TrendingUp, MessageSquare, 
-  X, Users, Play, CheckSquare, ChevronDown, ChevronUp, Phone, Mail, MapPin, DollarSign, LayoutTemplate, Loader2, Sparkles, FileStack, BookOpen, Edit3
+  Target, FileText, Receipt, Plus, ArrowRight, AlertTriangle, Users,
+  CheckSquare, ChevronDown, ChevronUp, Phone, Mail, DollarSign,
+  LayoutTemplate, Loader2, FileStack, Edit3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { parseISO, isValid } from "date-fns";
 import UrgentTasksBanner from "../components/shared/UrgentTasksBanner";
@@ -29,6 +24,7 @@ import ClientFormDialog from "../components/clients/ClientFormDialog";
 import ContinueWorking from "../components/dashboard/ContinueWorking";
 import CreateTaskDialog from "../components/tasks/CreateTaskDialog";
 import ActiveProjectsSection from "../components/shared/ActiveProjects";
+import { useTaskVendors } from "@/hooks/useTaskVendors";
 
 const safeParseDate = (dateString) => {
   if (!dateString) return null;
@@ -42,6 +38,7 @@ export default function Dashboard() {
   const qc = useQueryClient();
   const { profile } = useAuth();
   const companyId = profile?.company_id;
+  const { vendors, canCreateVendor, createVendor, isCreatingVendor } = useTaskVendors({ companyId, role: profile?.role });
   
   const [isRedirectingToStripe, setIsRedirectingToStripe] = useState(() => {
     return !!localStorage.getItem('pending_stripe_checkout') || !!localStorage.getItem('google_signup_attempt');
@@ -265,7 +262,8 @@ export default function Dashboard() {
         status: payload.status,
         priority: payload.priority,
         due_date_target: payload.due_date || null,
-        assigned_to: assignedToArray
+        assigned_to: assignedToArray,
+        vendor_id: (!payload.vendor_id || payload.vendor_id === "none") ? null : payload.vendor_id,
       }]);
       if (error) throw error;
     },
@@ -522,7 +520,9 @@ export default function Dashboard() {
         projects={projects} 
         leads={leads} 
         users={users}
-        vendors={[]}
+        vendors={vendors}
+        onCreateVendor={canCreateVendor ? createVendor : undefined}
+        isCreatingVendor={isCreatingVendor}
         onSubmit={(data) => saveTaskMutation.mutate(data)} 
         isLoading={saveTaskMutation.isPending} 
       />

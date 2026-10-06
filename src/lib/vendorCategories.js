@@ -1,0 +1,18 @@
+export const VENDOR_CATEGORIES = [
+  "Cabinets",
+  "Deck Builder",
+  "Drywall",
+  "Electrical",
+  "Fence/Deck",
+  "Flooring",
+  "Framing",
+  "General",
+  "Glass & Mirrors",
+  "HVAC",
+  "Painting",
+  "Plumbing",
+  "Roofing",
+  "Stone Work",
+  "Tile Work",
+  "Other",
+];

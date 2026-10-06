@@ -29,6 +29,7 @@ import PhotoGallery from "../components/shared/PhotoGallery";
 import DocumentManager from "../components/shared/DocumentManager";
 import CommunicationPanel from "../components/clients/CommunicationPanel";
 import ConfirmDeleteDialog from "../components/shared/ConfirmDeleteDialog";
+import { useTaskVendors } from "@/hooks/useTaskVendors";
 
 // --- CONSTANTS & HELPERS ---
 const STATUSES = ["To Do", "Doing", "Blocked", "Done", "Pending", "Active", "Under Review", "Completed"];
@@ -77,6 +78,7 @@ const getProjectName = (p) => {
 export default function LeadDetail() {
   const { profile } = useAuth();
   const companyId = profile?.company_id;
+  const { vendors, canCreateVendor, createVendor, isCreatingVendor } = useTaskVendors({ companyId, role: profile?.role });
 
   const params = new URLSearchParams(window.location.search);
   const leadId = params.get("id");
@@ -153,8 +155,6 @@ export default function LeadDetail() {
   // Supporting Dropdown Data for Tasks
   const { data: clients = [] } = useQuery({ queryKey: ["clients", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("clients").select("id, name, first_name, surname").eq("company_id", companyId)).data || [] });
   const { data: projects = [] } = useQuery({ queryKey: ["projects", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("projects").select("id, name, client_id").eq("company_id", companyId)).data || [] });
-  const { data: vendors = [] } = useQuery({ queryKey: ["vendors", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("vendors").select("id, name").eq("company_id", companyId)).data || [] });
-
   // --- MUTATIONS ---
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
@@ -912,6 +912,8 @@ export default function LeadDetail() {
         projects={projects}
         vendors={vendors}
         users={users}
+        onCreateVendor={canCreateVendor ? createVendor : undefined}
+        isCreatingVendor={isCreatingVendor}
         isLoading={handleCreateTaskSubmit.isPending}
         onSubmit={(payload) => handleCreateTaskSubmit.mutate(payload)}
       />

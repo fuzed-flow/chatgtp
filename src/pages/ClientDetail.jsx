@@ -28,6 +28,7 @@ import CreateQuoteFromTemplateDialog from "../components/shared/CreateQuoteFromT
 import CreateTaskDialog from "../components/tasks/CreateTaskDialog";
 import PhotoGallery from "../components/shared/PhotoGallery";
 import DocumentManager from "../components/shared/DocumentManager";
+import { useTaskVendors } from "@/hooks/useTaskVendors";
 
 // --- CONSTANTS & HELPERS ---
 const STATUSES = ["To Do", "Doing", "Blocked", "Done", "Pending", "Active", "Under Review", "Completed"];
@@ -65,6 +66,7 @@ export default function ClientDetail() {
   const params = new URLSearchParams(window.location.search);
   const clientId = params.get("id");
   const queryClient = useQueryClient();
+  const { vendors, canCreateVendor, createVendor, isCreatingVendor } = useTaskVendors({ companyId, role: profile?.role });
   
   // UI States
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -196,12 +198,18 @@ export default function ClientDetail() {
 
   const handleCreateTaskSubmit = useMutation({
     mutationFn: async (payload) => {
-      const { error } = await supabase.from("project_tasks").insert([{ 
-        ...payload, 
+      const { error } = await supabase.from("project_tasks").insert([{
         company_id: companyId,
         client_id: clientId,
-        due_date_target: payload.due_date,
-        due_date: null // Use due_date_target for project_tasks schema
+        project_id: (!payload.project_id || payload.project_id === "none") ? null : payload.project_id,
+        title: payload.title,
+        description: payload.description || null,
+        priority: payload.priority || "Medium",
+        status: payload.status || "To Do",
+        due_date_target: payload.due_date || null,
+        estimated_hours: payload.estimated_hours ? Number(payload.estimated_hours) : null,
+        assigned_to: (!payload.assigned_to || payload.assigned_to === "none") ? null : [payload.assigned_to],
+        vendor_id: (!payload.vendor_id || payload.vendor_id === "none") ? null : payload.vendor_id,
       }]);
       if (error) throw error;
     },
@@ -853,7 +861,10 @@ export default function ClientDetail() {
         clients={[client]} 
         defaultClientId={client.id}
         projects={projects}
+        vendors={vendors}
         users={users}
+        onCreateVendor={canCreateVendor ? createVendor : undefined}
+        isCreatingVendor={isCreatingVendor}
         isLoading={handleCreateTaskSubmit.isPending}
         onSubmit={(payload) => handleCreateTaskSubmit.mutate(payload)}
       />

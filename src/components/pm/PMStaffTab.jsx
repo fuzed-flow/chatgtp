@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import TaskWorkflowPanel from "@/components/tasks/TaskWorkflowPanel";
 import PMManagementHoursPanel from "@/components/pm/PMManagementHoursPanel";
 import CreateTaskDialog from "../tasks/CreateTaskDialog"; 
+import { useTaskVendors } from "@/hooks/useTaskVendors";
 
 // --- HELPERS ---
 const getClientName = (c) => {
@@ -45,6 +46,7 @@ export default function PMStaffTab({ project }) {
   const qc = useQueryClient();
   const { profile } = useAuth();
   const companyId = profile?.company_id;
+  const { vendors, canCreateVendor, createVendor, isCreatingVendor } = useTaskVendors({ companyId, role: profile?.role });
 
   const [view, setView] = useState("tasks"); 
   const [assigneeFilter, setAssigneeFilter] = useState("all");
@@ -196,6 +198,7 @@ export default function PMStaffTab({ project }) {
         due_date_target: payload.due_date || null,
         estimated_hours: payload.estimated_hours ? Number(payload.estimated_hours) : null,
         assigned_to: payload.assigned_to && payload.assigned_to !== "none" ? [payload.assigned_to] : null,
+        vendor_id: (!payload.vendor_id || payload.vendor_id === "none") ? null : payload.vendor_id,
       };
 
       const { error } = await supabase.from("project_tasks").insert([dbPayload]);
@@ -514,8 +517,11 @@ export default function PMStaffTab({ project }) {
         clients={clients} 
         projects={projects} 
         users={allCompanyUsers}
+        vendors={vendors}
         defaultProjectId={project?.id ? String(project.id) : "none"}
         defaultClientId={project?.client_id ? String(project.client_id) : "none"}
+        onCreateVendor={canCreateVendor ? createVendor : undefined}
+        isCreatingVendor={isCreatingVendor}
         isLoading={handleCreateSubmit.isPending}
         onSubmit={(payload) => handleCreateSubmit.mutate(payload)}
       />

@@ -23,9 +23,10 @@ import { toast } from "sonner";
 import { createPageUrl } from "../utils";
 import { Link, useSearchParams } from "react-router-dom";
 import { notificationTargetId } from '@/lib/costNotificationWorkflows';
+import { VENDOR_CATEGORIES } from '@/lib/vendorCategories';
 import Papa from "papaparse";
 
-const CATEGORIES = ["Cabinets", "Deck Builder", "Drywall", "Electrical", "Fence/Deck", "Flooring", "Framing", "General", "Glass & Mirrors", "HVAC", "Painting", "Plumbing", "Roofing", "Stone Work", "Tile Work", "Other"];
+const CATEGORIES = VENDOR_CATEGORIES;
 
 export default function Vendors() {
   const { profile } = useAuth();

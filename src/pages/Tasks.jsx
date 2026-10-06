@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { format, parseISO, isValid } from "date-fns";
 import CreateTaskDialog from "../components/tasks/CreateTaskDialog"; 
 import TaskWorkflowPanel from "@/components/tasks/TaskWorkflowPanel";
+import { useTaskVendors } from "@/hooks/useTaskVendors";
 
 const STATUSES = ["To Do", "Doing", "Blocked", "Done", "Pending", "Active", "Under Review", "Completed"];
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
@@ -109,8 +110,8 @@ export default function Tasks() {
   const { data: rawProjects = [] } = useQuery({ queryKey: ["projects", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("projects").select("id, name, project_number, client_id").eq("company_id", companyId)).data || [] });
   const { data: rawClients = [] } = useQuery({ queryKey: ["clients", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("clients").select("id, name, first_name, surname, primary_contact_name").eq("company_id", companyId)).data || [] });
   const { data: rawLeads = [] } = useQuery({ queryKey: ["leads", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("leads").select("id, contact_name").eq("company_id", companyId)).data || [] });
-  const { data: rawVendors = [] } = useQuery({ queryKey: ["vendors", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("vendors").select("id, name").eq("company_id", companyId)).data || [] });
   const { data: rawUsers = [] } = useQuery({ queryKey: ["company_users", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("profiles").select("id, full_name").eq("company_id", companyId)).data || [] });
+  const { vendors, canCreateVendor, createVendor, isCreatingVendor } = useTaskVendors({ companyId, role: profile?.role });
 
   // ⚡ DUAL QUERY: Fetch BOTH CRM Tasks and Project Tasks, then merge them
   const { data: allTasks = [], isLoading } = useQuery({ 
@@ -133,7 +134,6 @@ export default function Tasks() {
   const projects = useMemo(() => rawProjects.filter(p => p?.id), [rawProjects]);
   const clients = useMemo(() => rawClients.filter(c => c?.id), [rawClients]);
   const leads = useMemo(() => rawLeads.filter(l => l?.id), [rawLeads]);
-  const vendors = useMemo(() => rawVendors.filter(v => v?.id), [rawVendors]);
   const users = useMemo(() => rawUsers.filter(u => u?.id), [rawUsers]);
 
   const projectMap = useMemo(() => Object.fromEntries(projects.map(p => [p.id, getProjectName(p)])), [projects]);
@@ -177,7 +177,6 @@ export default function Tasks() {
            payload.assigned_to = [payload.assigned_to]; // Project tasks expect an array
          }
          delete payload.lead_id;
-         delete payload.vendor_id;
          delete payload.task_type;
       }
 
@@ -203,6 +202,7 @@ export default function Tasks() {
       if (payload.source_table === "project_tasks") {
          taskPayload.due_date_target = payload.due_date || null;
          taskPayload.assigned_to = (!payload.assigned_to || payload.assigned_to === "none") ? null : [payload.assigned_to];
+         taskPayload.vendor_id = (!payload.vendor_id || payload.vendor_id === "none") ? null : payload.vendor_id;
       } else {
          taskPayload.lead_id = (!payload.lead_id || payload.lead_id === "none") ? null : payload.lead_id;
          taskPayload.vendor_id = (!payload.vendor_id || payload.vendor_id === "none") ? null : payload.vendor_id;
@@ -734,6 +734,21 @@ export default function Tasks() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2 border border-amber-200 bg-amber-50/60 p-3 rounded-xl col-span-2 sm:col-span-1">
+                <Label className="text-[10px] font-black uppercase tracking-wider text-amber-900">Vendor / Subcontractor</Label>
+                <Select value={safeEditVendorId} onValueChange={v => setEditForm({...editForm, vendor_id: v})}>
+                  <SelectTrigger className="font-medium border-amber-200 bg-white text-sm"><SelectValue placeholder="No Vendor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Vendor</SelectItem>
+                    {vendors.map(v => (
+                      <SelectItem key={String(v.id)} value={String(v.id)}>
+                        {v.name || "Unnamed Vendor"}{v.category ? ` — ${v.category}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Priority</Label>
@@ -786,7 +801,9 @@ export default function Tasks() {
         vendors={vendors}
         users={users}
         onSubmit={payload => handleCreateSubmit.mutate(payload)}
+        onCreateVendor={canCreateVendor ? createVendor : undefined}
         isLoading={handleCreateSubmit.isPending}
+        isCreatingVendor={isCreatingVendor}
       />
     </div>
   );
