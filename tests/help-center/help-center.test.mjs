@@ -8,8 +8,43 @@ import {JSDOM,VirtualConsole} from 'jsdom';
 import {fileURLToPath} from 'node:url';
 import {canReadHelp,findHelpArticles,helpPageRoute} from '../../src/lib/helpContent.js';
 const local=name=>fileURLToPath(new URL(name,import.meta.url));
-const articles=JSON.parse(await fs.readFile(local('./browser/articles.json'),'utf8')).filter(article=>(article.article_type||'faq')==='faq');
+const helpCatalog=JSON.parse(await fs.readFile(local('./browser/articles.json'),'utf8'));
+const articles=helpCatalog.filter(article=>(article.article_type||'faq')==='faq');
 const viewAccessMigration=await fs.readFile(local('../../supabase/migrations/20261004065128_help_embedding_view_access.sql'),'utf8');
+
+test('invoice delivery help matches secure link, save, template and status behavior',()=>{
+ const bySlug=slug=>{
+  const article=helpCatalog.find(item=>item.slug===slug);
+  assert.ok(article,`Missing help article: ${slug}`);
+  return `${article.answer_short}\n${article.answer_long}`;
+ };
+ const emailTemplate=bySlug('invoice-email-template');
+ const emailSend=bySlug('send-invoice-email');
+ const smsSend=bySlug('send-invoice-sms');
+ const smsLink=bySlug('invoice-sms-link');
+ const statuses=bySlug('invoice-statuses');
+ const sharingGuide=bySlug('guide-invoices-share-customer-pay');
+
+ assert.match(emailTemplate,/auto-fills the recipient, subject, message and signature/i);
+ assert.match(emailTemplate,/\{\{balance_due\}\}/);
+ assert.match(emailSend,/saves them before opening the send dialog/i);
+ assert.match(smsSend,/saves any pending edits before opening the dialog/i);
+ assert.match(smsSend,/Retry text.*same captured message and request.*duplicate/s);
+ assert.match(smsSend,/Retry status.*does not send the text again/s);
+ for(const content of [emailSend,smsSend,smsLink,sharingGuide]){
+  assert.match(content,/invoice ID and private token/i);
+  assert.match(content,/invalid or (?:has been )?revoked/i);
+  assert.match(content,/resend the invoice/i);
+ }
+ assert.match(emailSend,/does not attach a PDF or include an Access Client Portal link/i);
+ assert.match(emailSend,/same formatted email and private link, without a PDF attachment/i);
+ assert.match(sharingGuide,/company copy has the same formatted body and private invoice link/i);
+ assert.match(sharingGuide,/copy does not contain one either/i);
+ for(const content of [emailSend,smsSend,statuses,sharingGuide]){
+  assert.match(content,/only (?:a )?\*\*Draft\*\*.*\*\*Sent\*\*/s);
+  assert.match(content,/Partial.*Paid.*Overdue/s);
+ }
+});
 
 test('help policies and canonical search enforce current roles and include articles without embeddings',async()=>{
  const db=new PGlite({extensions:{vector}});
