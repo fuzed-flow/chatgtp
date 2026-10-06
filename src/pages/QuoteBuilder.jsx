@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 32494)
+Total output lines: 2269
+
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; 
@@ -1133,196 +1136,7 @@ export default function QuoteBuilder() {
         const { count, error: countError } = await supabase
           .from('projects')
           .select('*', { count: 'exact', head: true })
-          .eq('company_id', companyId)
-          .not('status', 'in', '("Completed","Closed","Canceled","Archived")'); // Don't count finished projects!
-
-        if (countError) {
-          toast.error("Failed to verify subscription limits.");
-          return;
-        }
-
-        if (count >= 5) {
-          toast.error("Starter Plan Limit Reached! You have 5 active projects. Please click 'Manage Seats' on your team page to upgrade to Professional.", { duration: 8000 });
-          setConvertDialogOpen(false);
-          return; // 🛑 Stops the conversion dead in its tracks
-        }
-      }
-    }
-    // 👆 -------------------------------- 👆
-
-    const savedId = await handleSave("Approved", false, true); 
-    if (!savedId) return;
-
-    setConverting(true);
-    try {
-      if (type === "project") {
-        const project = await convertToProject(savedId);
-        toast.success("Quote converted to Project!");
-        window.location.href = `/PMProjectWorkspace?id=${project.id}`; 
-      } else if (type === "invoice") {
-        const invoice = await convertToInvoice(null, savedId);
-        toast.success("Quote converted to Invoice!");
-        window.location.href = `/InvoiceBuilder?id=${invoice.id}`;
-      } else if (type === "both") {
-        const project = await convertToProject(savedId);
-        const invoice = await convertToInvoice(project.id, savedId);
-        toast.success("Quote converted to Project & Invoice!");
-        window.location.href = `/PMProjectWorkspace?id=${project.id}`; 
-      }
-    } catch (error) { 
-      toast.error("Failed to convert quote. Please try again."); 
-    } finally {
-      setConverting(false); 
-      setConvertDialogOpen(false);
-    }
-  };
-
-  const addPaymentScheduleItem = () => {
-    if (!paymentForm.payment_name.trim()) { toast.error("Payment name is required"); return; }
-    const paymentAmount = paymentForm.amount_type === "percentage" ? (grandTotal * safeNum(paymentForm.percentage) / 100) : safeNum(paymentForm.amount);
-    
-    if (editingPaymentIndex !== null) {
-      const totalExcludingCurrent = paymentScheduleItems.reduce((sum, item, idx) => {
-        if (idx === editingPaymentIndex) return sum;
-        if (item.amount_type === "percentage") return sum + (grandTotal * safeNum(item.percentage) / 100);
-        return sum + safeNum(item.amount);
-      }, 0);
-      
-      const newTotal = totalExcludingCurrent + paymentAmount;
-      if (newTotal > grandTotal + 0.01) { toast.error(`Payment exceeds quote total. Max: $${(grandTotal - totalExcludingCurrent).toFixed(2)}`); return; }
-      
-      const updated = [...paymentScheduleItems];
-      updated[editingPaymentIndex] = { ...paymentForm, id: updated[editingPaymentIndex].id || Date.now() };
-      setPaymentScheduleItems(updated);
-      toast.success("Payment updated");
-    } else {
-      const newTotal = paymentScheduleTotal + paymentAmount;
-      if (newTotal > grandTotal + 0.01) { toast.error(`Payment exceeds quote total. Max: $${remainingAmount.toFixed(2)}`); return; }
-      
-      setPaymentScheduleItems([...paymentScheduleItems, { ...paymentForm, id: Date.now() }]);
-      toast.success(Math.abs(newTotal - grandTotal) < 0.01 ? "Final payment added" : "Payment added");
-    }
-    
-    setPaymentForm({ payment_name: "", due_event: "", amount: 0, amount_type: "fixed", percentage: 0 });
-    setEditingPaymentIndex(null);
-  };
-
-  const removePaymentScheduleItem = (index) => {
-    setPaymentScheduleItems(paymentScheduleItems.filter((_, i) => i !== index));
-    toast.success("Payment removed");
-  };
-
-  const allPhotos = [
-    ...(form.hero_image_url ? [{ url: form.hero_image_url, label: "Hero Image", source: "quote" }] : []),
-    ...form.end_photos.map((url, i) => ({ url, label: `Project Photo ${i + 1}`, source: "quote" })),
-    ...phases.flatMap(phase => phase.photos?.map((url, i) => ({ url, label: `${phase.phase_name} - Photo ${i + 1}`, source: "quote" })) || []),
-    ...phases.flatMap(phase => phase.items?.filter(item => item.photo_url).map(item => ({ url: item.photo_url, label: item.name, source: "quote" })) || []),
-    ...clientAttachments.filter(a => a.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)).map(a => ({ url: a.file_url, label: a.file_name, source: a.caption || "Client" }))
-  ];
-
-  const allDocuments = [
-    ...form.documents.map(doc => ({ ...doc, source: "quote" })),
-    ...clientAttachments.filter(a => !a.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)).map(a => ({ file_url: a.file_url, file_name: a.file_name, source: a.caption || "Client" }))
-  ];
-
-  const renderActionsMenu = (position = "top") => {
-    return (
-      <div className="relative actions-menu-container inline-block">
-        <Button 
-          variant="outline" 
-          onClick={() => setActionsMenuOpen(actionsMenuOpen === position ? false : position)}
-          className={`bg-white font-medium shadow-sm transition-all ${actionsMenuOpen === position ? "border-amber-400 ring-2 ring-amber-100" : ""}`}
-        >
-          <Menu className="h-4 w-4 mr-2 text-slate-500" /> Actions
-        </Button>
-        
-        {actionsMenuOpen === position && (
-          <div className={`absolute ${position === 'bottom' ? 'bottom-full mb-2' : 'top-full mt-2'} right-0 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50`}>
-            <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Communication</div>
-            <button 
-              onClick={() => { setActionsMenuOpen(false); handlePreview(); }} 
-              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center transition-colors"
-            >
-              <Eye className="h-4 w-4 mr-3 text-slate-400" /> Client Preview
-            </button>
-            <button 
-              onClick={async () => {
-                setActionsMenuOpen(false);
-                const savedId = await handleSave(null, false, true); 
-                if (savedId) { setSendMethod("email"); setEmailDialog(true); }
-              }} 
-              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center transition-colors"
-            >
-              <Mail className="h-4 w-4 mr-3 text-slate-400" /> Send via Email
-            </button>
-
-            <button 
-              onClick={async () => {
-                setActionsMenuOpen(false);
-                const savedId = await handleSave(null, false, true); 
-                if (savedId) { setSendMethod("sms"); setEmailDialog(true); }
-              }} 
-              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center transition-colors"
-            >
-              <Smartphone className="h-4 w-4 mr-3 text-slate-400" /> Send via Text Message
-            </button>
-            
-            <div className="h-px bg-slate-100 my-1.5"></div>
-            <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status & Workflow</div>
-
-            {!(isTemplate || existingQuote?.is_template) && (
-              <button
-                disabled={saving || isDocumentLoading || !["Draft", "Sent", "Pending Review"].includes(form.status)}
-                onClick={() => {
-                  setActionsMenuOpen(false);
-                  handleRequestInternalReview();
-                }}
-                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 flex items-center transition-colors disabled:opacity-50"
-              >
-                <Eye className="h-4 w-4 mr-3 text-amber-600" /> Request Internal Review
-              </button>
-            )}
-            
-            <button 
-              onClick={() => { setActionsMenuOpen(false); handleSave("Sent"); }} 
-              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center transition-colors"
-            >
-              <Send className="h-4 w-4 mr-3 text-blue-500" /> Mark as Sent
-            </button>
-            
-            <button 
-              onClick={() => { setActionsMenuOpen(false); handleSave("Approved"); }} 
-              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center transition-colors"
-            >
-              <CheckCircle className="h-4 w-4 mr-3 text-emerald-500" /> Mark as Approved
-            </button>
-
-            <button 
-              onClick={() => { setActionsMenuOpen(false); handleSave("Declined"); }} 
-              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center transition-colors"
-            >
-              <XCircle className="h-4 w-4 mr-3 text-red-500" /> Mark as Declined
-            </button>
-            
-            <button 
-              onClick={() => { setActionsMenuOpen(false); handleSave("Expired"); }} 
-              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center transition-colors"
-            >
-              <Clock className="h-4 w-4 mr-3 text-amber-600" /> Mark as Expired
-            </button>
-
-            <button 
-              onClick={() => { setActionsMenuOpen(false); handleToggleArchive(); }} 
-              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center transition-colors"
-            >
-              <Archive className="h-4 w-4 mr-3 text-slate-500" /> {form.is_archived ? "Unarchive Quote" : "Archive Quote"}
-            </button>
-            
-            <button 
-              onClick={() => { setActionsMenuOpen(false); setConvertDialogOpen(true); }} 
-              className="w-full text-left px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50/50 hover:bg-amber-100/50 flex items-center transition-colors"
-            >
-              <Zap className="h-4 w-4 mr-3 text-amber-500" /> Convert Quote...
+          .eq('company_id', comp…2494 tokens truncated…Convert Quote...
             </button>
 
             <div className="h-px bg-slate-100 my-1.5"></div>
@@ -1344,7 +1158,7 @@ export default function QuoteBuilder() {
     (templateId && !quoteId && (quoteTemplatesLoadError || templatePhasesLoadError || templateItemsLoadError || templateScheduleLoadError || missingTemplate));
   if ((quoteId || templateId) && (isDocumentLoading || initialLoadError) && !saveInFlight.current && !isDirty) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6" role="status">
+      <div className="min-h-full bg-slate-50 p-6" role="status">
         <p className="text-slate-700">{initialLoadError ? "This quote could not be loaded. Please refresh the page and try again." : "Loading quote..."}</p>
         <Button variant="outline" className="mt-4" onClick={() => navigate("/Quotes")}>Back to quotes</Button>
       </div>
@@ -1352,7 +1166,7 @@ export default function QuoteBuilder() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
+    <div className="min-h-full bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
       <UnsavedChangesGuard
         isDirty={isDirty}
         hasUnsavedChanges={hasUnsavedChanges}
