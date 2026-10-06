@@ -291,9 +291,9 @@ export default function AIHelpWidget() {
           onPointerCancel={finishTriggerPointerInteraction}
           onClick={handleTriggerClick}
           onContextMenu={(event) => { if (canDragOnMobile) event.preventDefault(); }}
-          className={`fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-[115] flex h-14 select-none items-center gap-2 rounded-full bg-amber-500 px-4 text-slate-900 shadow-xl transition-[background-color,box-shadow,transform] hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 lg:bottom-6 lg:right-6 ${canDragOnMobile ? "touch-none" : "touch-manipulation"} ${isDragging ? "cursor-grabbing scale-[1.04] shadow-2xl ring-4 ring-amber-200" : canDragOnMobile ? "cursor-grab" : ""}`}>
+          className={`fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-[115] flex h-14 w-14 select-none items-center justify-center gap-0 rounded-full bg-amber-500 px-0 text-slate-900 shadow-xl transition-[background-color,box-shadow,transform] hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 sm:w-auto sm:gap-2 sm:px-4 lg:bottom-6 lg:right-6 ${canDragOnMobile ? "touch-none" : "touch-manipulation"} ${isDragging ? "cursor-grabbing scale-[1.04] shadow-2xl ring-4 ring-amber-200" : canDragOnMobile ? "cursor-grab" : ""}`}>
           <MessageCircle className="h-6 w-6" aria-hidden="true" />
-          <span className="text-sm font-semibold">AI Help</span>
+          <span className="hidden text-sm font-semibold sm:inline">AI Help</span>
           {canDragOnMobile && <span id="ai-help-drag-instructions" className="sr-only">Tap to open. Press and hold, then drag to move this button.</span>}
         </button>
       </Dialog.Trigger>

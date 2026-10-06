@@ -265,12 +265,14 @@ test('mobile AI Help opens on a tap and moves within the screen after a press an
     const mobileNavigation = view.document.querySelector('[data-testid="mobile-navigation"]');
     assert.ok(trigger.classList.contains('bottom-[calc(env(safe-area-inset-bottom)+5rem)]'));
     assert.ok(trigger.classList.contains('z-[115]'));
+    assert.ok(trigger.classList.contains('w-14'));
+    assert.ok(trigger.querySelector('span').classList.contains('hidden'), 'Mobile uses the compact icon-only AI Help control.');
     assert.ok(trigger.classList.contains('lg:bottom-6'));
     mobileNavigation.getBoundingClientRect = () => ({ left: 0, top: 700, width: 390, height: 80, right: 390, bottom: 780 });
     trigger.getBoundingClientRect = () => {
       const left = Number.parseFloat(trigger.style.left) || 280;
       const top = Number.parseFloat(trigger.style.top) || 700;
-      return { left, top, width: 102, height: 56, right: left + 102, bottom: top + 56 };
+      return { left, top, width: 56, height: 56, right: left + 56, bottom: top + 56 };
     };
     let capturedPointer = null;
     trigger.setPointerCapture = pointerId => { capturedPointer = pointerId; };
@@ -328,7 +330,7 @@ test('mobile AI Help clamps above the field Employee Portal navigation', async (
     trigger.getBoundingClientRect = () => {
       const left = Number.parseFloat(trigger.style.left) || 280;
       const top = Number.parseFloat(trigger.style.top) || 700;
-      return { left, top, width: 102, height: 56, right: left + 102, bottom: top + 56 };
+      return { left, top, width: 56, height: 56, right: left + 56, bottom: top + 56 };
     };
     let capturedPointer = null;
     trigger.setPointerCapture = pointerId => { capturedPointer = pointerId; };
