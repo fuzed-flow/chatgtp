@@ -21,19 +21,36 @@ async function loadQuotePreview(quoteId) {
   const { data: quote, error: quoteError } = await supabase.from("quotes").select("*").eq("id", quoteId).single();
   if (quoteError || !quote) throw quoteError || new Error("Quote not found");
 
-  const [clientResult, companyResult, phasesResult, itemsResult, scheduleResult] = await Promise.all([
-    quote.client_id ? supabase.from("clients").select("id,name,first_name,surname,billing_address,site_address").eq("id", quote.client_id).eq("company_id", quote.company_id).maybeSingle() : Promise.resolve({ data: null }),
+  const recipientQuery = quote.client_id
+    ? supabase.from("clients").select("id,name,first_name,surname,billing_address,site_address").eq("id", quote.client_id).eq("company_id", quote.company_id).maybeSingle()
+    : quote.lead_id
+      ? supabase.from("leads").select("id,contact_name,site_address").eq("id", quote.lead_id).eq("company_id", quote.company_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null });
+
+  const [recipientResult, companyResult, phasesResult, itemsResult, scheduleResult] = await Promise.all([
+    recipientQuery,
     supabase.from("companies").select("id,name,logo_url,company_logo_url,settings").eq("id", quote.company_id).single(),
     supabase.from("quote_phases").select("id,quote_id,phase_name,scope_of_work,show_scope_to_client,photos,sort_order,is_optional,default_selected").eq("quote_id", quote.id).eq("company_id", quote.company_id).order("sort_order"),
     supabase.from("quote_line_items").select("id,quote_id,phase_id,name,description,quantity,unit,unit_price,taxable,photo_url,is_optional,default_selected,display_order").eq("quote_id", quote.id).eq("company_id", quote.company_id).order("display_order"),
     supabase.from("quote_payment_schedules").select("id,quote_id,payment_name,due_event,amount,amount_type,percentage,sort_order").eq("quote_id", quote.id).eq("company_id", quote.company_id).order("sort_order"),
   ]);
 
-  const firstError = [clientResult, companyResult, phasesResult, itemsResult, scheduleResult].find(result => result.error)?.error;
+  const firstError = [recipientResult, companyResult, phasesResult, itemsResult, scheduleResult].find(result => result.error)?.error;
   if (firstError) throw firstError;
+  const recipient = quote.client_id
+    ? recipientResult.data
+    : recipientResult.data
+      ? {
+          id: recipientResult.data.id,
+          name: recipientResult.data.contact_name,
+          billing_address: null,
+          site_address: recipientResult.data.site_address,
+          source_type: "lead",
+        }
+      : null;
   return {
     quote,
-    client: clientResult.data,
+    client: recipient,
     company: companyResult.data,
     phases: phasesResult.data || [],
     items: itemsResult.data || [],

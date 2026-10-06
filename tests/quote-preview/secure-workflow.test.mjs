@@ -249,6 +249,9 @@ test("public, staff, and portal UIs share the safe presentation path", () => {
   assert.match(publicView, /respondToPublicQuote/);
   assert.match(publicView, /expired && !closed/);
   assert.match(staffView, /<QuotePresentation[\s\S]*preview/);
+  assert.match(staffView, /quote\.lead_id[\s\S]*\.from\(["']leads["']\)[\s\S]*contact_name/);
+  assert.match(staffView, /name:\s*recipientResult\.data\.contact_name/);
+  assert.match(staffView, /\.eq\(["']company_id["'],\s*quote\.company_id\)/);
   assert.doesNotMatch(staffView, /update\(|insert\(|upsert\(/);
   assert.match(clientPortal, /get_client_portal_quotes/);
   assert.match(clientPortal, /p_token: quoteAccessToken/);
