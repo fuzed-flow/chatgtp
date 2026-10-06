@@ -86,6 +86,14 @@
     @apply bg-background text-foreground;
   }
 
+  html.app-scroll-locked,
+  html.app-scroll-locked body,
+  html.app-scroll-locked #root {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
   /* Authenticated pages render inside Layout's viewport-sized scroll region.
      A nested min-h-screen would add the fixed app header to the scroll height. */
   [data-app-scroll-container] > .min-h-screen {

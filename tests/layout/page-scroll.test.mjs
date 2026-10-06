@@ -24,7 +24,9 @@ const fixtureBundle = build({
         return <main ref={pageScrollRef} data-app-scroll-container><div>{location.pathname}{location.search}</div></main>;
       }
 
-      createRoot(document.getElementById("root")).render(
+      const root = createRoot(document.getElementById("root"));
+      window.unmountPageScrollFixture = () => root.unmount();
+      root.render(
         <MemoryRouter initialEntries={["/LeadTracker"]}><Fixture /></MemoryRouter>
       );
     `,
@@ -57,6 +59,19 @@ async function scrollFixture() {
   assert.ok(window.pageScrollFixture, "Scroll fixture mounted");
   return { dom, window, errors, main: window.document.querySelector("main") };
 }
+
+test("the authenticated shell owns scrolling and restores document scrolling on unmount", async () => {
+  const view = await scrollFixture();
+  try {
+    assert.equal(view.window.document.documentElement.classList.contains("app-scroll-locked"), true);
+    view.window.unmountPageScrollFixture();
+    await pause(10);
+    assert.equal(view.window.document.documentElement.classList.contains("app-scroll-locked"), false);
+    assert.deepEqual(view.errors, []);
+  } finally {
+    view.dom.window.close();
+  }
+});
 
 test("the authenticated scroll region resets for page and document changes", async () => {
   const view = await scrollFixture();
@@ -92,6 +107,8 @@ test("app pages use the shell viewport instead of stacking another viewport", as
   assert.match(layout, /h-\[100dvh\]/);
   assert.match(layout, /data-app-scroll-container/);
   assert.match(layout, /ref=\{pageScrollRef\}/);
+  assert.match(styles, /html\.app-scroll-locked body/);
+  assert.match(styles, /overscroll-behavior: none/);
   assert.match(styles, /\[data-app-scroll-container\] > \.min-h-screen/);
   assert.doesNotMatch(lead, /max-w-5xl mx-auto pb-20/);
   assert.doesNotMatch(client, /max-w-5xl mx-auto pb-20/);
