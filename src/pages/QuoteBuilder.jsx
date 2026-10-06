@@ -1344,7 +1344,7 @@ export default function QuoteBuilder() {
     (templateId && !quoteId && (quoteTemplatesLoadError || templatePhasesLoadError || templateItemsLoadError || templateScheduleLoadError || missingTemplate));
   if ((quoteId || templateId) && (isDocumentLoading || initialLoadError) && !saveInFlight.current && !isDirty) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6" role="status">
+      <div className="min-h-full bg-slate-50 p-6" role="status">
         <p className="text-slate-700">{initialLoadError ? "This quote could not be loaded. Please refresh the page and try again." : "Loading quote..."}</p>
         <Button variant="outline" className="mt-4" onClick={() => navigate("/Quotes")}>Back to quotes</Button>
       </div>
@@ -1352,7 +1352,7 @@ export default function QuoteBuilder() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
+    <div className="min-h-full bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
       <UnsavedChangesGuard
         isDirty={isDirty}
         hasUnsavedChanges={hasUnsavedChanges}

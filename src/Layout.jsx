@@ -17,6 +17,7 @@ import OnboardingTour from "./components/shared/OnboardingTour";
 import AccessibilityEnhancer from "./components/shared/AccessibilityEnhancer";
 import EnhancedNotificationCenter from "./components/shared/EnhancedNotificationCenter";
 import HelpMenu from "./components/shared/HelpMenu";
+import { useRouteScrollReset } from "@/hooks/useRouteScrollReset";
 
 const NAV_ITEMS = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard", permissionKey: "dashboard", section: "main" },
@@ -83,6 +84,7 @@ export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
+  const pageScrollRef = useRouteScrollReset();
 
   const userRole = profile?.role || profile?.user_role || "user";
   const isEmployeeRole = ["employee", "subcontractor"].includes(userRole);
@@ -138,7 +140,7 @@ export default function Layout({ children, currentPageName }) {
   const closeSidebar = () => setMoreOpen(false);
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 overflow-hidden">
+    <div className="flex h-screen h-[100dvh] overflow-hidden bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100">
       <style>{`
         :root {
           --brand-primary: #0f172a;
@@ -316,7 +318,7 @@ export default function Layout({ children, currentPageName }) {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top bar */}
         <header className="relative z-[100] h-14 lg:h-16 bg-black border-b border-slate-700/50 flex items-center justify-between px-3 lg:px-6 shrink-0 shadow-sm">
           <div className="flex items-center gap-2 lg:gap-4 min-w-0 flex-1">
@@ -381,7 +383,7 @@ export default function Layout({ children, currentPageName }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+        <main ref={pageScrollRef} data-app-scroll-container className="min-h-0 w-full flex-1 overscroll-y-contain overflow-x-hidden overflow-y-auto bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
           {children}
         </main>
       </div>

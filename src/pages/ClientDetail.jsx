@@ -6,9 +6,9 @@ import { Card } from "@/components/ui/card";
 import { 
   Mail, Phone, ArrowLeft, DollarSign, Calendar, Pencil, 
   LayoutTemplate, Plus, MoreVertical, MessageSquare, CheckSquare, 
-  FileText, ChevronDown, ChevronUp, Image as ImageIcon, X, ListChecks, Pin,
-  AlertCircle, Flame, Trash2, Edit2, Upload, Loader2, Building2, MapPin,
-  FolderKanban, Receipt, ChevronLeft, ChevronRight 
+  FileText, ChevronDown, ChevronUp, ListChecks, Pin,
+  AlertCircle, Flame, Trash2, Edit2, Building2, MapPin,
+  FolderKanban, Receipt
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -392,7 +392,7 @@ export default function ClientDetail() {
   if (!client) return <div className="p-6 text-center text-slate-500 font-medium">Loading client details...</div>;
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto pb-20">
+    <div className="mx-auto max-w-5xl p-4 md:p-6">
       
       <Link to="/Clients" className="inline-flex items-center gap-1 text-sm font-bold text-slate-500 hover:text-slate-800 mb-4 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Clients

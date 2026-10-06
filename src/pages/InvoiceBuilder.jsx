@@ -675,7 +675,7 @@ export default function InvoiceBuilder() {
     : [];
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20">
+    <div className="min-h-full bg-slate-50/50">
       <UnsavedChangesGuard isDirty={isDirty} hasUnsavedChanges={hasUnsavedChanges} saving={saving} onSave={saveBeforeExit} documentName="invoice" />
       <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
         {(invoiceLoadError || quoteImportError) ? (

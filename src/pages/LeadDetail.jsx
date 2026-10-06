@@ -488,7 +488,7 @@ export default function LeadDetail() {
   if (!lead) return <div className="p-6 text-center text-slate-500 font-medium">Loading lead details...</div>;
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto pb-20">
+    <div className="mx-auto max-w-5xl p-4 md:p-6">
       
       <Link to="/LeadTracker" className="inline-flex items-center gap-1 text-sm font-bold text-slate-500 hover:text-slate-800 mb-4 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Leads
