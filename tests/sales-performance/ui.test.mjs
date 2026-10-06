@@ -24,6 +24,7 @@ test("mobile navigation uses four primary destinations and an accessible More sh
   for (const label of ["Dashboard", "Leads", "Projects", "Tasks"]) assert.match(layout, new RegExp(`label: "${label}"`));
   assert.match(layout, /<Dialog open={moreOpen}/);
   assert.match(layout, /DialogContent className="[^"]*!flex min-h-0[^"]*flex-col overflow-hidden/);
+  assert.match(layout, /closeButtonClassName="[^"]*h-11 w-11[^"]*bg-slate-800 text-white opacity-100[^"]*focus:ring-amber-300/);
   assert.match(layout, /data-mobile-more-scroll className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain/);
   assert.match(layout, /WebkitOverflowScrolling: "touch"/);
   assert.match(layout, /pb-\[calc\(5rem\+env\(safe-area-inset-bottom\)\)\]/);

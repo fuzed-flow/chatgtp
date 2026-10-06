@@ -142,6 +142,11 @@ test("the real mobile layout opens More without a hamburger drawer", async () =>
     assert.match(dialog.textContent, /Sales Performance/);
     assert.match(dialog.textContent, /Quotes/);
     assert.match(dialog.textContent, /Reports/);
+    const close = [...dialog.querySelectorAll("button")].find(button => button.textContent.trim() === "Close");
+    assert.ok(close, "The More sheet exposes a labelled close control.");
+    for (const className of ["h-11", "w-11", "bg-slate-800", "text-white", "opacity-100", "focus:ring-amber-300"]) {
+      assert.ok(close.classList.contains(className), `The close control includes ${className}.`);
+    }
     const scrollRegion = dialog.querySelector('[data-mobile-more-scroll]');
     assert.ok(scrollRegion);
     assert.ok(scrollRegion.classList.contains('min-h-0'));
