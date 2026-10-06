@@ -40,8 +40,8 @@ export default function PhaseCard({
   isLast
 }) {
   const [localPhaseName, setLocalPhaseName] = useState(phase.phase_name);
-  const [localScope, setLocalScope] = useState(phase.scope_of_work);
-  const [localNotes, setLocalNotes] = useState(phase.internal_notes);
+  const [localScope, setLocalScope] = useState(phase.scope_of_work || "");
+  const [localNotes, setLocalNotes] = useState(phase.internal_notes || "");
   const [showOptions, setShowOptions] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false); // New state for collapse functionality
 
@@ -51,8 +51,8 @@ export default function PhaseCard({
     if (phaseIdRef.current !== currentId) {
       phaseIdRef.current = currentId;
       setLocalPhaseName(phase.phase_name);
-      setLocalScope(phase.scope_of_work);
-      setLocalNotes(phase.internal_notes);
+      setLocalScope(phase.scope_of_work || "");
+      setLocalNotes(phase.internal_notes || "");
     }
   });
 
@@ -184,9 +184,12 @@ export default function PhaseCard({
               <div>
                 <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Scope of Work (Client-Facing)</Label>
                 <Textarea
+                  writingTools
+                  rewriteField="general_business_text"
                   value={localScope}
                   onChange={e => { setLocalScope(e.target.value); onUpdatePhase(phaseIdx, "scope_of_work", e.target.value); }}
                   rows={2}
+                  maxLength={10000}
                   className="bg-white border-slate-200 shadow-sm resize-y font-medium text-sm"
                   placeholder="Describe work for this phase..."
                 />
@@ -196,9 +199,12 @@ export default function PhaseCard({
                   Internal Notes <span className="text-[8px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">Hidden</span>
                 </Label>
                 <Textarea
+                  writingTools
+                  rewriteField="general_business_text"
                   value={localNotes}
                   onChange={e => { setLocalNotes(e.target.value); onUpdatePhase(phaseIdx, "internal_notes", e.target.value); }}
                   rows={2}
+                  maxLength={10000}
                   placeholder="Private considerations, reminders..."
                   className="bg-amber-50/50 border-amber-200 text-slate-700 placeholder:text-amber-400 resize-y font-medium text-sm shadow-sm"
                 />
