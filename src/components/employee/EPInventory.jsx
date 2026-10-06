@@ -21,7 +21,7 @@ const safeParseDate = (dateString) => {
   return isValid(parsed) ? parsed : null;
 };
 
-const INVENTORY_FIELDS = "id,name,item_type,equipment_status,quantity_on_hand,quantity,unit";
+const INVENTORY_FIELDS = "id,name,item_type,equipment_status,quantity_on_hand,unit";
 const TRANSACTION_FIELDS = "id,company_id,user_id,inventory_id,quantity_changed,project_name,notes,created_at,refunded_at";
 
 export default function EPInventory() {
@@ -154,7 +154,7 @@ export default function EPInventory() {
 
   // --- Real-time Inventory Calculation for UI Feedback ---
   const selectedInvItem = inventory.find(i => String(i.id) === String(form.inventory_id));
-  const currentInvStock = selectedInvItem ? Number(selectedInvItem.quantity_on_hand ?? selectedInvItem.quantity ?? 0) : 0;
+  const currentInvStock = selectedInvItem ? Number(selectedInvItem.quantity_on_hand ?? 0) : 0;
   const takingQty = parseFloat(form.quantity) || 0;
   const remainingStock = currentInvStock - takingQty;
 
@@ -366,7 +366,7 @@ export default function EPInventory() {
                       <SelectItem key={i.id} value={String(i.id)} className="font-bold py-2">
                         <div className="flex flex-col items-start">
                           <span>{i.name}</span>
-                          <span className="text-[9px] uppercase tracking-wider text-slate-400 mt-0.5">{i.quantity_on_hand ?? i.quantity ?? 0} {i.unit || 'Units'} in stock</span>
+                          <span className="text-[9px] uppercase tracking-wider text-slate-400 mt-0.5">{i.quantity_on_hand ?? 0} {i.unit || 'Units'} in stock</span>
                         </div>
                       </SelectItem>
                     ))}

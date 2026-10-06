@@ -111,7 +111,7 @@ const moduleCases = {
   },
 };
 
-async function moduleView(component, { role, permissions }) {
+async function moduleView(component, { role, permissions, inventoryFailures = 0 }) {
   const errors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", error => errors.push(error.message));
@@ -141,6 +141,7 @@ async function moduleView(component, { role, permissions }) {
     permissions,
   };
   const queries = [];
+  let inventoryFailuresRemaining = inventoryFailures;
   const assignedProject = { id: ASSIGNED_PROJECT, name: "Assigned site", company_id: COMPANY };
   const unassignedProject = { id: UNASSIGNED_PROJECT, name: "Unassigned site", company_id: COMPANY };
 
@@ -170,7 +171,14 @@ async function moduleView(component, { role, permissions }) {
       }], error: null };
     }
     if (record.table === "inventory") {
-      return { data: [{ id: INVENTORY_ITEM, name: "Copper pipe", item_type: "Material", equipment_status: null, quantity_on_hand: 20, quantity: 20, unit: "ft" }], error: null };
+      const productionColumns = new Set(["id", "name", "item_type", "equipment_status", "quantity_on_hand", "unit"]);
+      const unknownColumns = String(record.projection || "").split(",").filter(column => column && !productionColumns.has(column));
+      if (unknownColumns.length) return { data: null, error: { message: `Unknown inventory columns: ${unknownColumns.join(", ")}` } };
+      if (inventoryFailuresRemaining > 0) {
+        inventoryFailuresRemaining -= 1;
+        return { data: null, error: { message: "Temporary inventory request failure" } };
+      }
+      return { data: [{ id: INVENTORY_ITEM, name: "Copper pipe", item_type: "Material", equipment_status: null, quantity_on_hand: 20, unit: "ft" }], error: null };
     }
     if (record.table === "profiles") return { data: [{ id: USER }], error: null };
     if (record.table === "inventory_transactions") {
@@ -260,6 +268,15 @@ async function assertPersonalModule(component, role, permissions) {
       && query.filters.some(filter => filter.method === "eq" && filter.key === "user_id" && filter.value === USER));
     assertTenantAndActorScope(ownQuery);
 
+    if (component === "inventory") {
+      const inventoryQuery = view.fixture.queries.find(query => query.table === "inventory");
+      assert.equal(
+        inventoryQuery?.projection,
+        "id,name,item_type,equipment_status,quantity_on_hand,unit",
+        "Inventory requests only columns that exist in the production schema."
+      );
+    }
+
     const open = view.button(definition.openButton);
     assert.ok(open, `missing ${definition.openButton} control`);
     open.click();
@@ -283,3 +300,17 @@ for (const component of Object.keys(moduleCases)) {
     await assertPersonalModule(component, "employee", []);
   });
 }
+
+test("inventory Retry refetches a failed warehouse request", async () => {
+  const view = await moduleView("inventory", { role: "employee", permissions: [], inventoryFailures: 1 });
+  try {
+    await view.wait(() => view.document.body.textContent.includes("Inventory could not be loaded"));
+    const retry = view.button("Retry");
+    assert.ok(retry, "Inventory error state exposes Retry.");
+    retry.click();
+    await view.wait(() => view.document.body.textContent.includes("Copper pipe"));
+    assert.equal(view.fixture.queries.filter(query => query.table === "inventory").length, 2);
+  } finally {
+    view.close();
+  }
+});

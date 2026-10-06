@@ -99,7 +99,7 @@ export default function EmployeePortal() {
     { key: "vacation_tracker", label: "My Time Off", mobileLabel: "Time Off", icon: Palmtree, section: "information", enabled: companySettings.enable_vacation, requiresHR: true },
     { key: "expenses", label: "My Expenses", mobileLabel: "Expenses", icon: Receipt, section: "information", enabled: companySettings.enable_expenses, requiresHR: true },
     { key: "projects", label: "My Projects", mobileLabel: "Projects", icon: Briefcase, section: "operations", enabled: true },
-    { key: "schedule", label: "My Schedule", mobileLabel: "Schedule", icon: Calendar, section: "operations", enabled: true },
+    { key: "schedule", label: "My Schedule", mobileLabel: "Schedule", icon: Calendar, section: "operations", enabled: true, showInMenu: false },
     { key: "daily_logs", label: "Project Notes", mobileLabel: "Notes", icon: BookOpen, section: "operations", enabled: companySettings.enable_project_notes },
     { key: "tasks", label: "My Tasks", mobileLabel: "Tasks", icon: CheckCircle2, section: "operations", enabled: companySettings.enable_tasks },
     { key: "inventory", label: "Inventory", mobileLabel: "Inventory", icon: Package, section: "operations", enabled: companySettings.enable_inventory },
@@ -107,17 +107,18 @@ export default function EmployeePortal() {
   ];
 
   const availableTabs = allTabs.filter(tab => tab.enabled && (!tab.requiresHR || canAccessHR));
+  const menuTabs = availableTabs.filter(tab => tab.showInMenu !== false);
   const requestedTab = searchParams.get("tab");
   const defaultTab = availableTabs.find(tab => tab.key === "time_clock")?.key || "projects";
   const activeTab = allTabs.some(tab => tab.key === requestedTab) ? requestedTab : defaultTab;
   const activeTabInfo = allTabs.find(tab => tab.key === activeTab) || allTabs.find(tab => tab.key === defaultTab);
   const ActiveIcon = activeTabInfo.icon;
 
-  const hrTabs = availableTabs.filter(tab => tab.section === "information");
-  const projectTabs = availableTabs.filter(tab => tab.section === "operations");
-  const profileTab = availableTabs.find(tab => tab.key === "profile");
-  const mobilePrimaryTabs = ["time_clock", "projects", "schedule", "tasks"]
-    .map(key => availableTabs.find(tab => tab.key === key))
+  const hrTabs = menuTabs.filter(tab => tab.section === "information");
+  const projectTabs = menuTabs.filter(tab => tab.section === "operations");
+  const profileTab = menuTabs.find(tab => tab.key === "profile");
+  const mobilePrimaryTabs = ["time_clock", "projects", "tasks"]
+    .map(key => menuTabs.find(tab => tab.key === key))
     .filter(Boolean);
   const mobilePrimaryKeys = new Set(mobilePrimaryTabs.map(tab => tab.key));
   const mobileMoreGroups = [
@@ -125,7 +126,7 @@ export default function EmployeePortal() {
     { label: "Operations", tabs: projectTabs.filter(tab => !mobilePrimaryKeys.has(tab.key)) },
     { label: "Account", tabs: profileTab ? [profileTab] : [] },
   ].filter(group => group.tabs.length);
-  const moreIsActive = !mobilePrimaryKeys.has(activeTab);
+  const moreIsActive = menuTabs.some(tab => tab.key === activeTab) && !mobilePrimaryKeys.has(activeTab);
 
   // Browser Back/Forward changes the URL-backed section without calling the
   // tab click handler. Reset the field portal's sole scroll owner whenever the
@@ -193,8 +194,8 @@ export default function EmployeePortal() {
   return (
     <div className={isFieldRole ? "flex h-full min-h-0 overflow-hidden bg-slate-50 font-sans" : "min-h-full bg-slate-50 font-sans"}>
       {isFieldRole ? (
-        <aside aria-label="Employee portal navigation" className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white shadow-sm lg:flex">
-          <button type="button" onClick={() => handleTabChange("profile")} aria-label="Profile" aria-current={activeTab === "profile" ? "page" : undefined} className="group flex w-full items-center gap-3 border-b border-slate-100 p-5 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500">
+        <aside aria-label="Employee portal navigation" className="hidden min-h-0 w-64 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white shadow-sm lg:flex">
+          <button type="button" onClick={() => handleTabChange("profile")} aria-label="Profile" aria-current={activeTab === "profile" ? "page" : undefined} className="group flex w-full shrink-0 items-center gap-3 border-b border-slate-100 p-5 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 text-base font-bold text-amber-400 shadow-sm transition-shadow group-hover:shadow">
               {currentUser.full_name?.charAt(0)?.toUpperCase() || "U"}
             </span>
@@ -204,7 +205,13 @@ export default function EmployeePortal() {
             </span>
           </button>
 
-          <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
+          <nav
+            data-employee-portal-desktop-menu
+            aria-label="Employee portal desktop menu sections"
+            tabIndex={0}
+            className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-y-contain px-3 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500"
+            style={{ scrollbarGutter: "stable" }}
+          >
             {hrTabs.length ? (
               <section aria-labelledby="employee-information-heading" className="space-y-1">
                 <h2 id="employee-information-heading" className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">My information</h2>
@@ -244,15 +251,19 @@ export default function EmployeePortal() {
               <div className="flex items-center gap-2 sm:hidden">
                 <label htmlFor="employee-portal-section" className="sr-only">Portal section</label>
                 <select id="employee-portal-section" value={activeTab} onChange={event => handleTabChange(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500">
-                  {!availableTabs.some(tab => tab.key === activeTab) ? <option value={activeTab}>{activeTabInfo.label} (Unavailable)</option> : null}
-                  {availableTabs.map(tab => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
+                  {!menuTabs.some(tab => tab.key === activeTab) ? (
+                    <option value={activeTab} hidden={availableTabs.some(tab => tab.key === activeTab)}>
+                      {activeTabInfo.label}{availableTabs.some(tab => tab.key === activeTab) ? "" : " (Unavailable)"}
+                    </option>
+                  ) : null}
+                  {menuTabs.map(tab => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
                 </select>
                 <button type="button" onClick={() => handleTabChange("profile")} aria-label="Open my profile" aria-current={activeTab === "profile" ? "page" : undefined} className={`flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${activeTab === "profile" ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700"}`}>
                   <User className="h-4 w-4" aria-hidden="true" /> Profile
                 </button>
               </div>
-              <div className="hidden gap-2 overflow-x-auto pb-1 sm:flex">
-                {availableTabs.map(tab => renderTabButton(tab, "compact"))}
+              <div data-employee-portal-section-menu className="hidden flex-wrap items-center gap-2 sm:flex">
+                {menuTabs.map(tab => renderTabButton(tab, "compact"))}
               </div>
             </div>
           </nav>

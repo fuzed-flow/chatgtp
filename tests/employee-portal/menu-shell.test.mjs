@@ -344,6 +344,105 @@ for (const role of ["employee", "subcontractor", "office", "manager", "admin"]) 
   }
 }
 
+test("My Schedule stays available by direct link but is hidden from Employee Portal menus", async () => {
+  const desktop = await portalView({
+    role: "employee",
+    device: "desktop",
+    path: "/EmployeePortal?tab=schedule",
+  });
+  try {
+    const navigation = desktop.document.querySelector('aside[aria-label="Employee portal navigation"]');
+    assert.equal(desktop.button(navigation, "My Schedule"), undefined);
+    assert.equal(desktop.document.querySelector("h1")?.textContent.trim(), "My Schedule");
+    assert.equal(desktop.document.querySelector('[data-portal-panel="AssignedWork"] h3')?.textContent, "AssignedWork:schedule");
+  } finally {
+    desktop.close();
+  }
+
+  const mobile = await portalView({ role: "employee", device: "mobile" });
+  try {
+    const primaryNavigation = mobile.document.querySelector('nav[aria-label="Employee portal mobile navigation"]');
+    assert.equal(mobile.button(primaryNavigation, "Schedule"), undefined);
+    mobile.button(primaryNavigation, "More").click();
+    await mobile.wait(() => mobile.document.querySelector('[role="dialog"]'));
+    assert.equal(mobile.button(mobile.document.querySelector('[role="dialog"]'), "My Schedule"), undefined);
+  } finally {
+    mobile.close();
+  }
+
+  const office = await portalView({ role: "office", device: "desktop" });
+  try {
+    const navigation = office.document.querySelector('nav[aria-label="Employee portal sections"]');
+    assert.equal(office.button(navigation, "My Schedule"), undefined);
+    assert.equal(navigation.querySelector('option[value="schedule"]'), null);
+  } finally {
+    office.close();
+  }
+});
+
+test("the desktop Employee Portal menu owns its scrolling and keeps every remaining destination reachable", async () => {
+  const view = await portalView({ role: "employee", device: "desktop" });
+  try {
+    const sidebar = view.document.querySelector('aside[aria-label="Employee portal navigation"]');
+    const menu = sidebar.querySelector("[data-employee-portal-desktop-menu]");
+    const sidebarClasses = new Set(sidebar.className.split(/\s+/));
+    const menuClasses = new Set(menu.className.split(/\s+/));
+
+    assert.ok(sidebarClasses.has("min-h-0"));
+    assert.ok(sidebarClasses.has("overflow-hidden"));
+    for (const className of ["min-h-0", "flex-1", "overflow-y-auto", "overscroll-y-contain"]) {
+      assert.ok(menuClasses.has(className), `Desktop menu includes ${className}.`);
+    }
+    assert.equal(menu.getAttribute("tabindex"), "0", "The scroll region is keyboard reachable.");
+    assert.equal(menu.style.scrollbarGutter, "stable");
+
+    for (const label of [
+      "Clock In",
+      "My Timesheets",
+      "My Pay",
+      "My Time Off",
+      "My Expenses",
+      "My Projects",
+      "Project Notes",
+      "My Tasks",
+      "Inventory",
+    ]) {
+      assert.ok(view.button(menu, label), `${label} remains in the independently scrollable menu.`);
+    }
+    assert.ok(menu.querySelector('a[href="/Warranty"]'), "Warranty remains in the independently scrollable menu.");
+  } finally {
+    view.close();
+  }
+});
+
+test("the office desktop portal menu wraps all sections instead of requiring horizontal scrolling", async () => {
+  const view = await portalView({ role: "office", device: "desktop" });
+  try {
+    const navigation = view.document.querySelector('nav[aria-label="Employee portal sections"]');
+    const menu = navigation.querySelector("[data-employee-portal-section-menu]");
+    const classes = new Set(menu.className.split(/\s+/));
+
+    assert.ok(classes.has("flex-wrap"));
+    assert.equal(classes.has("overflow-x-auto"), false);
+    for (const label of [
+      "Clock In",
+      "My Timesheets",
+      "My Pay",
+      "My Time Off",
+      "My Expenses",
+      "My Projects",
+      "Project Notes",
+      "My Tasks",
+      "Inventory",
+      "My Profile",
+    ]) {
+      assert.ok(view.button(menu, label), `${label} remains exposed in the wrapped desktop menu.`);
+    }
+  } finally {
+    view.close();
+  }
+});
+
 test("Profile is an explicit reachable destination for field and office portal menus", async () => {
   for (const role of ["employee", "subcontractor"]) {
     const field = await portalView({ role, device: "mobile" });
