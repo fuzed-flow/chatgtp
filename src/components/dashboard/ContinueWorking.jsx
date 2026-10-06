@@ -3,17 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Play, FileText, Receipt, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { getDocumentContactName } from "@/lib/documentContact";
 import StatusBadge from "../shared/StatusBadge";
 
-export default function ContinueWorking({ quotes = [], invoices = [], clients = [] }) {
+export default function ContinueWorking({ quotes = [], invoices = [], clients = [], leads = [] }) {
   const navigate = useNavigate();
 
   // Formatters
   const formatCurrency = (val) => val ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val) : '$0.00';
-  const getClientName = (clientId) => {
-    const client = clients.find(c => c.id === clientId);
-    return client ? (client.name || `${client.first_name || ''} ${client.surname || ''}`.trim()) : 'Unknown Client';
-  };
 
   // Filter for the 3 most recent drafts
   const draftQuotes = quotes.filter(q => ["Draft", "Sent", "Pending"].includes(q.status)).slice(0, 3);
@@ -45,7 +42,7 @@ export default function ContinueWorking({ quotes = [], invoices = [], clients = 
                   <StatusBadge status={quote.status} />
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
-                  <span className="truncate">{getClientName(quote.client_id)}</span>
+                  <span className="truncate">{getDocumentContactName(quote, clients, leads)}</span>
                   <span className="shrink-0 font-bold text-slate-700">{formatCurrency(quote.total_amount || quote.subtotal)}</span>
                 </div>
               </div>
@@ -82,7 +79,7 @@ export default function ContinueWorking({ quotes = [], invoices = [], clients = 
                   <StatusBadge status={invoice.status} />
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
-                  <span className="truncate">{getClientName(invoice.client_id)}</span>
+                  <span className="truncate">{getDocumentContactName(invoice, clients, leads)}</span>
                   <span className="shrink-0 font-bold text-slate-700">{formatCurrency(invoice.total_amount || invoice.subtotal)}</span>
                 </div>
               </div>

@@ -436,7 +436,7 @@ export default function Dashboard() {
         
         {/* LEFT COLUMN */}
         <div className="w-full lg:w-2/3 flex flex-col gap-6 order-2 lg:order-1">
-          <ContinueWorking quotes={activeQuotes} invoices={invoices} clients={clients} />
+          <ContinueWorking quotes={activeQuotes} invoices={invoices} clients={clients} leads={leads} />
 
           <Card className="p-5 md:p-6 border-slate-200 shadow-sm bg-white flex flex-col gap-6">
             <div className="flex items-center justify-between">
