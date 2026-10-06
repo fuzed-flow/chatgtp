@@ -1,12 +1,5 @@
 import { supabase } from "@/api/supabaseClient";
-
-export function buildPublicQuoteUrl(origin, quoteId, token) {
-  if (!origin || !quoteId || !token) throw new Error("A secure quote link requires a quote and token.");
-  const url = new URL("/PublicQuoteView", origin);
-  url.searchParams.set("id", quoteId);
-  url.searchParams.set("token", token);
-  return url.toString();
-}
+export { buildPublicQuoteUrl, readPublicQuoteLink } from "./publicQuoteLinks.js";
 
 export function buildClientPortalQuoteUrl(origin, clientId, token) {
   if (!origin || !clientId || !token) throw new Error("A secure portal link requires a client and quote token.");

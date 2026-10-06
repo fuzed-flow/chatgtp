@@ -81,8 +81,6 @@ serve(async (req) => {
       let subject = "";
       let htmlBody = "";
 
-      const portalLink = `${APP_URL}/PublicQuoteView?id=${quote.id}`;
-      const buttonHtml = `<br><br><a href="${portalLink}" style="background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Review Your Quote</a><br><br>`;
       const quoteTitle = quote.title ? ` for ${quote.title}` : "";
 
       if (stage === 0 && diffDays >= followUp1Days) {
@@ -90,18 +88,38 @@ serve(async (req) => {
         triggerEmail = true;
         newStage = 1;
         subject = `Checking in: Quote #${quote.quote_number}${quoteTitle}`;
-        htmlBody = `<p>Hi ${client.name || 'there'},</p><p>Just following up...</p>${buttonHtml}`; // Shortened for logs
+        htmlBody = `<p>Hi ${client.name || 'there'},</p><p>Just following up...</p>`;
       } else if (stage === 1 && diffDays >= followUp2Days) {
         console.log(`✅ TRIGGER: Quote is ${diffDays} days old. Sending Final Push!`);
         triggerEmail = true;
         newStage = 2;
         subject = `Following up: Quote #${quote.quote_number}${quoteTitle}`;
-        htmlBody = `<p>Hi ${client.name || 'there'},</p><p>Checking in one last time...</p>${buttonHtml}`;
+        htmlBody = `<p>Hi ${client.name || 'there'},</p><p>Checking in one last time...</p>`;
       } else {
         console.log(`⏭️ SKIPPED: Not old enough yet, or stage is already completed.`);
       }
 
       if (triggerEmail) {
+        // Reuse the same active access token as manual sends. The staff-only
+        // issue_quote_share_token RPC cannot be called by this scheduled job.
+        const { data: approval, error: approvalError } = await supabaseAdmin
+          .from("quote_approvals")
+          .select("approval_token")
+          .eq("quote_id", quote.id)
+          .eq("company_id", quote.company_id)
+          .or("approval_status.is.null,approval_status.neq.Revoked")
+          .order("created_at", { ascending: false, nullsFirst: false })
+          .order("id", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const token = approval?.approval_token;
+        if (approvalError || typeof token !== "string" || token.length < 32 || token.length > 256) {
+          console.error(`Quote #${quote.quote_number} reminder skipped: secure link unavailable.`);
+          continue;
+        }
+        const portalLink = new URL(`/PublicQuoteView/${encodeURIComponent(quote.id)}/${encodeURIComponent(token)}`, APP_URL).toString();
+        htmlBody += `<br><br><a href="${portalLink}" style="background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Review Your Quote</a><br><br>`;
+
         const payload = {
           to_email: client.email, 
           to: client.email,

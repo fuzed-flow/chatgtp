@@ -1,3 +1,5 @@
+import { buildPublicQuoteUrl } from "./publicQuoteLinks.js";
+
 const QUOTE_WORKFLOW_STATUSES = new Set(["Sent", "Viewed", "Pending", "Approved", "Declined", "Expired"]);
 const QUOTE_FINAL_STATUSES = new Set(["Approved", "Declined", "Expired"]);
 
@@ -59,10 +61,7 @@ export function buildQuoteApprovalRows(quotes = [], approvalEvents = [], quoteVi
 
 export function quotePublicUrl(origin, quoteId, token) {
   if (!token) throw new Error("A secure quote token is required.");
-  const url = new URL("/PublicQuoteView", origin);
-  url.searchParams.set("id", quoteId);
-  url.searchParams.set("token", token);
-  return url.toString();
+  return buildPublicQuoteUrl(origin, quoteId, token);
 }
 
 export function matchesApprovalSearch(values, search) {

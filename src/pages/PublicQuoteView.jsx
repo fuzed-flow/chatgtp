@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import QuotePresentation, { calculateQuoteTotals, documentDate, readableBrandText } from "@/components/quotes/QuotePresentation";
 import { generateQuotePDF } from "@/components/pdf/PDFGenerator";
 import { formatCurrencyForCompany } from "@/components/utils/formatCurrency";
-import { getPublicQuoteBundle, publicQuoteErrorMessage, respondToPublicQuote, trackPublicQuoteView } from "@/lib/quoteSharing";
+import { getPublicQuoteBundle, publicQuoteErrorMessage, readPublicQuoteLink, respondToPublicQuote, trackPublicQuoteView } from "@/lib/quoteSharing";
 import { notifyDocumentActivity } from "@/lib/documentActivity";
 import { toast } from "sonner";
 
@@ -26,9 +26,7 @@ function initialSelections(quote, phases, items) {
 }
 
 export default function PublicQuoteView() {
-  const params = new URLSearchParams(window.location.search);
-  const quoteId = params.get("id");
-  const token = params.get("token");
+  const { quoteId, token } = readPublicQuoteLink(window.location);
   const queryClient = useQueryClient();
   const initializedQuote = useRef(null);
   const trackedQuote = useRef(null);
@@ -134,7 +132,7 @@ export default function PublicQuoteView() {
     }
   };
 
-  if (!quoteId || !token) return <QuoteUnavailable title="Incomplete quote link" message="Ask your contractor to resend the secure quote link." />;
+  if (!quoteId || !token) return <QuoteUnavailable title="Incomplete quote link" message="Open the original quote email and tap View & Accept Quote again. If this continues, ask your contractor to resend the secure link." />;
   if (bundleQuery.isLoading) return <LoadingQuote />;
   if (bundleQuery.isError || !quote) return <QuoteUnavailable title="Quote unavailable" message="This secure link is invalid, expired, or has been replaced. Ask your contractor for a new link." />;
 

@@ -7,7 +7,7 @@ export default function NavigationTracker() {
   useEffect(() => {
     // We are temporarily disabling the old Base44 tracker.
     // You can add Firebase/Google Analytics tracking here later!
-    console.log("Navigated to:", location.pathname);
+    console.log("Navigated to:", location.pathname.replace(/^\/PublicQuoteView\/.*$/i, "/PublicQuoteView"));
     
     // OLD CRASHING CODE:
     // base44.analytics.logUserInApp(...) 

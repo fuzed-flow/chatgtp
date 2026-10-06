@@ -30,7 +30,7 @@ test("the latest legacy send record is attached without duplicating a quote", ()
 });
 
 test("approval utilities use the live public quote route and safe numeric totals", () => {
-  assert.equal(quotePublicUrl("https://app.fuzedflow.com", "quote id", "secure-token"), "https://app.fuzedflow.com/PublicQuoteView?id=quote+id&token=secure-token");
+  assert.equal(quotePublicUrl("https://app.fuzedflow.com", "quote id", "secure-token"), "https://app.fuzedflow.com/PublicQuoteView/quote%20id/secure-token");
   assert.throws(() => quotePublicUrl("https://app.fuzedflow.com", "quote id"), /secure quote token/i);
   assert.equal(matchesApprovalSearch(["LBProjects", "Q-100"], "q-100"), true);
   assert.equal(pendingTotal([{ status: "Pending Approval", total: 10 }, { status: "Draft", total: 90 }], ["Pending Approval"]), 10);

@@ -248,8 +248,8 @@ test('quote: lead-only email keeps the secure quote link and omits the unavailab
     await view.wait(() => view.fixture.requests.length === 1);
     const body = view.fixture.requests[0].body;
     assert.equal(body.client_id, null);
-    assert.ok(body.html_body.includes('/PublicQuoteView?'));
-    assert.ok(body.html_body.includes('token=' + 'a'.repeat(64)));
+    assert.ok(body.html_body.includes(`/PublicQuoteView/${DOCUMENT}/${QUOTE_TOKEN}`));
+    assert.ok(!body.html_body.includes('/PublicQuoteView?'));
     assert.ok(!body.html_body.includes('/ClientPortal'));
     assert.ok(!body.html_body.includes('quote_token='));
     assert.ok(!body.html_body.includes('Access Client Portal'));

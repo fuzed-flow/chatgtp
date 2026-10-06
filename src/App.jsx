@@ -218,6 +218,7 @@ function AppRoutes() {
           
           {/* Public Client & Vendor Views */}
           <Route path="/PublicQuoteView" element={<PublicQuoteView />} />
+          <Route path="/PublicQuoteView/:quoteId/:token" element={<PublicQuoteView />} />
           <Route path="/ClientPortal" element={<ClientPortal />} />
           <Route path="/PublicInvoiceView" element={<PublicInvoiceView />} />
           <Route path="/PublicChangeOrderView" element={<PublicChangeOrderView />} />

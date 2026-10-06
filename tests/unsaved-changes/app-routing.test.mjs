@@ -150,6 +150,7 @@ test('actual App public routes and sign-in aliases remain outside AuthProvider',
   try {
     assert.equal(view.heading(), 'PublicQuoteView');
     for (const [path, name] of [
+      ['/PublicQuoteView/synthetic-quote/synthetic-secure-token', 'PublicQuoteView'],
       ['/PublicInvoiceView', 'PublicInvoiceView'], ['/PublicChangeOrderView', 'PublicChangeOrderView'],
       ['/PublicPOView', 'PublicPOView'], ['/ClientPortal', 'ClientPortal'], ['/ContractorPortal', 'ContractorPortal'],
       ['/contractor-portal', 'ContractorPortal'], ['/privacy-policy', 'PrivacyPolicy'], ['/signup', 'Signup'],
