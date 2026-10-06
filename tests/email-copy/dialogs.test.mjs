@@ -13,6 +13,8 @@ const CLIENT = '00000000-0000-4000-8000-000000000002';
 const DOCUMENT = '00000000-0000-4000-8000-000000000003';
 const COMPANY_EMAIL = ' office@builder.example ';
 const CLIENT_EMAIL = 'customer@client.example';
+const QUOTE_TOKEN = 'a'.repeat(64);
+const INVOICE_TOKEN = 'b'.repeat(64);
 const types = {
   quote: {table: 'quotes', numberField: 'quote_number', number: 'Q-1001', detail: ['quote'], list: ['quotes']},
   change_order: {table: 'change_orders', numberField: 'change_order_number', number: 'CO-1001', detail: ['change-order', 'change_order'], list: ['change-orders', 'change_orders']},
@@ -117,7 +119,12 @@ async function emailView(dialog, options = {}) {
     initialState: {open: true, documentId: DOCUMENT, documentType: dialog === 'hook' ? 'invoice' : dialog},
     auth: {
       profile: {id: 'synthetic-user', company_id: COMPANY, role: 'owner', email: 'login@owner.example'},
-      settings: {email: options.authEmail ?? companyEmail, company_name: 'Synthetic Builder', pdf: {brand_color: '#f59e0b'}},
+      settings: {
+        email: options.authEmail ?? companyEmail,
+        company_name: 'Synthetic Builder',
+        pdf: {brand_color: '#f59e0b'},
+        templates: options.templates,
+      },
     },
   };
   const rows = {
@@ -128,11 +135,15 @@ async function emailView(dialog, options = {}) {
     change_order_phases: [], change_order_line_items: [],
   };
   for (const [type, info] of Object.entries(types)) rows[info.table] = {
-    id: DOCUMENT, company_id: COMPANY, title: 'Synthetic ' + type, client_id: CLIENT,
+    id: DOCUMENT, company_id: COMPANY, ...(type === 'invoice' ? {} : {title: 'Synthetic ' + type}), client_id: CLIENT,
     project_id: 'synthetic-project', projects: {client_id: CLIENT}, [info.numberField]: info.number,
+    status: type === 'invoice' ? options.invoiceStatus || 'Draft' : 'Draft',
   };
+  rows.invoices.balance_due = options.invoiceBalance ?? 1234.5;
   if (dialog === 'quote' && Object.hasOwn(options, 'quoteClientId')) rows.quotes.client_id = options.quoteClientId;
   const statusErrors = [...(options.statusErrors || [])];
+  const readErrors = new Map(Object.entries(options.readErrors || {})
+    .map(([table, messages]) => [table, Array.isArray(messages) ? [...messages] : [messages]]));
   fixture.from = table => {
     const record = {table, mode: 'select', filters: []};
     fixture.queries.push(record);
@@ -143,12 +154,23 @@ async function emailView(dialog, options = {}) {
         if (record.mode === 'update') {
           fixture.writes.push({table, payload: plain(record.payload), filters: plain(record.filters)});
           const message = statusErrors.shift();
+          const row = rows[table];
+          if (!message && row && !Array.isArray(row)
+            && record.filters.every(([field, value]) => row[field] === value)) Object.assign(row, record.payload);
           return {data: null, error: message ? {message} : null};
         }
         const id = record.filters.find(([field]) => field === 'id')?.[1];
         const pending = fixture.pendingReads.get(table + ':' + id);
         if (pending) await pending;
         if (!Object.hasOwn(rows, table)) throw new Error('Unexpected synthetic table: ' + table);
+        if (table === 'invoices' && record.projection) {
+          const unknown = record.projection.split(',').map(column => column.trim())
+            .filter(column => column && !Object.hasOwn(rows.invoices, column));
+          if (unknown.length) return {data: null, error: {message: `Unknown invoice columns: ${unknown.join(', ')}`}};
+        }
+        const messages = readErrors.get(table);
+        const message = messages?.shift();
+        if (message) return {data: null, error: {message}};
         return {data: plain(rows[table]), error: null};
       });
       return result;
@@ -169,8 +191,9 @@ async function emailView(dialog, options = {}) {
   };
   fixture.rpc = async (name, args) => {
     fixture.rpcCalls.push({name, args: plain(args)});
-    if (name !== 'issue_quote_share_token') return {data: null, error: {message: 'Unexpected synthetic RPC: ' + name}};
-    return {data: 'a'.repeat(64), error: null};
+    if (name === 'issue_quote_share_token') return {data: QUOTE_TOKEN, error: null};
+    if (name === 'issue_invoice_share_token') return {data: INVOICE_TOKEN, error: null};
+    return {data: null, error: {message: 'Unexpected synthetic RPC: ' + name}};
   };
   fixture.pdf = async (...args) => {
     fixture.pdfCalls.push(plain(args));
@@ -206,7 +229,13 @@ async function emailView(dialog, options = {}) {
   };
   try {
     window.eval((await bundlePromise).outputFiles[0].text);
-    if (dialog === 'hook') await wait(() => window.emailHook);
+    if (dialog === 'hook') {
+      await wait(() => window.emailHook);
+      // The harness assigns the hook during render. Wait for its reset effect
+      // before starting a request so the test cannot race React's first commit.
+      await pause(20);
+    }
+    else if (options.waitForSetupError) await wait(() => button('Retry') && document.querySelector('[role="alert"]'));
     else await wait(() => copy() && document.querySelector('input[type="email"]')?.value === CLIENT_EMAIL && !document.querySelector('button[type="submit"]')?.disabled);
     return {dom, window, document, fixture, wait, button, submit, input, copy, reply, fail, errors, rows, close};
   } catch (error) {close(); throw error;}
@@ -229,6 +258,89 @@ test('quote: lead-only email keeps the secure quote link and omits the unavailab
     assert.deepEqual(view.errors, []);
   } finally {view.close();}
 });
+
+test('invoice: setup queries real columns and fills balance due without promising an attachment', async () => {
+  const view = await emailView('invoice', {
+    invoiceBalance: 9876.5,
+    templates: {
+      invoice_email_body: 'Hi {{client_name}},\n\nPlease find attached Invoice {{invoice_number}} for ${{balance_due}}. Use the secure link below. <script>alert("unsafe")</script> {{unknown_token}}',
+    },
+  });
+  try {
+    const invoiceRead = view.fixture.queries.find(query => query.table === 'invoices' && query.mode === 'select');
+    assert.equal(invoiceRead.projection, 'invoice_number, client_id, company_id, balance_due',
+      'The setup query uses only columns present on the production invoices table.');
+    const message = view.document.querySelector('textarea').value;
+    assert.ok(message.includes('INV-1001'));
+    assert.ok(message.includes('$9,876.50'));
+    assert.doesNotMatch(message, /attach/i);
+    assert.match(message, /secure link/i);
+    assert.doesNotMatch(message, /{{[^{}]+}}/, 'Template placeholders never leak into the client email.');
+
+    view.submit();
+    await view.wait(() => view.fixture.requests.length === 1);
+    const body = view.fixture.requests[0].body;
+    assert.deepEqual(view.fixture.rpcCalls, [{name: 'issue_invoice_share_token', args: {p_invoice: DOCUMENT}}]);
+    const sentDom = new JSDOM(body.html_body);
+    const links = [...sentDom.window.document.querySelectorAll('a')];
+    assert.equal(links.length, 1, 'The email contains only the scoped invoice action.');
+    assert.equal(links[0].href, `https://fixture.example/PublicInvoiceView?id=${DOCUMENT}&token=${INVOICE_TOKEN}`);
+    sentDom.window.close();
+    assert.doesNotMatch(body.html_body, /attach/i);
+    assert.ok(body.html_body.includes('$9,876.50'));
+    assert.ok(!body.html_body.includes('/ClientPortal'));
+    assert.ok(!body.html_body.includes('Access Client Portal'));
+    assert.doesNotMatch(body.html_body, /256-Bit|Encrypted Link/i);
+    assert.match(body.html_body, /Private secure link/i);
+    assert.doesNotMatch(body.html_body, /{{[^{}]+}}/);
+    assert.ok(!body.html_body.includes('<script>alert("unsafe")</script>'));
+    assert.ok(body.html_body.includes('&lt;script&gt;alert(&quot;unsafe&quot;)&lt;/script&gt;'));
+    view.reply(0);
+    await view.wait(() => view.fixture.successes === 1);
+    assert.deepEqual(view.errors, []);
+  } finally {view.close();}
+});
+
+test('invoice: setup failure is shown inline and retry completes without creating a send intent', async () => {
+  const view = await emailView('invoice', {
+    readErrors: {invoices: ['Synthetic invoice setup failure']},
+    waitForSetupError: true,
+  });
+  try {
+    const alert = view.document.querySelector('[role="alert"]');
+    assert.match(alert.textContent, /could not be loaded/i);
+    assert.equal(view.document.querySelector('button[type="submit"]').disabled, true);
+    view.submit();
+    await pause(20);
+    assert.equal(view.fixture.requests.length, 0);
+
+    view.button('Retry').click();
+    await view.wait(() => view.document.querySelector('input[type="email"]')?.value === CLIENT_EMAIL
+      && !view.document.querySelector('button[type="submit"]').disabled);
+    assert.equal(view.document.querySelector('[role="alert"]'), null);
+    view.submit();
+    await view.wait(() => view.fixture.requests.length === 1);
+    view.reply(0);
+    await view.wait(() => view.fixture.successes === 1);
+    assert.equal(view.fixture.requests.length, 1);
+    assert.deepEqual(view.errors, []);
+  } finally {view.close();}
+});
+
+for (const status of ['Partial', 'Partially Paid', 'Paid', 'Viewed', 'Overdue', 'Past Due', 'Cancelled']) {
+  test(`invoice: sending preserves the ${status} accounting status`, async () => {
+    const view = await emailView('invoice', {invoiceStatus: status});
+    try {
+      view.submit();
+      await view.wait(() => view.fixture.requests.length === 1);
+      view.reply(0);
+      await view.wait(() => view.fixture.successes === 1);
+      assert.equal(view.rows.invoices.status, status);
+      assert.deepEqual(view.fixture.writes[0].filters, [['id', DOCUMENT], ['status', 'Draft']]);
+      assert.deepEqual(view.errors, []);
+    } finally {view.close();}
+  });
+}
 
 function assertInvalidations(view, type) {
   const actual = plain(view.fixture.invalidations);
@@ -302,9 +414,16 @@ for (const type of Object.keys(types)) {
       assert.equal(body.subject, 'My edited customer subject');
       assert.ok(body.html_body.includes('An exact synthetic customer message.'));
       if (type === 'quote') {
-        assert.ok(body.html_body.includes('token=' + 'a'.repeat(64)));
-        assert.ok(body.html_body.includes('quote_token=' + 'a'.repeat(64)));
+        assert.ok(body.html_body.includes('token=' + QUOTE_TOKEN));
+        assert.ok(body.html_body.includes('quote_token=' + QUOTE_TOKEN));
         assert.deepEqual(view.fixture.rpcCalls, [{name: 'issue_quote_share_token', args: {p_quote: DOCUMENT}}]);
+      } else if (type === 'invoice') {
+        const sentDom = new JSDOM(body.html_body);
+        const invoiceLink = sentDom.window.document.querySelector('a');
+        assert.equal(invoiceLink.href, `https://fixture.example/PublicInvoiceView?id=${DOCUMENT}&token=${INVOICE_TOKEN}`);
+        sentDom.window.close();
+        assert.ok(!body.html_body.includes('/ClientPortal'));
+        assert.deepEqual(view.fixture.rpcCalls, [{name: 'issue_invoice_share_token', args: {p_invoice: DOCUMENT}}]);
       }
       assert.equal(body.client_id, CLIENT);
       assert.equal(Object.hasOwn(body, 'copy_to'), false, 'The browser cannot choose an arbitrary copy recipient.');
@@ -313,7 +432,10 @@ for (const type of Object.keys(types)) {
       assert.equal(view.fixture.writes.length, 1);
       assert.equal(view.fixture.writes[0].table, types[type].table);
       assert.deepEqual(view.fixture.writes[0].payload, {status: 'Sent'});
-      assert.deepEqual(view.fixture.writes[0].filters, [['id', DOCUMENT]]);
+      assert.deepEqual(view.fixture.writes[0].filters, type === 'invoice'
+        ? [['id', DOCUMENT], ['status', 'Draft']]
+        : [['id', DOCUMENT]]);
+      if (type === 'invoice') assert.equal(view.rows.invoices.status, 'Sent');
       assertInvalidations(view, type);
       assert.deepEqual(view.fixture.openChanges, [false]);
       assert.deepEqual(view.errors, []);
@@ -348,6 +470,10 @@ for (const type of Object.keys(types)) {
       await view.wait(() => view.fixture.requests.length === 2);
       assert.deepEqual(view.fixture.requests[1].body, captured, 'Retry preserves the request ID, subject, original HTML and PDF bytes.');
       if (type === 'change_order') assert.equal(view.fixture.pdfCalls.length, 1, 'A retry never regenerates the PDF.');
+      if (type === 'invoice') {
+        assert.deepEqual(view.fixture.rpcCalls, [{name: 'issue_invoice_share_token', args: {p_invoice: DOCUMENT}}],
+          'A retry reuses the frozen invoice token instead of issuing a new link.');
+      }
       view.reply(1, {success: true, resend_id: 'synthetic-primary', copy_status: 'sent'});
       await view.wait(() => view.fixture.successes === 1 && !view.document.querySelector('[role="dialog"]'));
       assert.equal(view.fixture.writes.length, 1, 'Already-saved status is not written again after copy retry.');

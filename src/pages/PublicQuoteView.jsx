@@ -125,7 +125,7 @@ export default function PublicQuoteView() {
     }
     setPaying(true);
     try {
-      const { data, error } = await supabase.functions.invoke("createDepositCheckout", { body: { quote_id: quote.id } });
+      const { data, error } = await supabase.functions.invoke("createDepositCheckout", { body: { quote_id: quote.id, token } });
       if (error || !data?.checkout_url) throw error || new Error("Checkout unavailable");
       window.location.assign(data.checkout_url);
     } catch {

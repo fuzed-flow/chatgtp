@@ -77,6 +77,7 @@ export default function InvoiceBuilder() {
   const [phases, setPhases, hydratePhases] = useDocumentState([], markDirty);
   const hasLoadedPhases = useRef(false);
   const hydratedInvoiceId = useRef(null);
+  const hydratedInvoiceStatus = useRef("Draft");
   const hasLoadedManualItems = useRef(false);
   const hasLoadedSchedule = useRef(false);
   const [importedQuoteId, setImportedQuoteId] = useState(null);
@@ -95,6 +96,7 @@ export default function InvoiceBuilder() {
   const [ledgerDialog, setLedgerDialog] = useState(false); 
   const [emailDialog, setEmailDialog] = useState(false);
   const [sendMethod, setSendMethod] = useState("email");
+  const [sendInvoiceId, setSendInvoiceId] = useState(null);
 
   // --- QUERIES ---
   const { data: company } = useQuery({ 
@@ -141,6 +143,7 @@ export default function InvoiceBuilder() {
   useEffect(() => {
     if (existingInvoice && !invoiceQueryError && hydratedInvoiceId.current !== existingInvoice.id) {
       hydratedInvoiceId.current = existingInvoice.id;
+      hydratedInvoiceStatus.current = existingInvoice.status || "Draft";
       hydrateForm({
         client_id: existingInvoice.client_id || "none", project_id: existingInvoice.project_id || null,
         quote_id: existingInvoice.quote_id || "none", status: existingInvoice.status || "Draft",
@@ -448,27 +451,33 @@ export default function InvoiceBuilder() {
       shouldIncrementCounter = true;
     }
     
+    const requestedStatus = newStatus || form.status;
+    const shouldWriteStatus = !invoiceId || newStatus !== null || requestedStatus !== hydratedInvoiceStatus.current;
     const invoiceData = {
       company_id: companyId, client_id: form.client_id, project_id: form.project_id || null, quote_id: form.quote_id === "none" ? null : form.quote_id,
       site_address: form.site_address || "", billing_address: form.billing_address || "",
       issue_date: form.issue_date || null, due_terms: form.due_terms, due_date: form.due_date || null,
       notes: form.notes || "", show_notes: form.show_notes, internal_notes: form.internal_notes || "",
       discount_amount: form.discount_amount || 0, discount_type: form.discount_type || "fixed",
-      invoice_number: invNum, status: newStatus || form.status,
+      invoice_number: invNum,
       subtotal: currentSubtotal, tax: currentTax, total: currentTotal, balance_due: currentBalance,
     };
+    if (shouldWriteStatus) invoiceData.status = requestedStatus;
 
     try {
       let savedId = invoiceId;
+      let persistedStatus = requestedStatus;
       
       if (invoiceId) {
-        const { error } = await supabase.from("invoices").update(invoiceData).eq("id", invoiceId).eq("company_id", companyId).select("id").single();
+        const { data: savedInvoice, error } = await supabase.from("invoices").update(invoiceData).eq("id", invoiceId).eq("company_id", companyId).select("id,status").single();
         if (error) throw error;
+        persistedStatus = savedInvoice?.status || persistedStatus;
       } else {
-        const { data: created, error } = await supabase.from("invoices").insert([invoiceData]).select().single();
+        const { data: created, error } = await supabase.from("invoices").insert([{ ...invoiceData, status: requestedStatus }]).select().single();
         if (error) throw error;
         if (!created?.id) throw new Error("The saved invoice could not be confirmed.");
         savedId = created.id;
+        persistedStatus = created.status || persistedStatus;
         allocatedInvoiceNumber.current = invNum;
         hydratedInvoiceId.current = savedId;
         hasLoadedPhases.current = true;
@@ -542,7 +551,10 @@ export default function InvoiceBuilder() {
         if (schedulesInsertError) throw schedulesInsertError;
       }
 
-      if (getRevision() === saveRevision) hydrateForm(prev => ({ ...prev, status: invoiceData.status }));
+      if (getRevision() === saveRevision) {
+        hydratedInvoiceStatus.current = persistedStatus;
+        hydrateForm(prev => ({ ...prev, status: persistedStatus }));
+      }
       markSaved(saveRevision);
       queryClient.invalidateQueries({ queryKey: ["invoice", savedId] });
       queryClient.invalidateQueries({ queryKey: ["invoice_phases", savedId] });
@@ -670,6 +682,44 @@ export default function InvoiceBuilder() {
     }
   };
 
+  const openSendDialog = async method => {
+    let savedId = invoiceId;
+    if (!savedId || hasUnsavedChanges()) {
+      savedId = await handleSave(null, true);
+    }
+    if (!savedId) return;
+    if (hasUnsavedChanges()) {
+      toast.info("The invoice changed while it was saving. Save the latest edits before sending.");
+      return;
+    }
+    setSendInvoiceId(savedId);
+    setSendMethod(method);
+    setEmailDialog(true);
+  };
+
+  const reconcileDeliveryStatus = async () => {
+    const deliveredInvoiceId = sendInvoiceId || invoiceId;
+    if (!deliveredInvoiceId || !companyId) return;
+
+    queryClient.invalidateQueries({ queryKey: ["invoice", deliveredInvoiceId] });
+    queryClient.invalidateQueries({ queryKey: ["invoices"] });
+
+    const { data, error } = await supabase
+      .from("invoices")
+      .select("status")
+      .eq("id", deliveredInvoiceId)
+      .eq("company_id", companyId)
+      .single();
+
+    if (error || !data?.status) {
+      toast.warning("The invoice was sent, but its latest status could not be refreshed. Reload before changing the status.");
+      return;
+    }
+
+    hydratedInvoiceStatus.current = data.status;
+    hydrateForm(previous => ({ ...previous, status: data.status }));
+  };
+
   const clientQuotes = form.client_id && form.client_id !== "none"
     ? quotes.filter(q => q.client_id === form.client_id && !["Deleted", "Archived", "Lost", "Canceled"].includes(q.status))
     : [];
@@ -744,10 +794,10 @@ export default function InvoiceBuilder() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Share</div>
-                  <DropdownMenuItem onClick={() => { setSendMethod("email"); setEmailDialog(true); }} className="cursor-pointer font-medium text-slate-700 focus:bg-blue-50 focus:text-blue-700">
+                  <DropdownMenuItem onClick={() => openSendDialog("email")} className="cursor-pointer font-medium text-slate-700 focus:bg-blue-50 focus:text-blue-700">
                     <Mail className="h-4 w-4 mr-2 text-blue-500" /> Send via Email
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => { setSendMethod("sms"); setEmailDialog(true); }} className="cursor-pointer font-medium text-slate-700 focus:bg-amber-50 focus:text-amber-700">
+                  <DropdownMenuItem onClick={() => openSendDialog("sms")} className="cursor-pointer font-medium text-slate-700 focus:bg-amber-50 focus:text-amber-700">
                     <Smartphone className="h-4 w-4 mr-2 text-amber-500" /> Send via Text Message
                   </DropdownMenuItem>
                   
@@ -1129,28 +1179,31 @@ export default function InvoiceBuilder() {
         {/* PREMIUM SAAS EMAIL DIALOG */}
         <SendInvoiceEmailDialog
           open={emailDialog && sendMethod === "email"} 
-          onOpenChange={(isOpen) => { if(!isOpen) setEmailDialog(false); }} 
-          invoiceId={invoiceId}
-          invoiceNumber={existingInvoice?.invoice_number}
+          onOpenChange={(isOpen) => { if(!isOpen) { setEmailDialog(false); setSendInvoiceId(null); } }}
+          invoiceId={sendInvoiceId || invoiceId}
+          invoiceNumber={existingInvoice?.invoice_number || allocatedInvoiceNumber.current}
           clientId={form.client_id}
           clientName={clients?.find(c => c.id === form.client_id)?.name}
           clientEmail={clients?.find(c => c.id === form.client_id)?.email}
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
-            queryClient.invalidateQueries({ queryKey: ["invoices"] });
-          }} 
+          onSuccess={reconcileDeliveryStatus}
         />
 
         {/* 📱 SMS DIALOG */}
         <SendInvoiceTextDialog 
           open={emailDialog && sendMethod === "sms"} 
-          onOpenChange={(isOpen) => { if(!isOpen) setEmailDialog(false); }} 
-          invoice={existingInvoice || form} 
+          onOpenChange={(isOpen) => { if(!isOpen) { setEmailDialog(false); setSendInvoiceId(null); } }}
+          invoice={{
+            ...(existingInvoice || {}),
+            ...form,
+            id: sendInvoiceId || invoiceId,
+            company_id: companyId,
+            invoice_number: existingInvoice?.invoice_number || allocatedInvoiceNumber.current,
+            total: currentTotal,
+            amount_paid: currentPaid,
+            balance_due: currentBalance,
+          }}
           client={clients?.find(c => c.id === form.client_id)} 
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
-            queryClient.invalidateQueries({ queryKey: ["invoices"] });
-          }} 
+          onSuccess={reconcileDeliveryStatus}
         />
 
         </fieldset>

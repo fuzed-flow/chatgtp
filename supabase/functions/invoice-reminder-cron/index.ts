@@ -3,6 +3,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const APP_URL = Deno.env.get("APP_URL") || "https://app.fuzedflow.com";
+const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, character => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+}[character]!));
 
 serve(async (req) => {
   try {
@@ -74,8 +77,34 @@ serve(async (req) => {
       const overdue1Days = automations.invoice_overdue_1 || 3;
       const overdue2Days = automations.invoice_overdue_2 || 14;
 
+      // Do not create or refresh a share link until this run has a reminder to
+      // deliver. If token issuance fails, delivery and the automation stage both
+      // remain untouched so the next cron run can retry safely.
+      const reminderStage = stage === 0 && diffDays >= -preDueDays && diffDays <= 0
+        ? 1
+        : stage <= 1 && diffDays >= overdue1Days && diffDays < overdue2Days
+          ? 2
+          : stage <= 2 && diffDays >= overdue2Days
+            ? 3
+            : null;
+      if (reminderStage === null) continue;
+
+      const { data: shareToken, error: shareError } = await supabaseAdmin.rpc("issue_invoice_reminder_share_token", {
+        p_invoice: invoice.id,
+        p_stage: reminderStage,
+      });
+      if (shareError || typeof shareToken !== "string" || !/^[a-f0-9]{64}$/i.test(shareToken)) {
+        console.error(`Invoice #${invoice.invoice_number} reminder skipped: secure link unavailable.`);
+        continue;
+      }
+
+      const publicInvoiceUrl = new URL("/PublicInvoiceView", APP_URL);
+      publicInvoiceUrl.searchParams.set("id", invoice.id);
+      publicInvoiceUrl.searchParams.set("token", shareToken);
+      const portalLink = publicInvoiceUrl.toString();
+
       let triggerNotification = false;
-      let newStage = stage;
+      let newStage = reminderStage;
       let subject = "";
       let htmlBody = "";
       let smsBody = "";
@@ -83,13 +112,14 @@ serve(async (req) => {
       // Format Due Date for the email copy
       const formattedDueDate = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-      const portalLink = `${APP_URL}/PublicInvoiceView?id=${invoice.id}`;
       // Clean, professional SaaS-style button (Green for payments)
-      const buttonHtml = `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="left"><a href="${portalLink}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: sans-serif; display: inline-block; font-size: 16px;">View & Pay Invoice</a></td></tr></table>`;
+      const buttonHtml = `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="left"><a href="${escapeHtml(portalLink)}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: sans-serif; display: inline-block; font-size: 16px;">View &amp; Pay Invoice</a></td></tr></table>`;
       
-      const invoiceTitle = invoice.title ? ` for ${invoice.title}` : "";
       const companyName = company.name || "us";
       const clientFirstName = client.name ? client.name.split(' ')[0] : 'there';
+      const companyNameHtml = escapeHtml(companyName);
+      const clientFirstNameHtml = escapeHtml(clientFirstName);
+      const invoiceNumberHtml = escapeHtml(invoice.invoice_number);
 
       // ==========================================
       // STAGE 0 -> 1: PRE-DUE REMINDER
@@ -102,14 +132,14 @@ serve(async (req) => {
         subject = `Upcoming Reminder: Invoice #${invoice.invoice_number} from ${companyName}`;
         htmlBody = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; font-size: 16px; max-width: 600px;">
-            <p>Hi ${clientFirstName},</p>
-            <p>This is a polite reminder that Invoice #${invoice.invoice_number}${invoiceTitle} is due on <strong>${formattedDueDate}</strong>.</p>
+            <p>Hi ${clientFirstNameHtml},</p>
+            <p>This is a polite reminder that Invoice #${invoiceNumberHtml} is due on <strong>${escapeHtml(formattedDueDate)}</strong>.</p>
             <p>You can view your invoice details and securely complete your payment online using the link below.</p>
             <br>
             ${buttonHtml}
             <br><br>
             <p>If you have already submitted your payment, please disregard this message. Thank you for your business!</p>
-            <p style="color: #64748b; font-size: 14px; margin-top: 24px;">Best regards,<br>The team at ${companyName}</p>
+            <p style="color: #64748b; font-size: 14px; margin-top: 24px;">Best regards,<br>The team at ${companyNameHtml}</p>
           </div>
         `;
         
@@ -126,14 +156,14 @@ serve(async (req) => {
         subject = `Overdue Notice: Invoice #${invoice.invoice_number} from ${companyName}`;
         htmlBody = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; font-size: 16px; max-width: 600px;">
-            <p>Hi ${clientFirstName},</p>
-            <p>This is a friendly follow-up to let you know that Invoice #${invoice.invoice_number}${invoiceTitle} is currently past due.</p>
+            <p>Hi ${clientFirstNameHtml},</p>
+            <p>This is a friendly follow-up to let you know that Invoice #${invoiceNumberHtml} is currently past due.</p>
             <p>We understand that things can occasionally slip through the cracks. Please take a moment to review the invoice and complete your payment online using the link below.</p>
             <br>
             ${buttonHtml}
             <br><br>
             <p>If you recently mailed a check or submitted payment, please let us know so we can update your account. Thank you!</p>
-            <p style="color: #64748b; font-size: 14px; margin-top: 24px;">Best regards,<br>The team at ${companyName}</p>
+            <p style="color: #64748b; font-size: 14px; margin-top: 24px;">Best regards,<br>The team at ${companyNameHtml}</p>
           </div>
         `;
         
@@ -150,14 +180,14 @@ serve(async (req) => {
         subject = `Urgent: Invoice #${invoice.invoice_number} is significantly past due`;
         htmlBody = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; font-size: 16px; max-width: 600px;">
-            <p>Hi ${clientFirstName},</p>
-            <p>This is an urgent notice regarding Invoice #${invoice.invoice_number}${invoiceTitle}, which was due on <strong>${formattedDueDate}</strong> and is now significantly past due.</p>
+            <p>Hi ${clientFirstNameHtml},</p>
+            <p>This is an urgent notice regarding Invoice #${invoiceNumberHtml}, which was due on <strong>${escapeHtml(formattedDueDate)}</strong> and is now significantly past due.</p>
             <p>Please remit payment immediately to bring your account current. You can pay securely online using the link below.</p>
             <br>
             ${buttonHtml}
             <br><br>
             <p>If there is an issue preventing payment, please reply to this email immediately so we can assist you.</p>
-            <p style="color: #64748b; font-size: 14px; margin-top: 24px;">Best regards,<br>The team at ${companyName}</p>
+            <p style="color: #64748b; font-size: 14px; margin-top: 24px;">Best regards,<br>The team at ${companyNameHtml}</p>
           </div>
         `;
         

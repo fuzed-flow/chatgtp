@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {SUBSCRIPTION_PRICES} from '../../supabase/functions/_shared/subscriptionPlans.js';
-import {fixture,checkout,event,request,depositRequest,subscription,savedContext,payments,sales,updates,COMPANY,OTHER,INVOICE,QUOTE,ACCOUNT,CUSTOMER,NOW} from './stripe-handler-fixture.mjs';
+import {fixture,checkout,event,request,depositRequest,subscription,savedContext,payments,sales,updates,COMPANY,OTHER,INVOICE,QUOTE,USER,INVOICE_TOKEN,QUOTE_TOKEN,ACCOUNT,CUSTOMER,NOW} from './stripe-handler-fixture.mjs';
 for(const [label,options,account,signature] of [
   ['missing signature',{},ACCOUNT,null],['invalid signature',{},ACCOUNT,'invalid'],
   ['Connect event verified by platform secret',{verificationSecret:'synthetic-platform-secret'},ACCOUNT,'synthetic-signature'],
@@ -115,17 +115,22 @@ test('Updated default payment method retrieves provider card details for saved c
   assert.deepEqual(view.stripeCalls.find(call=>call.method==='paymentMethods.retrieve').args,['pm_synthetic']);assert.equal(updates(view)[0].payload.subscription_card_expiry,'2028-02-29');
 });
 
-test('Quote checkout ignores browser amount, currency and company and uses saved deposit/account',async()=>{
-  const view=fixture('createDepositCheckout');const response=await view.handler(depositRequest({quote_id:QUOTE,amount:1,currency:'USD',company_id:OTHER,stripe_account_id:'acct_foreign'}));
+test('Public quote checkout validates its approval token and uses the saved deposit and account',async()=>{
+  const view=fixture('createDepositCheckout');const response=await view.handler(depositRequest({quote_id:QUOTE,token:QUOTE_TOKEN,amount:1,currency:'USD',company_id:OTHER,stripe_account_id:'acct_foreign'}));
   assert.equal(response.status,200);assert.deepEqual(await response.json(),{url:'https://checkout.stripe.invalid/synthetic',checkout_url:'https://checkout.stripe.invalid/synthetic',sessionId:'cs_synthetic'});
   const [payload,account]=view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args;
   assert.equal(payload.line_items[0].price_data.unit_amount,25000);assert.equal(payload.line_items[0].price_data.currency,'cad');assert.equal(account.stripeAccount,ACCOUNT);assert.ok(account.idempotencyKey);
   assert.deepEqual(payload.metadata,{company_id:COMPANY,quote_id:QUOTE,currency_factor:'100'});assert.deepEqual(payload.payment_intent_data.metadata,payload.metadata);
-  assert.equal(payload.success_url,`https://app.fuzedflow.com/PublicQuoteView?id=${QUOTE}&payment=success`);assert.equal(payload.cancel_url,`https://app.fuzedflow.com/PublicQuoteView?id=${QUOTE}&payment=cancelled`);
+  assert.equal(payload.success_url,`https://app.fuzedflow.com/PublicQuoteView?id=${QUOTE}&token=${QUOTE_TOKEN}&payment=success`);assert.equal(payload.cancel_url,`https://app.fuzedflow.com/PublicQuoteView?id=${QUOTE}&token=${QUOTE_TOKEN}&payment=cancelled`);
+  assert.doesNotMatch(JSON.stringify(payload.metadata),new RegExp(QUOTE_TOKEN));
 });
-test('Invoice checkout uses saved outstanding balance',async()=>{
-  const view=fixture('createDepositCheckout');assert.equal((await view.handler(depositRequest({invoice_id:INVOICE}))).status,200);
-  const payload=view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0];assert.equal(payload.line_items[0].price_data.unit_amount,90000);assert.equal(payload.metadata.invoice_id,INVOICE);assert.equal(payload.success_url,`https://app.fuzedflow.com/PublicInvoiceView?id=${INVOICE}&payment=success`);
+test('Public invoice checkout validates the hashed share token and ignores a browser amount',async()=>{
+  const view=fixture('createDepositCheckout');assert.equal((await view.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN,amount:1}))).status,200);
+  const payload=view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0];assert.equal(payload.line_items[0].price_data.unit_amount,90000);assert.equal(payload.metadata.invoice_id,INVOICE);
+  assert.equal(payload.success_url,`https://app.fuzedflow.com/PublicInvoiceView?id=${INVOICE}&token=${INVOICE_TOKEN}&payment=success`);
+  assert.doesNotMatch(JSON.stringify(payload.metadata),new RegExp(INVOICE_TOKEN));
+  const shareQuery=view.queries.find(query=>query.table==='invoice_share_links');
+  assert.equal(shareQuery.filters.find(([key])=>key==='token_hash')[1].length,64);assert.notEqual(shareQuery.filters.find(([key])=>key==='token_hash')[1],INVOICE_TOKEN);
 });
 test('Invoice scheduled checkout pays only next unpaid saved company installment',async()=>{
   const view=fixture('createDepositCheckout',{rows:{invoices:[{id:INVOICE,company_id:COMPANY,status:'Partially Paid',total:1000,amount_paid:100,has_payment_schedule:true}],invoice_payment_schedules:[
@@ -133,25 +138,75 @@ test('Invoice scheduled checkout pays only next unpaid saved company installment
     {invoice_id:INVOICE,company_id:COMPANY,amount:250,amount_paid:50,sort_order:2},
     {invoice_id:INVOICE,company_id:OTHER,amount:1,amount_paid:0,sort_order:0},
   ]}});
-  assert.equal((await view.handler(depositRequest({invoice_id:INVOICE}))).status,200);assert.equal(view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0].line_items[0].price_data.unit_amount,20000);
+  assert.equal((await view.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN,amount:1}))).status,200);assert.equal(view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0].line_items[0].price_data.unit_amount,20000);
   assert.deepEqual(view.queries.find(query=>query.table==='invoice_payment_schedules').filters,[['invoice_id',INVOICE],['company_id',COMPANY]]);
+});
+for(const status of ['Partial','Partially Paid']) test('Invoice '+status+' remains eligible for its saved outstanding balance',async()=>{
+  const view=fixture('createDepositCheckout',{rows:{invoices:[{id:INVOICE,company_id:COMPANY,status,total:500,amount_paid:125,has_payment_schedule:false}]}});
+  assert.equal((await view.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN}))).status,200);
+  assert.equal(view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0].line_items[0].price_data.unit_amount,37500);
+});
+
+for(const [label,token,links] of [
+  ['missing token',undefined,undefined],
+  ['malformed token','invalid',undefined],
+  ['unknown token','c'.repeat(64),undefined],
+  ['foreign-company token',INVOICE_TOKEN,[{id:'link',invoice_id:INVOICE,company_id:OTHER,token_hash:'ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb',status:'Active',revoked_at:null,expires_at:null}]],
+  ['revoked token',INVOICE_TOKEN,[{id:'link',invoice_id:INVOICE,company_id:COMPANY,token_hash:'ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb',status:'Revoked',revoked_at:new Date(NOW-1).toISOString(),expires_at:null}]],
+  ['inactive token',INVOICE_TOKEN,[{id:'link',invoice_id:INVOICE,company_id:COMPANY,token_hash:'ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb',status:'Expired',revoked_at:null,expires_at:null}]],
+  ['expired token',INVOICE_TOKEN,[{id:'link',invoice_id:INVOICE,company_id:COMPANY,token_hash:'ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb',status:'Active',revoked_at:null,expires_at:new Date(NOW-1).toISOString()}]],
+]) test('Public invoice checkout rejects '+label+' before Stripe',async()=>{
+  const options=links ? {rows:{invoice_share_links:links}} : {};
+  const view=fixture('createDepositCheckout',options);const body={invoice_id:INVOICE};if(token!==undefined)body.token=token;
+  assert.equal((await view.handler(depositRequest(body))).status,400);assert.equal(view.stripeCalls.length,0);
+});
+test('Public quote checkout rejects a revoked or mismatched approval token',async()=>{
+  for(const quote_approvals of [[{id:'approval',quote_id:QUOTE,company_id:COMPANY,approval_token:QUOTE_TOKEN,approval_status:'Revoked'}],[{id:'approval',quote_id:QUOTE,company_id:OTHER,approval_token:QUOTE_TOKEN,approval_status:'Approved'}]]){
+    const view=fixture('createDepositCheckout',{rows:{quote_approvals}});assert.equal((await view.handler(depositRequest())).status,400);assert.equal(view.stripeCalls.length,0);
+  }
+});
+
+test('Authorized billing staff can checkout without a public token, but amount remains server-derived',async()=>{
+  const view=fixture('createDepositCheckout');const response=await view.handler(depositRequest({invoice_id:INVOICE,amount:1},'synthetic-user-token'));
+  assert.equal(response.status,200);assert.equal(view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0].line_items[0].price_data.unit_amount,90000);
+});
+for(const [label,rows,token] of [
+  ['inactive staff',{profiles:[{id:USER,company_id:COMPANY,is_active:false,role:'admin'}]},'synthetic-user-token'],
+  ['foreign staff',{profiles:[{id:USER,company_id:OTHER,is_active:true,role:'admin'}]},'synthetic-user-token'],
+  ['manager',{profiles:[{id:USER,company_id:COMPANY,is_active:true,role:'manager'}]},'synthetic-user-token'],
+  ['employee',{profiles:[{id:USER,company_id:COMPANY,is_active:true,role:'employee'}]},'synthetic-user-token'],
+  ['business office without invoice permission',{profiles:[{id:USER,company_id:COMPANY,is_active:true,role:'office',permissions:['quotes']}],companies:[{id:COMPANY,stripe_account_id:ACCOUNT,settings:{currency:'CAD'},plan_id:'business'}]},'synthetic-user-token'],
+  ['invalid bearer',{},'invalid-user-token'],
+]) test('Internal checkout rejects '+label+' before Stripe',async()=>{
+  const view=fixture('createDepositCheckout',{rows});assert.equal((await view.handler(depositRequest({invoice_id:INVOICE},token))).status,400);assert.equal(view.stripeCalls.length,0);
+});
+test('Business office staff with invoice permission and exact service callers retain checkout access',async()=>{
+  const office=fixture('createDepositCheckout',{rows:{profiles:[{id:USER,company_id:COMPANY,is_active:true,role:'office',permissions:['invoices']}],companies:[{id:COMPANY,stripe_account_id:ACCOUNT,settings:{currency:'CAD'},plan_id:'business'}]}});
+  assert.equal((await office.handler(depositRequest({invoice_id:INVOICE},'synthetic-user-token'))).status,200);
+  const service=fixture('createDepositCheckout');assert.equal((await service.handler(depositRequest({invoice_id:INVOICE},'synthetic-service'))).status,200);
 });
 for(const [type,status] of [['quote','Draft'],['quote','Pending Review'],['quote','Declined'],['invoice','Draft'],['invoice','Paid'],['invoice','Declined']]) test(type+' '+status+' cannot open payment checkout',async()=>{
   const table=type==='quote' ? 'quotes' : 'invoices';const id=type==='quote' ? QUOTE : INVOICE;
   const view=fixture('createDepositCheckout',{rows:{[table]:[{id,company_id:COMPANY,status,deposit_amount:250,total:1000}]}});
-  assert.equal((await view.handler(depositRequest({[`${type}_id`]:id}))).status,400);assert.equal(view.stripeCalls.length,0);
+  const token=type==='quote'?QUOTE_TOKEN:INVOICE_TOKEN;
+  assert.equal((await view.handler(depositRequest({[`${type}_id`]:id,token}))).status,400);assert.equal(view.stripeCalls.length,0);
 });
-for(const input of [{},{quote_id:'invalid'},{invoice_id:INVOICE,success_url:'https://foreign.invalid/success'},{quote_id:QUOTE,cancel_url:'https://app.fuzedflow.com.foreign.invalid/cancel'},{quote_id:QUOTE,success_url:'http://app.fuzedflow.com/success'},{quote_id:QUOTE,success_url:'javascript:alert(1)'}]) test('Invalid document is rejected and foreign return address falls back safely '+JSON.stringify(input),async()=>{
-  const view=fixture('createDepositCheckout');const response=await view.handler(depositRequest(input)); if(!input.quote_id&&!input.invoice_id || input.quote_id==='invalid'){assert.equal(response.status,400);assert.equal(view.stripeCalls.length,0);}else{assert.equal(response.status,200);const payload=view.stripeCalls.find(c=>c.method==='checkout.sessions.create').args[0];assert.equal(new URL(payload.success_url).origin,'https://app.fuzedflow.com');assert.equal(new URL(payload.cancel_url).origin,'https://app.fuzedflow.com');}
+for(const input of [{},{quote_id:'invalid'}]) test('Invalid document input is rejected '+JSON.stringify(input),async()=>{
+  const view=fixture('createDepositCheckout');const response=await view.handler(depositRequest(input));assert.equal(response.status,400);assert.equal(view.stripeCalls.length,0);
 });
 test('Saved quote template, missing connected account and zero due do not create Stripe Checkout',async()=>{
   for(const rows of [{quotes:[{id:QUOTE,company_id:COMPANY,status:'Approved',total:1000,deposit_amount:250,is_template:true}]},{companies:[{id:COMPANY,stripe_account_id:null}]},{quotes:[{id:QUOTE,company_id:COMPANY,status:'Approved',deposit_amount:0}]}]){
     const view=fixture('createDepositCheckout',{rows});assert.equal((await view.handler(depositRequest())).status,400);assert.equal(view.stripeCalls.length,0);
   }
 });
-test('Same-origin custom checkout return URLs are preserved',async()=>{
+test('Same-origin custom checkout return URLs are preserved only for authorized staff',async()=>{
   const view=fixture('createDepositCheckout');const input={quote_id:QUOTE,success_url:'https://app.fuzedflow.com/paid?reference=synthetic',cancel_url:'https://app.fuzedflow.com/PublicQuoteView?id='+QUOTE};
-  assert.equal((await view.handler(depositRequest(input))).status,200);const payload=view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0];assert.equal(payload.success_url,input.success_url);assert.equal(payload.cancel_url,input.cancel_url);
+  assert.equal((await view.handler(depositRequest(input,'synthetic-user-token'))).status,200);const payload=view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0];assert.equal(payload.success_url,input.success_url);assert.equal(payload.cancel_url,input.cancel_url);
+});
+test('Public checkout ignores caller return URLs and retains the capability token',async()=>{
+  const view=fixture('createDepositCheckout');const input={quote_id:QUOTE,token:QUOTE_TOKEN,success_url:'https://app.fuzedflow.com/paid',cancel_url:'https://foreign.invalid/cancel'};
+  assert.equal((await view.handler(depositRequest(input))).status,200);const payload=view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0];
+  assert.equal(new URL(payload.success_url).searchParams.get('token'),QUOTE_TOKEN);assert.equal(new URL(payload.cancel_url).searchParams.get('token'),QUOTE_TOKEN);
 });
 test('Checkout database and provider errors return failure without a fabricated successful URL',async()=>{
   for(const options of [{queryError:query=>query.table==='quotes'},{stripeError:'checkout.sessions.create'}]){

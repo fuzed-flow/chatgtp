@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Save, Mail, MessageSquare, Info, Receipt, Zap, Building2, FileText } from 'lucide-react';
 
+const DEFAULT_INVOICE_EMAIL = "Hi {{client_name}},\n\nYour invoice {{invoice_number}} for ${{balance_due}} is ready to review.\n\nUse the private secure link below to view the detailed invoice and payment options.";
+
 // --- CUSTOM TEMPLATE EDITOR WITH QUICK-INSERT TOKENS ---
 const TemplateEditor = ({ value, onChange, tokens, rows = 4 }) => {
   const textareaRef = useRef(null);
@@ -112,7 +114,7 @@ export default function MessageTemplatesSettings() {
       setQuoteEmail(t.quote_email_body || "Hi {{client_name}},\n\nPlease find attached your project quote {{quote_number}} for {{quote_title}}.\n\nYou can review the line items, choose optional additions, and securely sign off on the package using the interactive link below.");
       setQuoteSms(t.quote_sms || "Hi {{client_name}}, your project quote {{quote_number}} is ready for review! Click the link to view the details and approve online:");
       
-      setInvoiceEmail(t.invoice_email_body || "Hi {{client_name}},\n\nPlease find attached Invoice {{invoice_number}} for the amount of ${{balance_due}}.\n\nYou can view your interactive invoice history, milestones, and secure credit card payment options online using the link provided.");
+      setInvoiceEmail(t.invoice_email_body || DEFAULT_INVOICE_EMAIL);
       setInvoiceSms(t.invoice_sms || "Hi {{client_name}}, your invoice {{invoice_number}} for ${{balance_due}} is ready. Tap the link below to view and pay securely.");
       
       setChangeOrderEmail(t.co_email_body || "Hi {{client_name}},\n\nWe have submitted a scope modification request, Change Order {{co_number}}, for your project.\n\nPlease tap the link below to review the adjustment details and sign off on the variation.");
@@ -125,7 +127,7 @@ export default function MessageTemplatesSettings() {
       // Hard Fallbacks if the object doesn't exist yet
       setQuoteEmail("Hi {{client_name}},\n\nPlease find attached your project quote {{quote_number}} for {{quote_title}}.\n\nYou can review the line items, choose optional additions, and securely sign off on the package using the interactive link below.");
       setQuoteSms("Hi {{client_name}}, your project quote {{quote_number}} is ready for review! Click the link to view the details and approve online:");
-      setInvoiceEmail("Hi {{client_name}},\n\nPlease find attached Invoice {{invoice_number}} for the amount of ${{balance_due}}.\n\nYou can view your interactive invoice history, milestones, and secure credit card payment options online using the link provided.");
+      setInvoiceEmail(DEFAULT_INVOICE_EMAIL);
       setInvoiceSms("Hi {{client_name}}, your invoice {{invoice_number}} for ${{balance_due}} is ready. Tap the link below to view and pay securely.");
       setChangeOrderEmail("Hi {{client_name}},\n\nWe have submitted a scope modification request, Change Order {{co_number}}, for your project.\n\nPlease tap the link below to review the adjustment details and sign off on the variation.");
       setChangeOrderSms("Hi {{client_name}}, Change Order {{co_number}} has been requested for your project. Tap the link to authorize the adjustment:");

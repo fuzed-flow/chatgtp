@@ -16,6 +16,7 @@ import { ClientUpdatePreview } from "@/components/client-updates/ClientUpdatePre
 import { generateClientUpdatePDF, generateProjectCloseoutPDF } from "@/components/pdf/PDFGenerator";
 import ProjectCloseoutPreview from "@/components/closeouts/ProjectCloseoutPreview";
 import { buildPublicQuoteUrl } from "@/lib/quoteSharing";
+import { buildPublicInvoiceUrl, getClientPortalInvoices } from "@/lib/invoiceSharing";
 
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
@@ -23,6 +24,7 @@ export default function ClientPortal() {
   const requestedUpdateId = params.get("update");
   const requestedCloseoutId = params.get("closeout");
   const quoteAccessToken = params.get("quote_token");
+  const invoiceAccessToken = params.get("invoice_token");
 
   // --- UI STATE ---
   const [activeTab, setActiveTab] = useState(() => params.get("tab") || "quotes");
@@ -63,20 +65,22 @@ export default function ClientPortal() {
         
         setClient(clientData);
 
-        const [companyRes, quotesRes, coRes, invoicesRes, updatesRes, closeoutsRes] = await Promise.all([
+        const [companyRes, quotesRes, coRes, invoiceRows, updatesRes, closeoutsRes] = await Promise.all([
           supabase.from("companies").select("*").eq("id", clientData.company_id).maybeSingle(),
           quoteAccessToken
             ? supabase.rpc("get_client_portal_quotes", { p_client: clientId, p_token: quoteAccessToken })
             : Promise.resolve({ data: [], error: null }),
           supabase.from("change_orders").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
-          supabase.from("invoices").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
+          invoiceAccessToken
+            ? getClientPortalInvoices(clientId, invoiceAccessToken)
+            : Promise.resolve([]),
           supabase.rpc("get_client_portal_updates", { p_client: clientId }),
           supabase.rpc("get_client_portal_closeouts", { p_client: clientId })
         ]);
 
         if (companyRes.data) setCompany(companyRes.data);
         if (quotesRes.data) setQuotes(quotesRes.data);
-        if (invoicesRes.data) setInvoices(invoicesRes.data);
+        setInvoices(invoiceRows);
         if (updatesRes.data && !updatesRes.error) setClientUpdates(updatesRes.data);
         if (closeoutsRes.data && !closeoutsRes.error) setProjectCloseouts(closeoutsRes.data);
         
@@ -93,13 +97,13 @@ export default function ClientPortal() {
     };
 
     fetchPortalData();
-  }, [clientId, quoteAccessToken]);
+  }, [clientId, quoteAccessToken, invoiceAccessToken]);
 
   // --- EXTRACT PORTAL SETTINGS ---
   const portalSettings = company?.settings?.client_portal || {};
   const showQuotes = portalSettings.show_quotes !== false && Boolean(quoteAccessToken);
   const showCOs = portalSettings.show_change_orders !== false;
-  const showInvoices = portalSettings.show_invoices !== false;
+  const showInvoices = portalSettings.show_invoices !== false && Boolean(invoiceAccessToken);
   const showDocs = portalSettings.show_documents !== false;
   const showPortfolio = portalSettings.show_portfolio !== false;
   const showUpdates = portalSettings.show_client_updates !== false;
@@ -441,7 +445,7 @@ export default function ClientPortal() {
                             <span className="flex items-center text-rose-600 font-bold"><AlertCircle className="w-4 h-4 mr-1 text-rose-500" /> Balance: {formatCurrencyUSD(invoice.balance_due || 0)}</span>
                           </div>
                         </div>
-                        <Button onClick={() => window.open(createPageUrl(`PublicInvoiceView?id=${invoice.id}`), "_blank")} variant="outline" className="w-full sm:w-auto font-bold border-slate-300 hover:bg-slate-50 rounded-lg h-11 px-6 shadow-sm">
+                        <Button onClick={() => window.open(buildPublicInvoiceUrl(window.location.origin, invoice.id, invoice.share_token), "_blank", "noopener,noreferrer")} variant="outline" className="w-full sm:w-auto font-bold border-slate-300 hover:bg-slate-50 rounded-lg h-11 px-6 shadow-sm">
                           <Eye className="w-4 h-4 mr-2 text-slate-400" /> View Invoice
                         </Button>
                       </div>

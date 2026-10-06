@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import {createHash,webcrypto} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
 import {SUBSCRIPTION_PRICES} from '../../supabase/functions/_shared/subscriptionPlans.js';
@@ -23,6 +24,9 @@ const COMPANY='00000000-0000-4000-8000-000000000001';
 const OTHER='00000000-0000-4000-8000-000000000002';
 const INVOICE='00000000-0000-4000-8000-000000000011';
 const QUOTE='00000000-0000-4000-8000-000000000012';
+const USER='00000000-0000-4000-8000-000000000013';
+const INVOICE_TOKEN='a'.repeat(64);
+const QUOTE_TOKEN='b'.repeat(64);
 const ACCOUNT='acct_synthetic';
 const CUSTOMER='cus_synthetic';
 const NOW=Date.UTC(2026,9,4,18,30);
@@ -32,10 +36,13 @@ class FixedDate extends Date {constructor(...args){super(...(args.length ? args 
 function fixture(name,options={}) {
   const queries=[],rpcs=[],stripeCalls=[],errors=[];
   let handler;
-  const rows={companies:[{id:COMPANY,stripe_account_id:ACCOUNT,stripe_customer_id:CUSTOMER,settings:{currency:'CAD'},subscription_cancel_at:null}],
+  const rows={companies:[{id:COMPANY,stripe_account_id:ACCOUNT,stripe_customer_id:CUSTOMER,settings:{currency:'CAD'},subscription_cancel_at:null,plan_id:'professional'}],
+    profiles:[{id:USER,company_id:COMPANY,is_active:true,role:'admin',permissions:null}],
     invoices:[{id:INVOICE,company_id:COMPANY,status:'Sent',total:1000,amount_paid:100,invoice_number:'INV-SYNTHETIC',has_payment_schedule:false}],
+    invoice_share_links:[{id:'00000000-0000-4000-8000-000000000021',invoice_id:INVOICE,company_id:COMPANY,token_hash:createHash('sha256').update(INVOICE_TOKEN).digest('hex'),status:'Active',revoked_at:null,expires_at:null}],
+    quote_approvals:[{id:'00000000-0000-4000-8000-000000000022',quote_id:QUOTE,company_id:COMPANY,approval_token:QUOTE_TOKEN,approval_status:'Approved'}],
     quotes:[{id:QUOTE,company_id:COMPANY,status:'Approved',total:1000,deposit_amount:250,quote_number:'Q-SYNTHETIC'}],invoice_payment_schedules:[],...plain(options.rows || {})};
-  const db={from(table) {
+  const db={auth:{async getUser(token){return options.authResult || (token==='synthetic-user-token' ? {data:{user:{id:USER}},error:null} : {data:{user:null},error:{message:'invalid'}});}},from(table) {
     assert.ok(Object.hasOwn(rows,table),'Unexpected table '+table);
     const query={table,operation:'select',filters:[]};
     let evaluated;
@@ -74,7 +81,7 @@ function fixture(name,options={}) {
     }
   }
   const env={SUPABASE_URL:'https://synthetic.supabase.invalid',SUPABASE_SERVICE_ROLE_KEY:'synthetic-service',STRIPE_SECRET_KEY:'synthetic-stripe-key',STRIPE_WEBHOOK_SECRET:'synthetic-platform-secret',STRIPE_CONNECT_WEBHOOK_SECRET:'synthetic-connect-secret',RESEND_WEBHOOK_SECRET:'synthetic-resend-secret',RESEND_REPLY_DOMAIN:'reply.fuzedflow.com',APP_URL:'https://app.fuzedflow.com',...options.env};
-  vm.runInNewContext(bundles[name],{Request,Response,Headers,URL,crypto,Date:FixedDate,TestStripe,Deno:{serve:value=>{handler=value;},env:{get:key=>env[key]}},
+  vm.runInNewContext(bundles[name],{Request,Response,Headers,URL,crypto:webcrypto,TextEncoder,Uint8Array,Date:FixedDate,TestStripe,Deno:{serve:value=>{handler=value;},env:{get:key=>env[key]}},
     captureHandler:value=>{handler=value;},testClient:()=>db,console:{error:message=>errors.push(message)},
     fetch:()=>{throw new Error('No network is permitted.');},
   },{timeout:1000});
@@ -83,7 +90,7 @@ function fixture(name,options={}) {
 function checkout(overrides={}) {return {object:'checkout.session',id:'cs_synthetic',mode:'payment',payment_status:'paid',payment_intent:'pi_synthetic',amount_total:12345,created:NOW/1000,metadata:{company_id:COMPANY,invoice_id:INVOICE},...overrides};}
 function event(type='checkout.session.completed',object=checkout(),account=ACCOUNT){return {id:'evt_synthetic',type,...(account ? {account} : {}),data:{object}};}
 function request(value,signature='synthetic-signature') {return new Request('https://synthetic.supabase.invalid/functions/v1/stripe-webhook',{method:'POST',headers:{'Content-Type':'application/json',...(signature ? {'Stripe-Signature':signature} : {})},body:JSON.stringify(value)});}
-function depositRequest(input={quote_id:QUOTE}) {return new Request('https://synthetic.supabase.invalid/functions/v1/createDepositCheckout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});}
+function depositRequest(input={quote_id:QUOTE,token:QUOTE_TOKEN},authorization=null) {return new Request('https://synthetic.supabase.invalid/functions/v1/createDepositCheckout',{method:'POST',headers:{'Content-Type':'application/json',...(authorization ? {Authorization:`Bearer ${authorization}`} : {})},body:JSON.stringify(input)});}
 function subscription(overrides={}) {return {id:'sub_synthetic',customer:CUSTOMER,status:'active',items:{data:[{price:{id:SUBSCRIPTION_PRICES.professional.monthly},quantity:1}]},current_period_end:NOW/1000+86400,metadata:{company_id:COMPANY},...overrides};}
 function savedContext(type='invoice') {return {company_id:COMPANY,stripe_account_id:ACCOUNT,document_type:type,document_id:type==='invoice' ? INVOICE : QUOTE};}
 const payments=view=>view.rpcs.filter(call=>call.name==='record_stripe_payment');
@@ -91,4 +98,4 @@ const sales=view=>view.rpcs.filter(call=>call.name==='record_sales_event');
 const updates=view=>view.queries.filter(query=>query.operation==='update');
 
 
-export {fixture,checkout,event,request,depositRequest,subscription,savedContext,payments,sales,updates,COMPANY,OTHER,INVOICE,QUOTE,ACCOUNT,CUSTOMER,NOW};
+export {fixture,checkout,event,request,depositRequest,subscription,savedContext,payments,sales,updates,COMPANY,OTHER,INVOICE,QUOTE,USER,INVOICE_TOKEN,QUOTE_TOKEN,ACCOUNT,CUSTOMER,NOW};

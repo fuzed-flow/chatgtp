@@ -1,5 +1,3 @@
-import { notifyDocumentActivity } from '@/lib/documentActivity';
-import { getPublicProject } from "@/lib/publicProject";
 import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "@/api/supabaseClient"; 
 import { 
@@ -12,10 +10,32 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "../components/pdf/PDFGenerator";
 import { formatCurrencyUSD } from "../components/utils/formatCurrency";
+import { buildPublicInvoiceUrl, getPublicInvoiceBundle, trackPublicInvoiceView } from "@/lib/invoiceSharing";
+
+const EMPTY_INVOICE_DATA = {
+  invoice: null, client: null, project: null, company: null,
+  scheduleItems: [], payments: [], invoicePhases: [], invoiceItems: [], manualItems: []
+};
+
+const safeBrandColor = value => /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(String(value || ""))
+  ? String(value)
+  : "#f59e0b";
+
+const readableBrandText = value => {
+  const compact = value.slice(1);
+  const hex = compact.length === 3 ? compact.split("").map(character => character.repeat(2)).join("") : compact;
+  const channels = [0, 2, 4].map(offset => parseInt(hex.slice(offset, offset + 2), 16) / 255)
+    .map(channel => channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  const luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  const whiteContrast = 1.05 / (luminance + 0.05);
+  const slateContrast = (luminance + 0.05) / 0.0586;
+  return whiteContrast >= slateContrast ? "#ffffff" : "#0f172a";
+};
 
 export default function PublicInvoiceView() {
   const params = new URLSearchParams(window.location.search);
-  const invoiceId = params.get("id") || window.location.pathname.split("/").pop();
+  const invoiceId = params.get("id");
+  const token = params.get("token");
 
   // ==========================================
   // 1. ALL HOOKS MUST GO AT THE TOP LEVEL
@@ -23,122 +43,83 @@ export default function PublicInvoiceView() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
-  const [dbData, setDbData] = useState({
-    invoice: null, client: null, project: null, company: null,
-    scheduleItems: [], payments: [], invoicePhases: [], invoiceItems: [], manualItems: []
-  });
+  const [dbData, setDbData] = useState(EMPTY_INVOICE_DATA);
   const notificationFired = useRef(false);
 
   // --- SUCCESS TOAST CATCHER ---
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("payment") === "success") {
+    if (urlParams.get("payment") === "success" && invoiceId && token) {
       toast.success("Payment submitted. Your balance updates after payment confirmation.", { duration: 8000 });
-      window.history.replaceState(null, '', window.location.pathname + `?id=${invoiceId}`);
+      const secureInvoiceUrl = new URL(buildPublicInvoiceUrl(window.location.origin, invoiceId, token));
+      window.history.replaceState(null, "", `${secureInvoiceUrl.pathname}${secureInvoiceUrl.search}`);
     }
-  }, [invoiceId]);
+  }, [invoiceId, token]);
 
   // --- BULLETPROOF VANILLA DATA FETCHING ---
   useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    setIsError(false);
+    setDbData(EMPTY_INVOICE_DATA);
+
     const fetchInvoiceData = async () => {
-      if (!invoiceId || invoiceId === "PublicInvoiceView") {
-        setIsLoading(false);
+      if (!invoiceId || !token) {
+        if (active) setIsLoading(false);
         return;
       }
       
       try {
-        const { data: invData, error: invError } = await supabase
-          .from("invoices")
-          .select("*")
-          .eq("id", invoiceId)
-          .single();
-
-        if (invError || !invData) throw new Error("Invoice not found");
-
-        const [
-          { data: clientData },
-          { data: companyData },
-          { data: projectData },
-          { data: scheduleData },
-          { data: paymentsData },
-          { data: phasesData },
-          { data: invItemsData },
-          { data: manualItemsData }
-        ] = await Promise.all([
-          invData.client_id ? supabase.from("clients").select("*").eq("id", invData.client_id).single() : Promise.resolve({ data: null }),
-          invData.company_id ? supabase.from("companies").select("*").eq("id", invData.company_id).single() : Promise.resolve({ data: null }),
-          invData.project_id ? getPublicProject("invoice", invoiceId).then(data => ({ data: data.project })) : Promise.resolve({ data: null }),
-          supabase.from("invoice_payment_schedules").select("*").eq("invoice_id", invoiceId).order("sort_order", { ascending: true }),
-          supabase.from("payments").select("*").eq("invoice_id", invoiceId).order("created_at", { ascending: false }),
-          supabase.from("invoice_phases").select("*").eq("invoice_id", invoiceId).order("sort_order"),
-          supabase.from("invoice_line_items").select("*").eq("invoice_id", invoiceId).not("phase_id", "is", null).order("display_order"),
-          supabase.from("invoice_line_items").select("*").eq("invoice_id", invoiceId).is("phase_id", null).order("display_order")
-        ]);
+        const bundle = await getPublicInvoiceBundle(invoiceId, token);
+        if (!active) return;
+        const allItems = bundle.items || bundle.invoice_items || [];
 
         setDbData({
-          invoice: invData,
-          client: clientData,
-          company: companyData,
-          project: projectData,
-          scheduleItems: scheduleData || [],
-          payments: paymentsData || [],
-          invoicePhases: phasesData || [],
-          invoiceItems: invItemsData || [],
-          manualItems: manualItemsData || []
+          invoice: bundle.invoice,
+          client: bundle.recipient || bundle.client || null,
+          company: bundle.company || null,
+          project: bundle.project || null,
+          scheduleItems: bundle.schedule_items || [],
+          payments: bundle.payments || [],
+          invoicePhases: bundle.phases || [],
+          invoiceItems: allItems.filter(item => item.phase_id),
+          manualItems: allItems.filter(item => !item.phase_id)
         });
 
       } catch (error) {
+        if (!active) return;
         console.error("Failed to load invoice payload:", error);
         setIsError(true);
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     };
 
     fetchInvoiceData();
-  }, [invoiceId]);
+    return () => { active = false; };
+  }, [invoiceId, token]);
 
   const { invoice, client, project, company, scheduleItems, payments, invoicePhases, invoiceItems, manualItems } = dbData;
 
-  // --- TEAM NOTIFIER ---
+  // Record a valid secure-link view without exposing direct table access.
   useEffect(() => {
-    const activeCompanyId = company?.id || invoice?.company_id;
-    
-    if (!invoice?.id || !activeCompanyId) return;
-    if (notificationFired.current) return;
-
-    const clientName = invoice?.client_name || "A client";
-
-    const notifyTeam = async () => {
-      notificationFired.current = true; 
-      try {
-        await notifyDocumentActivity( {
-          body: {
-            event_key: "invoice_viewed",
-            document_uuid: invoice.id,
-            document_id: invoice.invoice_number,
-            company_id: activeCompanyId, 
-            message_body: `${clientName} just viewed Invoice ${invoice.invoice_number}`
-          }
-        });
-      } catch (error) {
-        console.error("Silent notification failed:", error);
-        notificationFired.current = false;
-      }
-    };
-    
-    notifyTeam();
-  }, [invoice?.id, company?.id, invoice?.company_id]); 
+    const viewKey = invoice?.id && token ? `${invoice.id}:${token}` : null;
+    if (!viewKey || notificationFired.current === viewKey) return;
+    notificationFired.current = viewKey;
+    trackPublicInvoiceView(invoice.id, token).catch(() => {
+      if (notificationFired.current === viewKey) notificationFired.current = null;
+    });
+  }, [invoice?.id, token]);
 
 
   // ==========================================
   // 2. SAFE EARLY RETURNS GO HERE
   // ==========================================
-  if (!invoiceId || invoiceId === "PublicInvoiceView") {
+  if (!invoiceId || !token) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
         <h2 className="text-xl font-bold text-slate-900 mb-2">Invalid Invoice Link</h2>
-        <p className="text-slate-500">This link is missing the secure invoice ID.</p>
+        <p className="text-slate-500">Ask your contractor to resend the secure invoice link.</p>
       </div>
     );
   }
@@ -156,7 +137,7 @@ export default function PublicInvoiceView() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
         <h2 className="text-xl font-bold text-red-600 mb-2">Failed to Load Invoice</h2>
-        <p className="text-slate-500">This invoice may have been deleted or the link is invalid.</p>
+        <p className="text-slate-500">This secure link is invalid or no longer available. Ask your contractor for a new link.</p>
       </div>
     );
   }
@@ -165,7 +146,8 @@ export default function PublicInvoiceView() {
   // 3. UI RENDER VARIABLES
   // ==========================================
   const settings = company?.settings || {};
-  const brandColor = settings?.pdf?.brand_color || '#f59e0b';
+  const brandColor = safeBrandColor(settings?.pdf?.brand_color);
+  const brandTextColor = readableBrandText(brandColor);
   const logoUrl = company?.logo_url || company?.company_logo_url;
   
   const primaryTaxRate = (settings?.tax_rate ?? 5) / 100;
@@ -192,48 +174,34 @@ export default function PublicInvoiceView() {
       await generateInvoicePDF({
         invoice: blindInvoicePayload, client, project, quotePhases: invoicePhases, quoteItems: invoiceItems, manualItems, scheduleItems, payments, organization: company
       });
-    } catch (error) { toast.error("Failed to generate PDF"); }
+    } catch { toast.error("Failed to generate PDF"); }
   };
 
   const handlePayInvoice = async () => {
   try {
     setIsProcessingPayment(true);
 
-    // 1. Determine the amount to charge
-    let amountToCharge = invoice.balance_due;
+    const successUrl = new URL(buildPublicInvoiceUrl(window.location.origin, invoice.id, token));
+    successUrl.searchParams.set("payment", "success");
+    const cancelUrl = new URL(buildPublicInvoiceUrl(window.location.origin, invoice.id, token));
+    cancelUrl.searchParams.set("payment", "canceled");
 
-    // If you have your payment schedule items loaded in this component, 
-    // find the next unpaid milestone. (Adjust 'scheduleItems' to match your actual variable name)
-    if (scheduleItems && scheduleItems.length > 0) {
-      const nextUnpaid = scheduleItems.find(item => item.status !== "Paid");
-      if (nextUnpaid) {
-        // Charge the milestone amount minus anything they might have already partially paid toward it
-        amountToCharge = nextUnpaid.amount - (nextUnpaid.amount_paid || 0);
-      }
-    }
-
-    if (amountToCharge <= 0) {
-      toast.error("This invoice is already fully paid.");
-      setIsProcessingPayment(false);
-      return;
-    }
-
-    // 2. Call your new Stripe Edge Function
+    // The server validates the token and derives the payable amount from the invoice.
     const { data, error } = await supabase.functions.invoke("createDepositCheckout", {
       body: {
         invoice_id: invoice.id,
-        invoice_number: invoice.invoice_number,
-        amount: amountToCharge, 
-        success_url: `${window.location.origin}/InvoiceView?id=${invoice.id}&success=true`,
-        cancel_url: `${window.location.origin}/InvoiceView?id=${invoice.id}&canceled=true`
+        token,
+        success_url: successUrl.toString(),
+        cancel_url: cancelUrl.toString()
       }
     });
 
     if (error) throw error;
 
     // 3. Redirect the client to the secure Stripe Checkout URL
-    if (data?.url) {
-      window.location.href = data.url;
+    const checkoutUrl = data?.checkout_url || data?.url;
+    if (checkoutUrl) {
+      window.location.href = checkoutUrl;
     } else {
       throw new Error("Failed to generate payment link.");
     }
@@ -515,8 +483,8 @@ export default function PublicInvoiceView() {
               <Button 
                 onClick={handlePayInvoice} 
                 disabled={isProcessingPayment}
-                className="shadow-lg font-black h-12 px-8 text-white transition-transform hover:scale-105" 
-                style={{ backgroundColor: brandColor }}
+                className="shadow-lg font-black h-12 px-8 transition-transform hover:scale-105"
+                style={{ backgroundColor: brandColor, color: brandTextColor }}
               >
                 {isProcessingPayment ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>

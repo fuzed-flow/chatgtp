@@ -227,5 +227,5 @@ test('Approved quote keeps its separate deposit payment action',async()=>{
   const {source}=await readPage('PublicQuoteView');
   assert.match(source, /quote\.status === "Approved" && Number\(quote\.deposit_amount\) > Number\(quote\.deposit_paid_amount \|\| 0\)/);
   assert.match(source, /onClick=\{payDeposit\}/);
-  assert.match(source, /body: \{ quote_id: quote\.id \}/, 'The browser sends only the quote ID; the server derives the payment amount.');
+  assert.match(source, /body: \{ quote_id: quote\.id, token \}/, 'The browser sends the secure capability, while the server derives the payment amount.');
 });

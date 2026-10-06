@@ -6,7 +6,14 @@ import { toast } from "sonner";
 const DOCUMENTS = {
   quote: { table: "quotes", detailKeys: ["quote"], listKeys: ["quotes"] },
   change_order: { table: "change_orders", detailKeys: ["change-order", "change_order"], listKeys: ["change-orders", "change_orders"] },
-  invoice: { table: "invoices", detailKeys: ["invoice", "invoice_client_view"], listKeys: ["invoices"] },
+  invoice: {
+    table: "invoices",
+    detailKeys: ["invoice", "invoice_client_view"],
+    listKeys: ["invoices"],
+    // Sending a draft advances it to Sent. A payment, overdue, cancellation,
+    // or other accounting status may have changed concurrently and must win.
+    sentOnlyFromStatus: "Draft",
+  },
   client_update: {
     table: "client_updates",
     detailKeys: ["client-update"],
@@ -139,7 +146,13 @@ export function useDocumentEmailSend({
 
       const document = DOCUMENTS[intent.payload.document_type];
       if (!intent.statusSaved) {
-        const { error } = await supabase.from(document.table).update(document.sentPatch ? document.sentPatch() : { status: "Sent" }).eq("id", intent.payload.document_id);
+        let statusWrite = supabase.from(document.table)
+          .update(document.sentPatch ? document.sentPatch() : { status: "Sent" })
+          .eq("id", intent.payload.document_id);
+        if (document.sentOnlyFromStatus) {
+          statusWrite = statusWrite.eq("status", document.sentOnlyFromStatus);
+        }
+        const { error } = await statusWrite;
         if (error) throw new Error("The client email was sent, but the document status could not be saved. Retry to finish safely.");
         intent.statusSaved = true;
         for (const key of document.detailKeys) queryClient.invalidateQueries({ queryKey: [key, intent.payload.document_id] });
