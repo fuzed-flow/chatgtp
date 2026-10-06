@@ -20,13 +20,13 @@ Deno.serve(async req=>{
   const digest=[...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,'0')).join('');
   const db=createClient(Deno.env.get('SUPABASE_URL')!,salt);
   const {data:id,error}=await db.rpc('record_storefront_enquiry',{p_fields:fields,p_digest:digest});
-  if(error)return respond({error:'Please try again later or email support@fuzedflow.com.'},429);
+  if(error)return respond({error:'Please try again later or call 1(855) 904-5509.'},429);
   const key=Deno.env.get('RESEND_API_KEY');
   if(key){
-   const email=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({from:'Fuzed Flow <alerts@mail.fuzedflow.com>',to:'support@fuzedflow.com',reply_to:fields.email,subject:`Storefront ${fields.kind} request`,html:'<h2>New Fuzed Flow enquiry</h2>'+Object.entries(fields).map(([label,value])=>`<p><strong>${escapeHtml(label)}</strong>: ${escapeHtml(value)}</p>`).join('')})});
+   const email=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({from:'Fuzed Flow <alerts@mail.fuzedflow.com>',to:'fuzedflow@gmail.com',reply_to:fields.email,subject:`Storefront ${fields.kind} request`,html:'<h2>New Fuzed Flow enquiry</h2>'+Object.entries(fields).map(([label,value])=>`<p><strong>${escapeHtml(label)}</strong>: ${escapeHtml(value)}</p>`).join('')})});
    await db.from('storefront_enquiries').update({notification_status:email.ok?'sent':'failed'}).eq('id',id);
    if(!email.ok)console.error(JSON.stringify({level:'error',route:'storefront-enquiry',message:'Notification delivery failed',status:email.status}));
   }
   return respond({ok:true});
- }catch{console.error(JSON.stringify({level:'error',route:'storefront-enquiry',message:'Request processing failed'}));return respond({error:'Your request could not be saved. Please email support@fuzedflow.com.'},500);}
+ }catch{console.error(JSON.stringify({level:'error',route:'storefront-enquiry',message:'Request processing failed'}));return respond({error:'Your request could not be saved. Please call 1(855) 904-5509.'},500);}
 });
