@@ -40,6 +40,7 @@ import ProjectCloseoutView from './pages/ProjectCloseoutView';
 
 // --- COMPONENTS ---
 import AIHelpWidget from "./components/shared/AIHelpWidget";
+import { AIHelpProvider } from "./components/shared/AIHelpContext";
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -89,7 +90,7 @@ const AuthenticatedApp = () => {
   }
 
   return (
-    <>
+    <AIHelpProvider>
       <Routes>
         {/* 🟢 EVERYONE (Default entry for Employees) */}
         <Route path="/EmployeePortal" element={
@@ -196,7 +197,7 @@ const AuthenticatedApp = () => {
 
       {/* 🤖 GLOBAL AI HELP WIDGET FOR AUTHENTICATED USERS */}
       <AIHelpWidget />
-    </>
+    </AIHelpProvider>
   );
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useCallback, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/api/supabaseClient"; 
 import { MessageCircle, X, Send, Bot, User, Loader2 } from "lucide-react";
@@ -9,6 +9,7 @@ import AIHelpAnswer from "./AIHelpAnswer";
 import { isPublicHelpRoute } from "@/lib/helpPortal";
 import { useAuth } from "@/lib/AuthContext";
 import { isAllowedHelpLink } from "../../../supabase/functions/_shared/helpLinks.js";
+import { useAIHelp } from "./AIHelpContext";
 
 const GREETING = { role: "ai", text: "Hi! I'm the FuzedFlow Helper. What can I help you find today?" };
 const MOBILE_DRAG_QUERY = "(max-width: 767px), ((pointer: coarse) and (max-width: 1023px))";
@@ -56,6 +57,7 @@ const readSavedMobilePosition = () => {
 
 export default function AIHelpWidget() {
   const { profile } = useAuth();
+  const { isDialogOpen, registerOpenHelp } = useAIHelp();
   const conversationScope = `${profile?.id || ''}:${profile?.role || ''}`;
   const scopeRef = useRef(conversationScope);
   const requestGenerationRef = useRef(0);
@@ -68,6 +70,7 @@ export default function AIHelpWidget() {
   const dragSessionRef = useRef(null);
   const longPressTimerRef = useRef(null);
   const suppressOpenRef = useRef(false);
+  const returnFocusTargetRef = useRef(null);
   const [viewport, setViewport] = useState(null);
   const [canDragOnMobile, setCanDragOnMobile] = useState(isMobileDragViewport);
   const [mobilePosition, setMobilePosition] = useState(null);
@@ -75,9 +78,31 @@ export default function AIHelpWidget() {
   
   // 👈 Get the current page URL
   const location = useLocation(); 
+  const isHidden = isPublicHelpRoute(location.pathname);
 
   // 1. Updated AI Persona
   const [messages, setMessages] = useState([GREETING]);
+
+  const restoreFocusToDialogTrigger = useCallback(() => {
+    const target = returnFocusTargetRef.current;
+    returnFocusTargetRef.current = null;
+    if (target && document.contains(target)) window.requestAnimationFrame(() => target.focus());
+  }, []);
+
+  const openHelpFromDialog = useCallback(({ returnFocusTarget } = {}) => {
+    returnFocusTargetRef.current = returnFocusTarget instanceof HTMLElement ? returnFocusTarget : null;
+    setIsOpen(true);
+  }, []);
+
+  const handleOpenChange = useCallback((open) => {
+    setIsOpen(open);
+    if (!open) restoreFocusToDialogTrigger();
+  }, [restoreFocusToDialogTrigger]);
+
+  useEffect(() => {
+    if (isHidden) return undefined;
+    return registerOpenHelp(openHelpFromDialog);
+  }, [isHidden, openHelpFromDialog, registerOpenHelp]);
 
   useEffect(() => {
     scopeRef.current = conversationScope;
@@ -235,9 +260,6 @@ export default function AIHelpWidget() {
     suppressOpenRef.current = false;
   };
 
-  // 2. Hide widget on specific portal pages
-  const isHidden = isPublicHelpRoute(location.pathname);
-
   // 👈 If they are on a hidden route, render nothing
   if (isHidden) return null; 
 
@@ -279,7 +301,7 @@ export default function AIHelpWidget() {
   };
   
   return (
-    <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
       <Dialog.Trigger asChild>
         <button ref={triggerRef} type="button" aria-label="Open AI help" aria-describedby={canDragOnMobile ? "ai-help-drag-instructions" : undefined}
           data-dragging={isDragging ? "true" : "false"}
@@ -291,7 +313,7 @@ export default function AIHelpWidget() {
           onPointerCancel={finishTriggerPointerInteraction}
           onClick={handleTriggerClick}
           onContextMenu={(event) => { if (canDragOnMobile) event.preventDefault(); }}
-          className={`fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-[115] flex h-14 w-14 select-none items-center justify-center gap-0 rounded-full bg-amber-500 px-0 text-slate-900 shadow-xl transition-[background-color,box-shadow,transform] hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 sm:w-auto sm:gap-2 sm:px-4 lg:bottom-6 lg:right-6 ${canDragOnMobile ? "touch-none" : "touch-manipulation"} ${isDragging ? "cursor-grabbing scale-[1.04] shadow-2xl ring-4 ring-amber-200" : canDragOnMobile ? "cursor-grab" : ""}`}>
+          className={`fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-[115] flex h-14 w-14 select-none items-center justify-center gap-0 rounded-full bg-amber-500 px-0 text-slate-900 shadow-xl transition-[background-color,box-shadow,transform] hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 sm:w-auto sm:gap-2 sm:px-4 lg:bottom-6 lg:right-6 ${isDialogOpen ? "pointer-events-none scale-95 opacity-0" : ""} ${canDragOnMobile ? "touch-none" : "touch-manipulation"} ${isDragging ? "cursor-grabbing scale-[1.04] shadow-2xl ring-4 ring-amber-200" : canDragOnMobile ? "cursor-grab" : ""}`}>
           <MessageCircle className="h-6 w-6" aria-hidden="true" />
           <span className="hidden text-sm font-semibold sm:inline">AI Help</span>
           {canDragOnMobile && <span id="ai-help-drag-instructions" className="sr-only">Tap to open. Press and hold, then drag to move this button.</span>}
@@ -300,6 +322,11 @@ export default function AIHelpWidget() {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[120] bg-slate-950/40" />
         <Dialog.Content
+          onCloseAutoFocus={(event) => {
+            if (!returnFocusTargetRef.current) return;
+            event.preventDefault();
+            restoreFocusToDialogTrigger();
+          }}
           style={viewport ? { "--help-viewport-height": `${viewport.height}px`, "--help-keyboard-inset": `${viewport.inset}px` } : undefined}
           className="fixed left-3 right-3 bottom-[calc(var(--help-keyboard-inset,0px)+env(safe-area-inset-bottom)+0.75rem)] z-[121] flex h-[min(34rem,calc(var(--help-viewport-height,100dvh)-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem))] min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl focus:outline-none sm:left-auto sm:right-6 sm:bottom-6 sm:w-[400px] sm:h-[min(36rem,calc(var(--help-viewport-height,100dvh)-3rem))]">
             <div className="bg-slate-900 text-white px-3 py-2 flex justify-between items-center gap-2 shrink-0">
