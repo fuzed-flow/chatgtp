@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { hasModulePermission, normalizeRole } from '@/lib/roleAccess';
 
-export default function RoleGuard({ allowedRoles, children, redirectTo = '/EmployeePortal' }) {
-  const { profile } = useAuth();
+export default function RoleGuard({
+  allowedRoles,
+  requiredPermission,
+  permissionExemptRoles = [],
+  children,
+  redirectTo = '/EmployeePortal',
+}) {
+  const { profile, company } = useAuth();
   
   // 🛡️ CRITICAL FIX: Check if Google Auth is currently passing a token in the URL
   const [isProcessingOAuth, setIsProcessingOAuth] = useState(
@@ -30,11 +37,15 @@ export default function RoleGuard({ allowedRoles, children, redirectTo = '/Emplo
     );
   }
 
-  // Extract the role, defaulting to 'employee' if it's missing
-  const userRole = profile?.role || 'employee';
+  if (!profile || profile.is_active === false) {
+    return <Navigate to="/login" replace />;
+  }
 
-  // If their role is NOT in the allowed list, kick them out
-  if (!allowedRoles.includes(userRole)) {
+  // Legacy `user` accounts receive the current least-privileged field role.
+  const userRole = normalizeRole(profile?.role || profile?.user_role);
+
+  // Route checks mirror the same module list used to hide navigation items.
+  if (!allowedRoles.includes(userRole) || !hasModulePermission(profile, requiredPermission, permissionExemptRoles, company?.plan_id)) {
     return <Navigate to={redirectTo} replace />;
   }
 

@@ -60,9 +60,9 @@ const configModule = `
   const simple = name => () => <Page name={name} />;
   export const pagesConfig = {
     mainPage: 'Dashboard',
-    Layout: ({ children }) => <div data-layout='app'><Link to='/Dashboard'>Dashboard</Link>{children}</div>,
+    Layout: ({ children, currentPageName }) => <div data-layout='app' data-current-page={currentPageName}><Link to='/Dashboard'>Dashboard</Link>{children}</div>,
     Pages: {
-      Dashboard: simple('Dashboard'), Invoices: simple('Invoices'), HumanResources: simple('HumanResources'), AdminSettings: simple('AdminSettings'),
+      Dashboard: simple('Dashboard'), PMProjects: simple('PMProjects'), Invoices: simple('Invoices'), HumanResources: simple('HumanResources'), AdminSettings: simple('AdminSettings'),
       QuoteBuilder: () => <Builder name='QuoteBuilder' />,
       ChangeOrderBuilder: () => <Builder name='ChangeOrderBuilder' />,
       InvoiceBuilder: () => <Builder name='InvoiceBuilder' />,
@@ -114,7 +114,13 @@ async function appView(path, role = 'owner', authenticated = true) {
   });
   const { window } = dom;
   for (const key of ['Request', 'Response', 'Headers', 'AbortController', 'AbortSignal']) window[key] = globalThis[key];
-  window.fixtureAuth = { loading: false, user: authenticated ? { id: 'synthetic-user' } : null, profile: { role } };
+  const profile = typeof role === 'object' ? role : { role };
+  window.fixtureAuth = {
+    loading: false,
+    user: authenticated ? { id: 'synthetic-user' } : null,
+    profile,
+    company: { plan_id: profile.plan_id || 'business' },
+  };
   window.fixtureAuthMounts = 0;
   window.fixtureBuilderMounts = 0;
   window.fixtureSaveRequests = [];
@@ -186,8 +192,46 @@ test('actual App retains manager, office, and employee RoleGuard boundaries', as
       await view.wait(() => view.heading() === expected);
       assert.equal(view.document.querySelector('main').dataset.authScope, 'protected');
       assert.ok(view.document.querySelector('[data-layout="app"]'));
+      if (expected === 'AdminSettings') assert.equal(view.document.querySelector('[data-layout="app"]').dataset.currentPage, 'AdminSettings');
       assert.ok(view.document.querySelector('[aria-label="AI help"]'));
       assert.equal(view.window.location.pathname, expected === 'EmployeePortal' ? '/EmployeePortal' : route.split('?')[0]);
+      assert.deepEqual(view.errors, []);
+    } finally { view.dom.window.close(); }
+  }
+});
+
+test('legacy Settings redirects only authorized manager/admin users to the active AdminSettings route', async () => {
+  for (const [profile, expected, expectedPath] of [
+    [{ role: 'manager', is_active: true, permissions: [] }, 'AdminSettings', '/AdminSettings'],
+    [{ role: 'admin', is_active: true, permissions: ['tasks'] }, 'AdminSettings', '/AdminSettings'],
+    [{ role: 'office', is_active: true, permissions: [] }, 'EmployeePortal', '/EmployeePortal'],
+  ]) {
+    const view = await appView('/Settings', profile);
+    try {
+      await view.wait(() => view.heading() === expected && view.window.location.pathname === expectedPath);
+      if (expected === 'AdminSettings') assert.equal(view.document.querySelector('[data-layout="app"]').dataset.currentPage, 'AdminSettings');
+      assert.deepEqual(view.errors, []);
+    } finally { view.dom.window.close(); }
+  }
+});
+
+test('actual App applies module permissions, inactive denial, and invoice role restrictions to direct URLs', async () => {
+  for (const [profile, route, expected] of [
+    [{ role: 'manager', is_active: true, permissions: [] }, '/InvoiceBuilder?id=one', 'EmployeePortal'],
+    [{ role: 'manager', is_active: true, permissions: ['tasks'] }, '/PMProjects', 'EmployeePortal'],
+    [{ role: 'manager', is_active: true, permissions: ['projects'] }, '/PMProjects', 'PMProjects'],
+    [{ role: 'office', is_active: true, permissions: ['tasks'] }, '/Invoices', 'EmployeePortal'],
+    [{ role: 'office', is_active: true, permissions: ['human_resources'] }, '/HumanResources', 'HumanResources'],
+    [{ role: 'manager', is_active: true, permissions: ['tasks'], plan_id: 'professional' }, '/PMProjects', 'PMProjects'],
+    [{ role: 'office', is_active: true, permissions: ['tasks'], plan_id: 'starter' }, '/Invoices', 'Invoices'],
+    [{ role: 'employee', is_active: true, permissions: [] }, '/Warranty', 'Warranty'],
+    [{ role: 'owner', is_active: false, permissions: [] }, '/PMProjects', 'Login'],
+  ]) {
+    const view = await appView(route, profile);
+    try {
+      await view.wait(() => view.heading() === expected);
+      const expectedPath = expected === 'EmployeePortal' ? '/EmployeePortal' : expected === 'Login' ? '/login' : route.split('?')[0];
+      assert.equal(view.window.location.pathname, expectedPath);
       assert.deepEqual(view.errors, []);
     } finally { view.dom.window.close(); }
   }

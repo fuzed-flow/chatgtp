@@ -35,8 +35,8 @@
     "feature_area": "Help & Support",
     "audience": "all",
     "question": "Where is the office menu on mobile?",
-    "answer_short": "The mobile hamburger is replaced by a bottom bar for Dashboard, Leads, Projects, Tasks, and More.",
-    "answer_long": "On a phone, use the bottom bar for one-tap access to **Dashboard**, **Leads**, **Projects**, and **Tasks**. Tap **More** to open every other page allowed by your role, grouped by workspace area. Selecting a destination closes the More sheet.\n\nSearch, notifications, Help, and the account menu remain in the top bar. The full desktop sidebar is unchanged and can still be collapsed. Employees and subcontractors continue to use Employee Portal and its own mobile section navigation.\n\nIf a destination is missing from More, ask a company administrator to check your role and permissions. Changing the URL does not grant access. The bottom bar reserves space below page content, including the device safe area, so it should not cover the last form controls.",
+    "answer_short": "Office roles use Dashboard, Leads, Projects, Tasks, and More; field roles use Clock when enabled, Projects, Schedule, Tasks, and More.",
+    "answer_long": "On a phone, owners, administrators, managers, and office staff use the office bottom bar for one-tap access to **Dashboard**, **Leads**, **Projects**, and **Tasks**. Tap **More** to open every other page allowed by your role, grouped by workspace area. Selecting a destination closes the More sheet.\n\nEmployees and subcontractors use the field portal instead of the office navigation. Its primary mobile actions are **Clock** when enabled, **Projects**, **Schedule**, **Tasks**, and **More**. Open **More** for other enabled modules, **Profile**, and **Warranty**. On desktop, field staff use the Employee Portal sidebar.\n\nSearch, notifications, Help, and the account menu remain in the top bar. Owners, administrators, managers, and office staff who open **My Portal** keep the normal office workspace and use a compact portal section selector instead of receiving a second sidebar or bottom bar.\n\nIf a destination is missing, ask a company administrator to check your role, module settings, and permissions. Changing the URL does not grant access. The bottom bars reserve space below page content, including the device safe area, so they should not cover the last form controls.",
     "route": "/HelpArticles",
     "source_files": [
       "src/Layout.jsx",
@@ -55,7 +55,7 @@
     "priority": 80,
     "article_type": "faq",
     "read_minutes": 1,
-    "last_verified_at": "2026-10-05",
+    "last_verified_at": "2026-10-06",
     "is_active": true
   }
 ]

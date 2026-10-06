@@ -29,7 +29,9 @@ const clampMobilePosition = (position, buttonWidth, buttonHeight) => {
   const viewportWidth = visualViewport?.width ?? window.innerWidth;
   const viewportHeight = visualViewport?.height ?? window.innerHeight;
   const viewportBottom = viewportTop + viewportHeight;
-  const mobileNavigationRect = document.querySelector('[aria-label="Primary mobile navigation"]')?.getBoundingClientRect();
+  const mobileNavigationRect = document
+    .querySelector('[data-mobile-navigation], [aria-label="Primary mobile navigation"], [aria-label="Employee portal mobile navigation"]')
+    ?.getBoundingClientRect();
   const unobstructedBottom = Number.isFinite(mobileNavigationRect?.top) && mobileNavigationRect.top > viewportTop
     ? Math.min(viewportBottom, mobileNavigationRect.top)
     : viewportBottom;

@@ -13,6 +13,7 @@ import { Plus, Package, ClipboardList, Trash2, Calendar, Briefcase, FileText, Ar
 import { format, parseISO, isValid } from "date-fns";
 import { toast } from "sonner";
 import EPEquipmentReservations from "./EPEquipmentReservations";
+import { hasModulePermission } from "@/lib/roleAccess";
 
 const safeParseDate = (dateString) => {
   if (!dateString) return null;
@@ -20,15 +21,19 @@ const safeParseDate = (dateString) => {
   return isValid(parsed) ? parsed : null;
 };
 
+const INVENTORY_FIELDS = "id,name,item_type,equipment_status,quantity_on_hand,quantity,unit";
+const TRANSACTION_FIELDS = "id,company_id,user_id,inventory_id,quantity_changed,project_name,notes,created_at,refunded_at";
+
 export default function EPInventory() {
   const qc = useQueryClient();
-  const { profile } = useAuth();
+  const { profile, company } = useAuth();
 
   const [open, setOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
 
   const activeCompanyId = profile?.company_id;
   const actorId = profile?.id;
+  const canBrowseProjects = hasModulePermission(profile, "projects", [], company?.plan_id);
 
   const defaultForm = {
     inventory_id: "",
@@ -40,38 +45,42 @@ export default function EPInventory() {
   const [form, setForm] = useState(defaultForm);
 
   // 1. Fetch Projects for the dropdown
-  const { data: projects = [] } = useQuery({
-    queryKey: ["inventory-assigned-projects", activeCompanyId, actorId],
-    enabled: !!activeCompanyId,
+  const projectsQuery = useQuery({
+    queryKey: ["inventory-assigned-projects", activeCompanyId, actorId, canBrowseProjects],
+    enabled: !!activeCompanyId && !!actorId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id, name").eq("company_id", activeCompanyId);
+      if (canBrowseProjects) {
+        const { data, error } = await supabase.from("projects").select("id,name").eq("company_id", activeCompanyId).order("name");
+        if (error) throw error;
+        return data || [];
+      }
+      const { data, error } = await supabase.from('project_staff').select('project_id,projects!inner(id,name,company_id)').eq('company_id', activeCompanyId).eq('projects.company_id', activeCompanyId).eq('user_id', actorId).or('is_active.is.null,is_active.eq.true');
       if (error) throw error;
-      if (['owner','admin','manager','office'].includes(profile?.role)) return data || [];
-      const { data: assignments, error: assignmentError } = await supabase.from('project_staff').select('project_id').eq('company_id', activeCompanyId).eq('user_id', actorId).neq('is_active', false);
-      if (assignmentError) throw assignmentError;
-      return (data || []).filter(p => assignments?.some(a => a.project_id === p.id));
+      return [...new Map((data || []).filter(row => row.projects).map(row => [row.project_id, row.projects])).values()];
     }
   });
+  const projects = projectsQuery.data || [];
 
   // 2. Fetch Actual Warehouse Inventory
-  const { data: inventory = [], isLoading: invLoading } = useQuery({
+  const inventoryQuery = useQuery({
     queryKey: ["inventory", activeCompanyId],
     enabled: !!activeCompanyId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("inventory").select("*").eq("company_id", activeCompanyId).order("name", { ascending: true });
+      const { data, error } = await supabase.from("inventory").select(INVENTORY_FIELDS).eq("company_id", activeCompanyId).order("name", { ascending: true });
       if (error) throw error;
       return data || [];
     }
   });
+  const inventory = inventoryQuery.data || [];
 
   // 3. Fetch My Inventory Transactions
-  const { data: ownLogs = [], isLoading: logsLoading } = useQuery({
+  const ownLogsQuery = useQuery({
     queryKey: ["inventory_transactions_mine", actorId, activeCompanyId],
     enabled: !!activeCompanyId && !!actorId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory_transactions")
-        .select("*")
+        .select(TRANSACTION_FIELDS)
         .eq("company_id", activeCompanyId)
         .eq("user_id", actorId)
         .order("created_at", { ascending: false });
@@ -80,10 +89,19 @@ export default function EPInventory() {
       return data || [];
     },
   });
+  const ownLogs = ownLogsQuery.data || [];
   // Older name-based records remain visible as read-only history. Only records
   // with a server-captured user_id can authorize a stock return.
-  const { data: legacyLogs = [] } = useQuery({ queryKey: ['inventory-legacy-history', activeCompanyId, actorId, profile?.full_name, profile?.email], enabled: !!activeCompanyId && !!actorId,
-    queryFn: async () => { const { data, error } = await supabase.from('inventory_transactions').select('*').eq('company_id', activeCompanyId).is('user_id', null).eq('employee_name', profile?.full_name || profile?.email).order('created_at', { ascending: false }); if (error) throw error; return data || []; } });
+  const legacyLogsQuery = useQuery({ queryKey: ['inventory-legacy-history', activeCompanyId, actorId, profile?.full_name], enabled: !!activeCompanyId && !!actorId && !!profile?.full_name,
+    queryFn: async () => {
+      const { data: matches, error: matchError } = await supabase.from('profiles').select('id').eq('company_id', activeCompanyId).eq('full_name', profile.full_name).or('is_active.is.null,is_active.eq.true');
+      if (matchError) throw matchError;
+      if (matches?.length !== 1 || matches[0].id !== actorId) return [];
+      const { data, error } = await supabase.from('inventory_transactions').select(TRANSACTION_FIELDS).eq('company_id', activeCompanyId).is('user_id', null).eq('employee_name', profile.full_name).order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } });
+  const legacyLogs = legacyLogsQuery.data || [];
   const logs = [...ownLogs, ...legacyLogs].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 
   // 4. Create Mutation (Deducts stock AND logs transaction into inventory_transactions)
@@ -128,6 +146,9 @@ export default function EPInventory() {
     if (!form.quantity || parseFloat(form.quantity) <= 0) {
       return toast.error("Please enter a valid amount taken.");
     }
+    if (form.project_id !== "none" && !projects.some(project => project.id === form.project_id)) {
+      return toast.error("Choose a project currently available to you.");
+    }
     createMutation.mutate(form);
   };
 
@@ -137,12 +158,16 @@ export default function EPInventory() {
   const takingQty = parseFloat(form.quantity) || 0;
   const remainingStock = currentInvStock - takingQty;
 
-  if (logsLoading || invLoading) {
+  if (ownLogsQuery.isLoading || legacyLogsQuery.isLoading || inventoryQuery.isLoading) {
     return (
       <div className="flex justify-center py-12">
         <div className="w-8 h-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin" />
       </div>
     );
+  }
+
+  if (ownLogsQuery.isError || legacyLogsQuery.isError || inventoryQuery.isError) {
+    return <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><p>Inventory could not be loaded. Check your connection and try again.</p><Button type="button" variant="outline" className="mt-3 min-h-11" onClick={() => { inventoryQuery.refetch(); ownLogsQuery.refetch(); legacyLogsQuery.refetch(); }}>Retry</Button></div>;
   }
 
   const renderLogRow = (log) => {
@@ -215,6 +240,13 @@ export default function EPInventory() {
           <Plus className="h-4 w-4 mr-1.5" /> Log Material Taken
         </Button>
       </div>
+
+      {projectsQuery.isError && (
+        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p>Your inventory and usage history are available, but project choices could not be loaded. You can still log shop or unassigned usage.</p>
+          <Button type="button" variant="outline" className="mt-3 min-h-11" onClick={() => projectsQuery.refetch()}>Retry projects</Button>
+        </div>
+      )}
 
       {/* LOGS TABLE */}
       <div className="space-y-4">
@@ -381,6 +413,8 @@ export default function EPInventory() {
                       {projects.map(p => <SelectItem key={p.id} value={p.id} className="font-bold">{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {projectsQuery.isLoading && <p className="mt-1 text-[10px] font-bold text-slate-500">Loading assigned projects…</p>}
+                  {projectsQuery.isError && <p className="mt-1 text-[10px] font-bold text-amber-700">Project choices unavailable; use Shop / Unassigned.</p>}
                 </div>
               </div>
             </div>

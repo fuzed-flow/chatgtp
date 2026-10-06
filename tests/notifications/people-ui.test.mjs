@@ -89,7 +89,7 @@ async function view(component, options={}) {
    if(record.single&&Array.isArray(data))data=data[0]??null;
    return {data:plain(data),error:null};
   });
-  const chain={select(projection){record.projection=projection;return chain;},eq(key,value){record.filters.push([key,value]);return chain;},in(key,value){record.filters.push([key,value]);return chain;},is(key,value){record.filters.push([key,value]);return chain;},or(value){record.or=value;return chain;},order(field,options){record.order={field,options};return chain;},limit(count){record.limit=count;return chain;},insert(payload){record.mode='insert';record.payload=payload;return chain;},update(payload){record.mode='update';record.payload=payload;return chain;},delete(){record.mode='delete';return chain;},single(){record.single=true;return resolve();},maybeSingle(){record.single=true;return resolve();},then:(yes,no)=>resolve().then(yes,no)};
+  const chain={select(projection){record.projection=projection;return chain;},eq(key,value){record.filters.push([key,value]);return chain;},in(key,value){record.filters.push([key,value]);return chain;},contains(key,value){record.filters.push([key,value]);record.contains=[key,value];return chain;},gte(key,value){record.filters.push([key,value]);record.gte=[key,value];return chain;},lte(key,value){record.filters.push([key,value]);record.lte=[key,value];return chain;},is(key,value){record.filters.push([key,value]);return chain;},or(value){record.or=value;return chain;},order(field,options){record.order={field,options};return chain;},limit(count){record.limit=count;return chain;},insert(payload){record.mode='insert';record.payload=payload;return chain;},update(payload){record.mode='update';record.payload=payload;return chain;},delete(){record.mode='delete';return chain;},single(){record.single=true;return resolve();},maybeSingle(){record.single=true;return resolve();},then:(yes,no)=>resolve().then(yes,no)};
   return chain;
  };
  f.rpc=async(name,params)=>{f.rpcs.push({name,params:plain(params)});return {data:{comments:[],dependencies:[],options:[{id:PREREQUISITE,title:'Prepare site'}],can_edit_dependencies:true,...f.workflow},error:null};};
@@ -197,6 +197,19 @@ for(const component of ['office_tasks','field_tasks'])test(`${component} follows
   assert.equal(v.f.queries.filter(q=>['project_tasks','tasks'].includes(q.table)).length,reads,'URL changes use existing scoped task data');
   v.window.navigatePeople(path+separator+'notificationTask=unavailable');
   await v.wait(()=>!v.document.querySelector('[role=dialog]'));
+ }finally{v.close();}
+});
+
+test('field task reads are server-filtered to the signed-in assignee with explicit projections',async()=>{
+ const v=await view('field_tasks');try{
+  await v.wait(()=>v.f.queries.some(q=>q.table==='project_tasks')&&v.f.queries.some(q=>q.table==='tasks'));
+  const project=v.f.queries.find(q=>q.table==='project_tasks');
+  const legacy=v.f.queries.find(q=>q.table==='tasks');
+  assert.equal(project.projection,'id,company_id,project_id,phase_id,title,description,status,due_date_target,assigned_to,created_at,priority');
+  assert.deepEqual(plain(project.filters),[['company_id',COMPANY],['assigned_to',[USER]]]);
+  assert.deepEqual(plain(project.contains),['assigned_to',[USER]]);
+  assert.equal(legacy.projection,'id,company_id,project_id,title,description,status,due_date,assigned_to,created_at,priority');
+  assert.deepEqual(plain(legacy.filters),[['company_id',COMPANY],['assigned_to',[USER]]]);
  }finally{v.close();}
 });
 

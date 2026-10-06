@@ -4,6 +4,8 @@ import { supabase } from "@/api/supabaseClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { DollarSign, Clock, TrendingUp, Receipt, Info, ShieldAlert, CalendarRange } from "lucide-react";
 import { format, differenceInDays, addDays, subDays } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/AuthContext";
 
 // --- PAY PERIOD CALCULATOR ---
 function getBiWeeklyPeriods(currentDate) {
@@ -34,51 +36,83 @@ function getBiWeeklyPeriods(currentDate) {
   };
 }
 
-export default function EPPayroll({ currentUser }) {
+export default function EPPayroll({ currentUser, companyId }) {
+  const { profile } = useAuth();
+  const actorId = profile?.id;
+  const activeCompanyId = profile?.company_id;
+  const identityReady = !!actorId && actorId === currentUser?.id && !!activeCompanyId && activeCompanyId === companyId;
   const periods = getBiWeeklyPeriods(new Date());
 
-  // Fetch ALL timesheets for this user (Pending + Approved)
-  const { data: timesheets = [], isLoading: tsLoading } = useQuery({
-    queryKey: ["time_entries_payroll", currentUser?.full_name],
-    enabled: !!currentUser?.full_name,
+  // Canonical payroll identity is the authenticated profile UUID. A narrowly
+  // scoped name fallback is used only for legacy rows without user_id and only
+  // when that name uniquely identifies this active company profile. RLS applies
+  // the same uniqueness rule server-side.
+  const timesheetsQuery = useQuery({
+    queryKey: ["time_entries_payroll", activeCompanyId, actorId, profile?.full_name, periods.last.startStr, periods.current.endStr],
+    enabled: identityReady,
+    queryFn: async () => {
+      const entryFields = "id,company_id,user_id,date,total_hours,status";
+      const [canonical, nameMatches] = await Promise.all([
+        supabase
+          .from("time_entries")
+          .select(entryFields)
+          .eq("company_id", activeCompanyId)
+          .eq("user_id", actorId)
+          .gte("date", periods.last.startStr)
+          .lte("date", periods.current.endStr)
+          .order("date", { ascending: false }),
+        profile?.full_name
+          ? supabase
+              .from("profiles")
+              .select("id")
+              .eq("company_id", activeCompanyId)
+              .eq("full_name", profile.full_name)
+              .or("is_active.is.null,is_active.eq.true")
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (canonical.error) throw canonical.error;
+      if (nameMatches.error) throw nameMatches.error;
+
+      let legacy = [];
+      if (nameMatches.data?.length === 1 && nameMatches.data[0].id === actorId) {
+        const { data, error } = await supabase
+          .from("time_entries")
+          .select(entryFields)
+          .eq("company_id", activeCompanyId)
+          .is("user_id", null)
+          .eq("employee_name", profile.full_name)
+          .gte("date", periods.last.startStr)
+          .lte("date", periods.current.endStr)
+          .order("date", { ascending: false });
+        if (error) throw error;
+        legacy = data || [];
+      }
+
+      return [...new Map([...(canonical.data || []), ...legacy].map(entry => [entry.id, entry])).values()]
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    }
+  });
+  const timesheets = timesheetsQuery.data || [];
+
+  // Fetch APPROVED expenses
+  const expensesQuery = useQuery({
+    queryKey: ["expenses_payroll", activeCompanyId, actorId, periods.current.startStr, periods.current.endStr],
+    enabled: identityReady,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("time_entries")
-        .select("*")
-        .eq("employee_name", currentUser.full_name)
-        .order("date", { ascending: false });
-      
+        .from("expenses")
+        .select("id,company_id,user_id,date,amount,status")
+        .eq("company_id", activeCompanyId)
+        .eq("user_id", actorId)
+        .eq("status", "Approved")
+        .gte("date", periods.current.startStr)
+        .lte("date", periods.current.endStr);
+
       if (error) throw error;
       return data || [];
     }
   });
-
-  // Fetch APPROVED expenses
-  const { data: expenses = [] } = useQuery({
-    queryKey: ["expenses_payroll", currentUser?.id],
-    enabled: !!currentUser?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("*")
-        .eq("user_id", currentUser.id)
-        .eq("status", "Approved");
-      
-      if (error) return []; 
-      return data || [];
-    }
-  });
-
-  // Fetch Profile to get their official hourly rate
-  const { data: profile } = useQuery({
-    queryKey: ["profile_payroll", currentUser?.id],
-    enabled: !!currentUser?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", currentUser.id).maybeSingle();
-      if (error) return null;
-      return data;
-    }
-  });
+  const expenses = expensesQuery.data || [];
 
   // --- CURRENT PERIOD MATH ---
   const currentSheets = timesheets.filter(t => t.date >= periods.current.startStr && t.date <= periods.current.endStr);
@@ -113,10 +147,19 @@ export default function EPPayroll({ currentUser }) {
   const pendingPay = pendingHours * hourlyRate;
   const estimatedTotalPay = approvedPay + pendingPay;
 
-  if (tsLoading) {
+  if (timesheetsQuery.isLoading || expensesQuery.isLoading) {
     return (
       <div className="flex justify-center py-12">
         <div className="w-8 h-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!identityReady || timesheetsQuery.isError || expensesQuery.isError) {
+    return (
+      <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <p>My Pay could not be loaded. Check your employee profile and connection, then try again.</p>
+        {identityReady && <Button type="button" variant="outline" className="mt-3 min-h-11" onClick={() => { timesheetsQuery.refetch(); expensesQuery.refetch(); }}>Retry</Button>}
       </div>
     );
   }

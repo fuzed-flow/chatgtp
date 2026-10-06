@@ -4,8 +4,8 @@
     "feature_area": "Employee Portal",
     "audience": "all",
     "question": "What can employees access in the Employee Portal?",
-    "answer_short": "The Employee Portal provides attendance, expenses, assigned projects, schedule, tasks, project notes, and inventory where the plan and company modules allow. Self-service Profile setup is incomplete.",
-    "answer_long": "Open **Employee Portal** for your personal field tools. Available sections depend on the company’s plan and enabled features.\n\n- **Clock In**, **My Time Sheets**, **My Pay**, **My Time Off**, and **My Expenses**.\n- **My Projects**, **My Schedule**, **Project Notes**, **My Tasks**, and **Inventory**.\n\nOn mobile, select **More** to find the full menu. If a section is missing, ask an owner or administrator to check **Settings → Employee Portal** and the company’s HR plan access.\n\nThe **Profile → Set Up Profile** self-service save is currently incomplete. Ask an owner or administrator to correct your name, role, hourly rate, or account activity through **Settings → Team Management**; use the employer’s HR process for other employee information. Do not rely on the incomplete form as the sole record for emergency contact details.",
+    "answer_short": "The Employee Portal provides personal attendance, assigned work, expenses, project notes, tasks, inventory, Profile, and Warranty access where the plan and company modules allow.",
+    "answer_long": "Open **Employee Portal** for your personal field tools. Available sections depend on the company’s plan, your role, assigned work, and the company’s enabled portal modules.\n\n- Personal tools can include **Clock In**, **My Timesheets**, **My Pay**, **My Time Off**, and **My Expenses**.\n- Work tools include **My Projects**, **My Schedule**, **Project Notes**, **My Tasks**, and **Inventory**.\n- **My Profile** lets you update your own name and phone number. Your administrator manages your role, pay rate, and account access. **Warranty** is available from the portal’s Support area.\n\nOn a phone, the primary field navigation is **Clock** when enabled, **Projects**, **Schedule**, **Tasks**, and **More**. Open **More** for the remaining personal and work sections, **Profile**, and **Warranty**. On desktop, use the Employee Portal sidebar.\n\nIf a section is missing, ask an owner or administrator to check **Settings → Employee Portal**, the company’s plan, your role, and any required project or task assignment. Entering a page address directly does not bypass role, module, or assignment access.",
     "requires_admin": false,
     "search_terms": [
       "employee portal",
@@ -20,7 +20,7 @@
     "priority": 75,
     "is_active": true,
     "article_type": "faq",
-    "last_verified_at": "2026-10-04",
+    "last_verified_at": "2026-10-06",
     "source_files": [
       "src/pages/EmployeePortal.jsx",
       "src/components/employee/EPProfile.jsx",

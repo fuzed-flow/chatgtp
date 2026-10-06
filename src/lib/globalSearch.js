@@ -51,14 +51,15 @@ const hasValue = value => textValue(value) !== '';
 
 // Mirror the office navigation permissions. The explicit company predicate is
 // mandatory for every query; the caller's RLS policies also apply independently.
-export function getSearchTypes(profile) {
+export function getSearchTypes(profile, planId = 'business') {
   if (!profile || profile.is_active === false) return [];
   if (['owner', 'admin'].includes(profile.role)) return entities.map(entity => entity.name);
   if (!['manager', 'office'].includes(profile.role)) return [];
   const permissions = Array.isArray(profile.permissions) ? profile.permissions : [];
+  const customPermissionsApply = planId === 'business' && permissions.length > 0;
   return entities.filter(entity => {
     if (entity.name === 'Invoice' && profile.role !== 'office') return false;
-    if (!permissions.length) return entity.name !== 'Invoice';
+    if (!customPermissionsApply) return true;
     return permissions.includes(entity.permission);
   }).map(entity => entity.name);
 }
@@ -155,13 +156,13 @@ function relevance(record, entity, query) {
   }));
 }
 
-export async function searchGlobalRecords({ query = '', filters, profile, signal } = {}) {
+export async function searchGlobalRecords({ query = '', filters, profile, planId = 'business', signal } = {}) {
   const empty = { results: [], errors: [], hasMore: false };
   abortIfNeeded(signal);
   const active = normalizeFilters(filters);
   const term = textValue(query);
   if (!profile?.company_id || !hasSearchCriteria(term, active) || getSearchFilterError(active)) return empty;
-  const permitted = new Set(getSearchTypes(profile));
+  const permitted = new Set(getSearchTypes(profile, planId));
   const selected = SEARCH_ENTITY_TYPES.filter(entity => permitted.has(entity.name) && supportsFilters(entity, active));
   const typeLimit = selected.length === 1 ? RESULT_LIMIT : TYPE_LIMIT;
   const responses = await Promise.allSettled(selected.map(async entity => {

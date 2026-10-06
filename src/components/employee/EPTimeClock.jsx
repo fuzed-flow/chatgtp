@@ -39,7 +39,7 @@ export default function EPTimeClock({ currentUser, companyId }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_entries")
-        .select("*")
+        .select("id,company_id,user_id,date,total_hours,clock_in,clock_out,status,notes,entry_type")
         .eq("company_id", profile.company_id)
         .eq("user_id", profile.id)
         .order("clock_in", { ascending: false });

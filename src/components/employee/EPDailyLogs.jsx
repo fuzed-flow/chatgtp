@@ -11,17 +11,31 @@ import { Plus, Camera, BookOpen, Trash2, X, FileText, CloudSun, AlertTriangle, H
 import { format } from "date-fns";
 import { toast } from "sonner";
 import DailyLogWorkflowFields from "@/components/pm/DailyLogWorkflowFields";
+import { useAuth } from "@/lib/AuthContext";
 
 const WEATHER = ["Sunny", "Cloudy", "Rainy", "Snowy", "Windy", "Hot", "Cold"];
+const MAX_LOG_PHOTO_BYTES = 10 * 1024 * 1024;
+const MAX_LOG_PHOTOS = 12;
+const LOG_PHOTO_EXTENSIONS = new Map([
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+  ["image/heic", "heic"],
+  ["image/heif", "heif"],
+]);
 
 export default function EPDailyLogs({ currentUser, companyId }) {
   const qc = useQueryClient();
+  const { profile } = useAuth();
+  const actorId = profile?.id;
+  const activeCompanyId = profile?.company_id;
+  const identityReady = !!actorId && actorId === currentUser?.id && !!activeCompanyId && activeCompanyId === companyId;
   const [open, setOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
   const notificationLog = new URLSearchParams(window.location.search).get("notificationLog");
   const { data: notifiedLog } = useQuery({
-    queryKey: ["notifiedDailyLog", companyId, currentUser?.id, notificationLog],
-    enabled: !!notificationLog && !!companyId && !!currentUser?.id,
+    queryKey: ["notifiedDailyLog", activeCompanyId, actorId, notificationLog],
+    enabled: !!notificationLog && identityReady,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_notified_daily_log", { p_log: notificationLog });
       if (error) throw error;
@@ -48,43 +62,43 @@ export default function EPDailyLogs({ currentUser, companyId }) {
   const [form, setForm] = useState(defaultForm);
 
   // 1. Fetch Projects
-  const { data: projects = [] } = useQuery({ 
-    queryKey: ["daily_log_assigned_projects", companyId, currentUser?.id],
-    enabled: !!companyId && !!currentUser?.id,
+  const projectsQuery = useQuery({
+    queryKey: ["daily_log_assigned_projects", activeCompanyId, actorId],
+    enabled: identityReady,
     queryFn: async () => {
-      const { data, error } = await supabase.from("project_staff").select("project_id,projects(id,name)").eq("company_id", companyId).eq("user_id", currentUser.id).or("is_active.is.null,is_active.eq.true");
+      const { data, error } = await supabase.from("project_staff").select("project_id,projects!inner(id,name,company_id)").eq("company_id", activeCompanyId).eq("projects.company_id", activeCompanyId).eq("user_id", actorId).or("is_active.is.null,is_active.eq.true");
       if (error) throw error;
       return [...new Map((data || []).filter(item => item.projects).map(item => [item.project_id, item.projects])).values()];
     } 
   });
+  const projects = projectsQuery.data || [];
 
   // 2. Fetch My Daily Logs
-  const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["daily_logs_mine", companyId, currentUser?.id],
-    enabled: !!currentUser?.id && !!companyId,
+  const logsQuery = useQuery({
+    queryKey: ["daily_logs_mine", activeCompanyId, actorId],
+    enabled: identityReady,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_daily_logs")
-        .select("*")
-        .eq("company_id", companyId)
-        .eq("user_id", currentUser.id)
+        .select("id,company_id,project_id,user_id,date,weather,summary,blockers,safety_concerns,materials_used,photos,category,weather_delay,safety_status,blocker_status,created_at")
+        .eq("company_id", activeCompanyId)
+        .eq("user_id", actorId)
         .order("date", { ascending: false });
-      
-      if (error) {
-        console.warn("Logs table error:", error.message);
-        return [];
-      }
+
+      if (error) throw error;
       return data || [];
     },
   });
+  const logs = logsQuery.data || [];
 
   // 3. Create Mutation
   const createMutation = useMutation({
     mutationFn: async (payload) => {
-      if (!companyId || !currentUser?.id) throw new Error("Your company profile is unavailable. Sign in again before submitting a log.");
+      if (!identityReady) throw new Error("Your company profile is unavailable. Sign in again before submitting a log.");
+      if (!projects.some(project => project.id === payload.project_id)) throw new Error("Choose a project currently assigned to you.");
       const dbPayload = {
-        company_id: companyId,
-        user_id: currentUser.id,
+        company_id: activeCompanyId,
+        user_id: actorId,
         project_id: payload.project_id, // Directly pass the selected project ID
         date: payload.date,
         weather: payload.weather,
@@ -97,9 +111,10 @@ export default function EPDailyLogs({ currentUser, companyId }) {
         photos: payload.photos || []
       };
 
-      const { data, error } = await supabase.from("project_daily_logs").insert([dbPayload]);
+      const { data, error } = await supabase.from("project_daily_logs").insert([dbPayload]).select("id");
       if (error) throw error;
-      return data;
+      if (!data?.length) throw new Error("The project note was not saved. Refresh Project Notes and try again.");
+      return data[0];
     },
     onSuccess: () => { 
       qc.invalidateQueries({ queryKey: ["daily_logs_mine"] }); 
@@ -113,33 +128,80 @@ export default function EPDailyLogs({ currentUser, companyId }) {
     }
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
+      if (!identityReady) throw new Error("Your company profile is unavailable. Sign in again before deleting a note.");
+      const { data, error } = await supabase
+        .from("project_daily_logs")
+        .delete()
+        .eq("company_id", activeCompanyId)
+        .eq("user_id", actorId)
+        .eq("id", id)
+        .select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("This project note changed or is no longer available. Refresh Project Notes and try again.");
+    },
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: ["daily_logs_mine"] });
+      setSelectedLog(current => current?.id === id ? null : current);
+      toast.success("Project note deleted.");
+    },
+    onError: error => toast.error(error.message || "Could not delete the project note. Please retry."),
+  });
+
   // 4. Photo Uploader
   const handlePhotoUpload = async (e) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    
+
+    if (!identityReady) {
+      e.target.value = "";
+      toast.error("Your employee profile is unavailable. Sign in again before uploading photos.");
+      return;
+    }
+    if (form.photos.length + files.length > MAX_LOG_PHOTOS) {
+      e.target.value = "";
+      toast.error(`Attach up to ${MAX_LOG_PHOTOS} photos to one project note.`);
+      return;
+    }
+    const invalidType = files.find(file => !LOG_PHOTO_EXTENSIONS.has(String(file.type || "").toLowerCase()));
+    if (invalidType) {
+      e.target.value = "";
+      toast.error("Upload JPG, PNG, WebP, HEIC, or HEIF photos only.");
+      return;
+    }
+    const invalidSize = files.find(file => file.size <= 0 || file.size > MAX_LOG_PHOTO_BYTES);
+    if (invalidSize) {
+      e.target.value = "";
+      toast.error("Each site photo must be smaller than 10 MB.");
+      return;
+    }
+
     setUploading(true);
     const urls = [...form.photos];
     
     try {
       for (const file of files) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `${currentUser.id}/${fileName}`;
+        const mimeType = String(file.type).toLowerCase();
+        const fileExt = LOG_PHOTO_EXTENSIONS.get(mimeType);
+        const uploadId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const filePath = `${activeCompanyId}/${actorId}/${uploadId}.${fileExt}`;
         
-        const { error: uploadError } = await supabase.storage.from('daily_logs').upload(filePath, file);
+        const { error: uploadError } = await supabase.storage.from('daily_logs').upload(filePath, file, { cacheControl: '3600', contentType: mimeType, upsert: false });
         if (uploadError) throw uploadError;
         
         const { data } = supabase.storage.from('daily_logs').getPublicUrl(filePath);
+        if (!data?.publicUrl) throw new Error("A photo was uploaded but its link could not be created.");
         urls.push(data.publicUrl);
       }
-      setForm({ ...form, photos: urls });
+      setForm(previous => ({ ...previous, photos: urls }));
       toast.success(`${files.length} photo(s) uploaded!`);
     } catch (err) {
       console.error("Upload Error:", err);
       toast.error(`Upload failed: ${err.message}`);
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -147,10 +209,22 @@ export default function EPDailyLogs({ currentUser, companyId }) {
     setForm({ ...form, photos: form.photos.filter((_, i) => i !== indexToRemove) });
   };
 
+  const isLoading = logsQuery.isLoading || projectsQuery.isLoading;
+  const loadError = logsQuery.error || projectsQuery.error;
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <div className="w-8 h-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <p>Project Notes could not be loaded. Check your connection and try again.</p>
+        <Button type="button" variant="outline" className="mt-3 min-h-11" onClick={() => { projectsQuery.refetch(); logsQuery.refetch(); }}>Retry</Button>
       </div>
     );
   }
@@ -218,8 +292,10 @@ export default function EPDailyLogs({ currentUser, companyId }) {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => { if(confirm("Delete this daily log?")) supabase.from("project_daily_logs").delete().eq("id", log.id).then(()=>qc.invalidateQueries({queryKey:["daily_logs_mine"]})); }}
+              onClick={() => { if(confirm("Delete this daily log?")) deleteMutation.mutate(log.id); }}
               className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
+              disabled={deleteMutation.isPending}
+              aria-label={`Delete project note from ${log.date}`}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -244,6 +320,7 @@ export default function EPDailyLogs({ currentUser, companyId }) {
         <Button 
           className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md shadow-amber-500/20" 
           onClick={() => setOpen(true)}
+          disabled={!identityReady}
         >
           <Plus className="h-4 w-4 mr-1.5" /> Submit New Log
         </Button>
@@ -452,7 +529,7 @@ export default function EPDailyLogs({ currentUser, companyId }) {
                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md shadow-amber-500/20" 
                 onClick={() => createMutation.mutate(form)} 
                 /* THE FIX: Disabled unless a specific project_id is actually selected */
-                disabled={!form.summary || !form.project_id || form.project_id === "none" || uploading || createMutation.isPending}
+                disabled={!identityReady || !form.summary || !form.project_id || form.project_id === "none" || uploading || createMutation.isPending}
               >
                 {createMutation.isPending ? "Saving..." : "Submit Log"}
               </Button>

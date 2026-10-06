@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Calendar, Palmtree, Trash2, ShieldAlert } from "lucide-react";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/AuthContext";
 
 const STATUS_COLORS = { 
   Pending: "bg-amber-100 text-amber-800 border-amber-200", 
@@ -28,51 +29,69 @@ const TYPE_ICONS = {
 
 export default function EPVacationTracker({ currentUser, companyId }) {
   const qc = useQueryClient();
+  const { profile: authProfile } = useAuth();
+  const actorId = authProfile?.id;
+  const activeCompanyId = authProfile?.company_id;
+  const identityReady = !!actorId && actorId === currentUser?.id && !!activeCompanyId && activeCompanyId === companyId;
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ type: "Vacation", start_date: "", end_date: "", reason: "" });
 
-  // 1. SAFE PROFILE FETCH: Pull everything to prevent column-not-found 400 errors
-  const { data: profile } = useQuery({
-    queryKey: ["profile_balances", currentUser?.id],
-    enabled: !!currentUser?.id,
+  // Fetch only the balance fields this screen displays. Older schemas without
+  // balance columns receive a zero-balance fallback without exposing the rest
+  // of the employee profile.
+  const profileQuery = useQuery({
+    queryKey: ["profile_balances", activeCompanyId, actorId],
+    enabled: identityReady,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
-        .eq("id", currentUser.id)
+        .select("id,company_id,vacation_days_total,vacation_days_used,sick_days_total,sick_days_used")
+        .eq("company_id", activeCompanyId)
+        .eq("id", actorId)
         .maybeSingle();
-      if (error) console.error("Profile error safely bypassed:", error.message);
+      if (error && (error.code === "42703" || error.code === "PGRST204")) {
+        const fallback = await supabase
+          .from("profiles")
+          .select("id,company_id")
+          .eq("company_id", activeCompanyId)
+          .eq("id", actorId)
+          .maybeSingle();
+        if (fallback.error) throw fallback.error;
+        return fallback.data || null;
+      }
+      if (error) throw error;
       return data || null;
     }
   });
+  const profile = profileQuery.data;
 
-  // 2. FETCH REQUESTS: Gracefully capture empty array if RLS filters them out
-  const { data: requests = [] } = useQuery({
-    queryKey: ["timeoff_mine", companyId, currentUser?.id],
-    enabled: !!companyId && !!currentUser?.id,
+  const requestsQuery = useQuery({
+    queryKey: ["timeoff_mine", activeCompanyId, actorId],
+    enabled: identityReady,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_off_requests")
-        .select("*")
-        .eq("company_id", companyId)
-        .eq("user_id", currentUser.id)
+        .select("id,company_id,user_id,employee_name,type,start_date,end_date,total_days,reason,status,admin_notes,created_at,approved_by")
+        .eq("company_id", activeCompanyId)
+        .eq("user_id", actorId)
         .order("start_date", { ascending: false });
-      
-      if (error) {
-        console.warn("Time off fetch notice:", error.message);
-        return [];
-      }
+
+      if (error) throw error;
       return data || [];
     },
   });
+  const requests = requestsQuery.data || [];
 
   // --- MUTATIONS ---
   const createMutation = useMutation({
     mutationFn: async (payload) => {
-      const { error } = await supabase
+      if (!identityReady) throw new Error("Your company profile is unavailable. Sign in again before requesting time off.");
+      const { data, error } = await supabase
         .from("time_off_requests")
-        .insert(payload); // Raw format bypasses 403 strict header parsing
+        .insert(payload)
+        .select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("The request was not saved. Refresh My Time Off and try again.");
     },
     onSuccess: () => { 
       qc.invalidateQueries({ queryKey: ["timeoff_mine"] }); 
@@ -88,7 +107,8 @@ export default function EPVacationTracker({ currentUser, companyId }) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      const { data, error } = await supabase.from("time_off_requests").update({ status: "Cancelled" }).eq("company_id", companyId).eq("user_id", currentUser.id).eq("status", "Pending").eq("id", id).select("id");
+      if (!identityReady) throw new Error("Your company profile is unavailable. Sign in again before cancelling time off.");
+      const { data, error } = await supabase.from("time_off_requests").update({ status: "Cancelled" }).eq("company_id", activeCompanyId).eq("user_id", actorId).eq("status", "Pending").eq("id", id).select("id");
       if (error) throw error;
       if (!data?.length) throw new Error("This request has changed. Reload time off before cancelling it.");
     },
@@ -111,7 +131,7 @@ export default function EPVacationTracker({ currentUser, companyId }) {
       return;
     }
 
-    if (!companyId || !currentUser?.id) { toast.error("Your company profile is unavailable. Sign in again to request time off."); return; }
+    if (!identityReady) { toast.error("Your company profile is unavailable. Sign in again to request time off."); return; }
     const days = calcDays(form.start_date, form.end_date);
     if (form.end_date < form.start_date) {
       toast.error("End date must be on or after start date.");
@@ -119,9 +139,9 @@ export default function EPVacationTracker({ currentUser, companyId }) {
     }
     
     createMutation.mutate({
-      company_id: companyId,
-      user_id: currentUser.id,
-      employee_name: currentUser.full_name,
+      company_id: activeCompanyId,
+      user_id: actorId,
+      employee_name: authProfile.full_name || currentUser.full_name || "Team member",
       type: form.type,
       start_date: form.start_date,
       end_date: form.end_date,
@@ -135,6 +155,19 @@ export default function EPVacationTracker({ currentUser, companyId }) {
   const vacRemaining = profile ? ((profile.vacation_days_total || 0) - (profile.vacation_days_used || 0)) : 0;
   const sickRemaining = profile ? ((profile.sick_days_total || 0) - (profile.sick_days_used || 0)) : 0;
   const totalPending = requests.length > 0 ? requests.filter(r => r.status === "Pending").length : 0;
+
+  if (profileQuery.isLoading || requestsQuery.isLoading) {
+    return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin" /></div>;
+  }
+
+  if (profileQuery.isError || requestsQuery.isError) {
+    return (
+      <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <p>My Time Off could not be loaded. Check your connection and try again.</p>
+        <Button type="button" variant="outline" className="mt-3 min-h-11" onClick={() => { profileQuery.refetch(); requestsQuery.refetch(); }}>Retry</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -152,6 +185,7 @@ export default function EPVacationTracker({ currentUser, companyId }) {
         <Button 
           className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md shadow-amber-500/20" 
           onClick={() => setOpen(true)}
+          disabled={!identityReady}
         >
           <Plus className="h-4 w-4 mr-1.5" /> Request Time Off
         </Button>
@@ -290,7 +324,7 @@ export default function EPVacationTracker({ currentUser, companyId }) {
               <Button 
                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md shadow-amber-500/20"
                 onClick={handleRequestSubmit}
-                disabled={createMutation.isPending}
+                disabled={!identityReady || createMutation.isPending}
               >
                 {createMutation.isPending ? "Submitting..." : "Submit to HR"}
               </Button>

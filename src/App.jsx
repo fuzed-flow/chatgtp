@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { pagesConfig } from './pages.config'
 import RoleGuard from '@/components/RoleGuard';
 import PageNotFound from './lib/PageNotFound';
+import { getRouteAccess } from '@/lib/roleAccess';
 
 // --- PUBLIC & UNPROTECTED PAGES ---
 import ContractorPortal from './pages/ContractorPortal';
@@ -26,7 +27,6 @@ import Signup from './pages/Signup';
 // --- EXPLICIT EXPORTED PAGES ---
 import EmployeePortalPage from './pages/EmployeePortal';
 import LeadDetail from './pages/LeadDetail';
-import TeamSettings from './pages/TeamSettings';
 import Tutorials from './pages/Tutorials';
 import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
@@ -55,7 +55,7 @@ const LayoutWrapper = ({ children, currentPageName }) => {
 };
 
 const AuthenticatedApp = () => {
-  const { loading, user } = useAuth();
+  const { loading, user, profile, accessError, refreshAccess, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -65,7 +65,26 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (!user) {
+  if (user && accessError) {
+    return (
+      <main className="fixed inset-0 flex items-center justify-center bg-slate-50 p-6">
+        <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <h1 className="text-xl font-black text-slate-900">Workspace unavailable</h1>
+          <p role="alert" className="mt-2 text-sm leading-6 text-slate-600">{accessError.message}</p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <button type="button" onClick={refreshAccess} className="min-h-11 rounded-xl bg-amber-400 px-5 text-sm font-bold text-slate-950 hover:bg-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
+              Try again
+            </button>
+            <button type="button" onClick={signOut} className="min-h-11 rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2">
+              Sign out
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (!user || profile?.is_active === false) {
     return <Navigate to="/login" replace />;
   }
 
@@ -81,7 +100,7 @@ const AuthenticatedApp = () => {
         
         {/* 🟡 MANAGERS & ADMINS ONLY (Employees get kicked back to EmployeePortal) */}
         <Route path="/" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
+          <RoleGuard {...getRouteAccess(mainPageKey)}>
             <LayoutWrapper currentPageName={mainPageKey}>
               <MainPage />
             </LayoutWrapper>
@@ -97,7 +116,7 @@ const AuthenticatedApp = () => {
               key={path}
               path={`/${path}`}
               element={
-                <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
+                <RoleGuard {...getRouteAccess(path)}>
                   <LayoutWrapper currentPageName={path}>
                     <Page />
                   </LayoutWrapper>
@@ -108,7 +127,7 @@ const AuthenticatedApp = () => {
         
         {/* 🟡 EXPLICIT MANAGER & ADMIN ROUTES */}
         <Route path="/LeadDetail" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
+          <RoleGuard {...getRouteAccess('LeadDetail')}>
             <LayoutWrapper currentPageName="LeadDetail"><LeadDetail /></LayoutWrapper>
           </RoleGuard>
         } />
@@ -125,44 +144,48 @@ const AuthenticatedApp = () => {
             <LayoutWrapper currentPageName="Contact"><Contact /></LayoutWrapper>
         } />
         <Route path="/Warranty" element={
+          <RoleGuard {...getRouteAccess('Warranty')}>
             <LayoutWrapper currentPageName="Warranty"><Warranty /></LayoutWrapper>
+          </RoleGuard>
         } />
         <Route path="/DocumentRequests" element={
+          <RoleGuard {...getRouteAccess('DocumentRequests')}>
             <LayoutWrapper currentPageName="DocumentRequests"><DocumentRequests /></LayoutWrapper>
+          </RoleGuard>
         } />
         <Route path="/Settings" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
-            <LayoutWrapper currentPageName="Team Settings"><TeamSettings /></LayoutWrapper>
+          <RoleGuard {...getRouteAccess('Settings')}>
+            <Navigate to="/AdminSettings" replace />
           </RoleGuard>
         } />
 
         <Route path="/ClientUpdateView" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
+          <RoleGuard {...getRouteAccess('ClientUpdates')}>
             <ClientUpdateView />
           </RoleGuard>
         } />
 
         <Route path="/ProjectCloseoutView" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'manager', 'office']}>
+          <RoleGuard {...getRouteAccess('ProjectCloseouts')}>
             <ProjectCloseoutView />
           </RoleGuard>
         } />
 
         <Route path="/AdminSettings" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'manager']}>
-            <LayoutWrapper currentPageName="Admin Settings"><Pages.AdminSettings /></LayoutWrapper>
+          <RoleGuard {...getRouteAccess('AdminSettings')}>
+            <LayoutWrapper currentPageName="AdminSettings"><Pages.AdminSettings /></LayoutWrapper>
           </RoleGuard>
         } />
 
         {/* 🔴 ADMIN ONLY EXPLICIT ROUTES */}
         <Route path="/Invoices" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'office']}>
+          <RoleGuard {...getRouteAccess('Invoices')}>
             <LayoutWrapper currentPageName="Invoices"><Pages.Invoices /></LayoutWrapper>
           </RoleGuard>
         } />
         
         <Route path="/HumanResources" element={
-          <RoleGuard allowedRoles={['admin', 'owner', 'office']}>
+          <RoleGuard {...getRouteAccess('HumanResources')}>
             <LayoutWrapper currentPageName="HumanResources"><Pages.HumanResources /></LayoutWrapper>
           </RoleGuard>
         } />

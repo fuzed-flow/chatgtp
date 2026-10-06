@@ -18,6 +18,7 @@ import AccessibilityEnhancer from "./components/shared/AccessibilityEnhancer";
 import EnhancedNotificationCenter from "./components/shared/EnhancedNotificationCenter";
 import HelpMenu from "./components/shared/HelpMenu";
 import { useRouteScrollReset } from "@/hooks/useRouteScrollReset";
+import { FIELD_ROLES, getRouteAccess, hasModulePermission, normalizeRole } from "@/lib/roleAccess";
 
 const NAV_ITEMS = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard", permissionKey: "dashboard", section: "main" },
@@ -58,7 +59,7 @@ const SECTION_LABELS = {
   pm: "Project Management",
   financial: "Financial",
   resources: "Resources",
-  employee: "Employee Portal",
+  employee: "Personal",
   settings: "",
   more: "More"
 };
@@ -79,18 +80,19 @@ const SECTION_ICONS = {
 };
 
 export default function Layout({ children, currentPageName }) {
-  const { profile, signOut } = useAuth(); 
+  const { profile, company, signOut } = useAuth();
   
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
   const pageScrollRef = useRouteScrollReset();
 
-  const userRole = profile?.role || profile?.user_role || "user";
-  const isEmployeeRole = ["employee", "subcontractor"].includes(userRole);
+  const userRole = normalizeRole(profile?.role || profile?.user_role);
+  const isEmployeeRole = FIELD_ROLES.includes(userRole);
+  const isFieldPortal = isEmployeeRole && currentPageName === "EmployeePortal";
 
   useEffect(() => {
-    if (isEmployeeRole && currentPageName && !["EmployeePortal", "FAQ", "Tutorials", "Contact", "HelpArticles", "Warranty", "DocumentRequests"].includes(currentPageName)) {
+    if (isEmployeeRole && currentPageName && !["EmployeePortal", "Timesheet", "FAQ", "Tutorials", "Contact", "HelpArticles", "Warranty", "DocumentRequests"].includes(currentPageName)) {
       navigate("/EmployeePortal", { replace: true });
     }
   }, [isEmployeeRole, currentPageName, navigate]);
@@ -99,21 +101,77 @@ export default function Layout({ children, currentPageName }) {
     return <>{children}</>;
   }
 
+  const closeSidebar = () => setMoreOpen(false);
+
+  // Field users use the portal's role-specific sidebar and mobile navigation.
+  // Keep the shared utility bar, but do not mount the competing workspace menus
+  // or a second scroll container around the portal.
+  if (isFieldPortal) {
+    return (
+      <div className="flex h-screen h-[100dvh] flex-col overflow-hidden bg-slate-50">
+        <header className="relative z-[100] flex h-14 shrink-0 items-center justify-between border-b border-slate-700/50 bg-black px-3 shadow-sm lg:h-16 lg:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <img
+              src="https://ochqexofahdssmarnict.supabase.co/storage/v1/object/public/logos/fuzedflow_logo_black_bg_optimized.svg"
+              alt=""
+              className="h-8 w-8 shrink-0 object-contain"
+            />
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-bold text-white lg:text-base">Employee Portal</h2>
+              <p className="hidden text-xs text-slate-400 sm:block">Your personal field workspace</p>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 lg:gap-3">
+            <GlobalSearch onCloseSidebar={closeSidebar} />
+            <EnhancedNotificationCenter onCloseSidebar={closeSidebar} />
+            <HelpMenu onCloseSidebar={closeSidebar} />
+            {profile && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Open account menu"
+                    className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-700/50 bg-slate-800 px-1.5 transition-colors hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 lg:gap-3 lg:px-3"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-300 to-yellow-600 text-xs font-bold text-slate-900 shadow-md shadow-yellow-500/30 lg:h-9 lg:w-9 lg:text-sm">
+                      {profile.full_name?.charAt(0)?.toUpperCase() || "U"}
+                    </span>
+                    <span className="hidden max-w-[120px] truncate text-sm font-medium text-slate-200 md:block">{profile.full_name}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="z-[140] w-56 rounded-xl border-slate-200 bg-white p-2 shadow-xl">
+                  <div className="mb-1 flex flex-col space-y-1 border-b border-slate-100 p-2">
+                    <p className="text-sm font-bold leading-none text-slate-900">{profile.full_name}</p>
+                    <p className="mt-1.5 text-xs leading-none text-slate-500">{profile.email || "No email available"}</p>
+                  </div>
+                  <DropdownMenuItem onClick={signOut} className="mt-1 cursor-pointer rounded-lg py-2.5 font-bold text-red-600 focus:bg-red-50 focus:text-red-700">
+                    <LogOut className="mr-2 h-4 w-4" aria-hidden="true" /> Log Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </header>
+        <main data-employee-portal-shell className="min-h-0 min-w-0 flex-1 overflow-hidden">
+          {children}
+        </main>
+        <OnboardingTour />
+        <AccessibilityEnhancer />
+      </div>
+    );
+  }
+
   const hasPermission = (item) => {
-    if (isEmployeeRole) return ["EmployeePortal", "Warranty", "DocumentRequests"].includes(item.page);
-    if (!profile) return false; 
-    if (item.allUsers) return true;
-    
-    if (userRole === "admin" || userRole === "owner") return true;
-    if (item.adminOnly && !["admin", "owner", "office"].includes(userRole)) return false;
-    
-    if (!profile.permissions || profile.permissions.length === 0) {
-      return !item.adminOnly;
-    }
-    return profile.permissions.includes(item.permissionKey);
+    if (!profile || profile.is_active === false) return false;
+    const routeAccess = getRouteAccess(item.page);
+    return routeAccess.allowedRoles.includes(userRole)
+      && hasModulePermission(profile, routeAccess.requiredPermission, routeAccess.permissionExemptRoles, company?.plan_id);
   };
 
-  const visibleNavItems = NAV_ITEMS.filter(hasPermission);
+  const visibleNavItems = NAV_ITEMS.filter(hasPermission).map(item => (
+    item.page === "EmployeePortal" && !isEmployeeRole ? { ...item, name: "My Portal" } : item
+  ));
   
   const groupedItems = visibleNavItems.reduce((acc, item) => {
     const section = item.section || "more";
@@ -136,8 +194,6 @@ export default function Layout({ children, currentPageName }) {
     items: (groupedItems[section] || []).filter(item => !primaryPages.has(item.page)),
   })).filter(group => group.items.length);
   const isMoreActive = !mobilePrimary.some(item => item.activePages.includes(currentPageName));
-
-  const closeSidebar = () => setMoreOpen(false);
 
   return (
     <div className="flex h-screen h-[100dvh] overflow-hidden bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100">
@@ -388,7 +444,7 @@ export default function Layout({ children, currentPageName }) {
         </main>
       </div>
 
-      <nav aria-label="Primary mobile navigation" className="fixed inset-x-0 bottom-0 z-[110] border-t border-slate-800 bg-black/95 px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:hidden">
+      <nav data-mobile-navigation aria-label="Primary mobile navigation" className="fixed inset-x-0 bottom-0 z-[110] border-t border-slate-800 bg-black/95 px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:hidden">
         <div className="mx-auto grid max-w-lg gap-0.5" style={{ gridTemplateColumns: `repeat(${mobilePrimary.length + 1}, minmax(0, 1fr))` }}>
           {mobilePrimary.map(item => {
             const active = item.activePages.includes(currentPageName);

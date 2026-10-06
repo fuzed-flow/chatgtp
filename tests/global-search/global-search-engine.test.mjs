@@ -72,6 +72,16 @@ test('role, permissions, account activity, and meaningful criteria bound the que
     [{ ...owner, role: 'employee' }, []],
     [{ ...owner, role: 'contractor' }, []],
   ]) assert.deepEqual(getSearchTypes(profile), expected, `${profile.role}: ${profile.permissions || 'default permissions'}`);
+  assert.deepEqual(
+    getSearchTypes({ ...owner, role: 'office', permissions: ['clients'] }, 'professional'),
+    ['Quote', 'Client', 'Lead', 'Project', 'Invoice'],
+    'Plans without Advanced Permissions ignore a stale custom permission array.',
+  );
+  assert.deepEqual(
+    getSearchTypes({ ...owner, role: 'office', permissions: [] }, 'business'),
+    ['Quote', 'Client', 'Lead', 'Project', 'Invoice'],
+    'An empty Business permission list retains the office default, including invoices.',
+  );
   assert.equal(hasSearchCriteria(' ', EMPTY_SEARCH_FILTERS), false);
   assert.equal(hasSearchCriteria('a', EMPTY_SEARCH_FILTERS), false);
   assert.equal(hasSearchCriteria(' aa ', EMPTY_SEARCH_FILTERS), true);

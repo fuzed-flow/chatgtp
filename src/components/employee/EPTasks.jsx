@@ -15,56 +15,72 @@ export default function EPTasks({ currentUser, companyId }) {
   const { search } = useLocation();
   const notificationTask = new URLSearchParams(search).get("notificationTask");
 
-  // 1. Fetch Projects
-  const { data: projects = [] } = useQuery({ 
-    queryKey: ["projects", companyId], 
-    enabled: !!companyId,
-    queryFn: async () => {
-      const { data } = await supabase.from("projects").select("id, name").eq("company_id", companyId);
-      return data || [];
-    } 
-  });
-
-  // 2. Fetch ALL Phases
-  const { data: phases = [] } = useQuery({ 
-    queryKey: ["all_phases", companyId], 
-    enabled: !!companyId,
-    queryFn: async () => {
-      const { data } = await supabase.from("project_phases").select("id, name, project_id");
-      return data || [];
-    } 
-  });
-
-  // 3. Fetch Tasks
-  const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ["tasks_mine", currentUser?.id],
+  // Fetch only tasks explicitly assigned to the signed-in field user. RLS is
+  // still the authority; these filters also avoid downloading company-wide
+  // task details before the browser narrows the result.
+  const tasksQuery = useQuery({
+    queryKey: ["tasks_mine", companyId, currentUser?.id, currentUser?.email],
     enabled: !!companyId && !!currentUser?.id,
     queryFn: async () => {
-      const results = await Promise.all(["project_tasks", "tasks"].map(table =>
-        supabase.from(table).select("*").eq("company_id", companyId).order("created_at", { ascending: false })
-          .then(result => ({ ...result, table }))));
+      const legacyAssignees = [currentUser.id, currentUser.email].filter(Boolean);
+      const results = await Promise.all([
+        supabase
+          .from("project_tasks")
+          .select("id,company_id,project_id,phase_id,title,description,status,due_date_target,assigned_to,created_at,priority")
+          .eq("company_id", companyId)
+          .contains("assigned_to", [currentUser.id])
+          .order("created_at", { ascending: false })
+          .then(result => ({ ...result, table: "project_tasks" })),
+        supabase
+          .from("tasks")
+          .select("id,company_id,project_id,title,description,status,due_date,assigned_to,created_at,priority")
+          .eq("company_id", companyId)
+          .in("assigned_to", legacyAssignees)
+          .order("created_at", { ascending: false })
+          .then(result => ({ ...result, table: "tasks" })),
+      ]);
       const error = results.find(result => result.error)?.error;
-      const data = results.flatMap(result => (result.data || []).map(task => ({
+      if (error) throw error;
+
+      return results.flatMap(result => (result.data || []).map(task => ({
         ...task, source_table: result.table, due_date: task.due_date_target || task.due_date,
       })));
-      
-      if (error) {
-        console.warn("Tasks error:", error.message);
-        return [];
-      }
-
-      const myId = currentUser.id;
-      
-      const myTasks = (data || []).filter(task => {
-        if (!task.assigned_to) return false;
-        if (Array.isArray(task.assigned_to)) return task.assigned_to.includes(myId) || task.assigned_to.includes(currentUser.email);
-        if (typeof task.assigned_to === "string") return task.assigned_to.includes(myId) || task.assigned_to.includes(currentUser.email);
-        return false;
-      });
-
-      return myTasks;
     }
   });
+  const tasks = tasksQuery.data || [];
+  const projectIds = [...new Set(tasks.map(task => task.project_id).filter(Boolean))];
+  const phaseIds = [...new Set(tasks.map(task => task.phase_id).filter(Boolean))];
+
+  // Fetch labels only for projects and phases referenced by assigned tasks.
+  const projectsQuery = useQuery({
+    queryKey: ["task_projects_mine", companyId, currentUser?.id, projectIds],
+    enabled: !!companyId && projectIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id,name")
+        .eq("company_id", companyId)
+        .in("id", projectIds);
+      if (error) throw error;
+      return data || [];
+    }
+  });
+  const projects = projectsQuery.data || [];
+
+  const phasesQuery = useQuery({
+    queryKey: ["task_phases_mine", companyId, currentUser?.id, phaseIds],
+    enabled: !!companyId && phaseIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_phases")
+        .select("id,name,project_id")
+        .eq("company_id", companyId)
+        .in("id", phaseIds);
+      if (error) throw error;
+      return data || [];
+    }
+  });
+  const phases = phasesQuery.data || [];
 
   useEffect(() => {
     if (!notificationTask) return;
@@ -72,26 +88,63 @@ export default function EPTasks({ currentUser, companyId }) {
     setSelectedTask(task || null);
   }, [tasks, notificationTask]);
 
-  // 4. Toggle Task Status Mutation
+  // Assigned field users may only request a status change here. The database
+  // policy/guard separately enforces the same ownership rule.
   const toggleMutation = useMutation({
     mutationFn: async ({ id, newStatus }) => {
-      const { error } = await supabase.from(tasks.find(t => t.id === id)?.source_table || "project_tasks").update({ status: newStatus }).eq("company_id", companyId).eq("id", id);
+      const task = tasks.find(item => item.id === id);
+      if (!task || !["project_tasks", "tasks"].includes(task.source_table)) {
+        throw new Error("This task is no longer available. Refresh My Tasks and try again.");
+      }
+
+      let request = supabase
+        .from(task.source_table)
+        .update({ status: newStatus })
+        .eq("company_id", companyId)
+        .eq("id", id);
+      request = task.source_table === "project_tasks"
+        ? request.contains("assigned_to", [currentUser.id])
+        : request.in("assigned_to", [currentUser.id, currentUser.email].filter(Boolean));
+
+      const { data, error } = await request.select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("This task changed or is no longer assigned to you. Refresh My Tasks and try again.");
     },
-    onSuccess: () => {
+    onSuccess: (_data, { id, newStatus }) => {
       qc.invalidateQueries({ queryKey: ["tasks_mine"] });
       toast.success("Task updated!");
-      if (selectedTask) {
-        setSelectedTask(prev => ({ ...prev, status: prev.status === "Done" ? "To Do" : "Done" }));
-      }
+      setSelectedTask(prev => prev?.id === id ? { ...prev, status: newStatus } : prev);
     },
     onError: (err) => toast.error(`Failed to update task: ${err.message}`)
   });
+
+  const isLoading = tasksQuery.isLoading || projectsQuery.isLoading || phasesQuery.isLoading;
+  const loadError = tasksQuery.error || projectsQuery.error || phasesQuery.error;
 
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <div className="w-8 h-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <p>My Tasks could not be loaded. Check your connection and try again.</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-3 min-h-11"
+          onClick={() => {
+            tasksQuery.refetch();
+            if (projectIds.length) projectsQuery.refetch();
+            if (phaseIds.length) phasesQuery.refetch();
+          }}
+        >
+          Retry
+        </Button>
       </div>
     );
   }

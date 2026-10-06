@@ -42,14 +42,21 @@ const normalizedItems = items.map(item => ({
   requires_admin: item.requires_admin ?? updated.get(item.slug)?.requires_admin ?? false,
 }));
 const payload = normalizedItems.map(item => Object.fromEntries(columns.map(key => [key, key === 'source_key' ? (item.article_type === 'guide' ? 'help_articles_portal' : 'help_articles_faq_correction') : key === 'read_minutes' ? item.read_minutes || 2 : key === 'related_slugs' ? item.related_slugs || [] : item[key]])));
+const slugsArg = process.argv.indexOf('--slugs');
+const selectedSlugs = slugsArg === -1 ? null : new Set((process.argv[slugsArg + 1] || '').split(',').filter(Boolean));
+if (selectedSlugs?.size === 0) throw new Error('Pass a comma-separated slug list after --slugs.');
+if (selectedSlugs) {
+  for (const slug of selectedSlugs) if (!slugs.has(slug)) throw new Error(`Unknown migration slug: ${slug}`);
+}
+const migrationPayload = selectedSlugs ? payload.filter(item => selectedSlugs.has(item.slug)) : payload;
 const sqlForChunk = chunk => `INSERT INTO public.help_faqs (${columns.join(',')})\nSELECT ${columns.join(',')}\nFROM jsonb_to_recordset($articles$${JSON.stringify(chunk)}$articles$::jsonb)\nAS a(slug text,feature_area text,audience text,question text,answer_short text,answer_long text,route text,search_terms text[],priority smallint,requires_admin boolean,is_active boolean,last_verified_at date,article_type text,read_minutes smallint,related_slugs text[],source_key text)\nON CONFLICT (slug) DO UPDATE SET\n ${columns.filter(key => key !== 'slug').map(key => `${key}=EXCLUDED.${key}`).join(',\n ')},\n embedding=CASE WHEN (help_faqs.question,help_faqs.answer_short,help_faqs.answer_long) IS NOT DISTINCT FROM (EXCLUDED.question,EXCLUDED.answer_short,EXCLUDED.answer_long) THEN help_faqs.embedding ELSE NULL END;`;
 const payloadChunks = [];
-for (let index = 0; index < payload.length; index += 10) payloadChunks.push(payload.slice(index, index + 10));
+for (let index = 0; index < migrationPayload.length; index += 10) payloadChunks.push(migrationPayload.slice(index, index + 10));
 const sql = `-- Source-verified guides and corrected quick answers share the canonical help table.\n-- Stable slugs preserve existing IDs; updated answers are immediately used by AI.\n${payloadChunks.map(sqlForChunk).join('\n\n')}\n`;
 const migrationArg = process.argv.indexOf('--migration');
 if (migrationArg !== -1) {
   const target = process.argv[migrationArg + 1];
-  if (!target || !/^supabase\/migrations\/\d+_(help_articles_portal_content|subscriber_notification_workflow_help|recent_feature_help)\.sql$/.test(target)) throw new Error('Pass the CLI-created content migration path.');
+  if (!target || !/^supabase\/migrations\/\d+_(help_articles_portal_content|subscriber_notification_workflow_help|recent_feature_help|employee_portal_help_content)\.sql$/.test(target)) throw new Error('Pass the CLI-created content migration path.');
   await fs.access(path.join(root, target));
   const readRules = target.includes('subscriber_notification_workflow_help') ? `-- New employee-facing topics use the same active-account role rules as the Help UI.
 CREATE OR REPLACE FUNCTION public.help_can_read(needs_admin boolean, audience text, feature_area text)
@@ -74,6 +81,6 @@ const coverage = pageFiles.map(file => {
   const entries = guides.filter(item => item.source_files.includes(source));
   return { page: file.replace('.jsx',''), source, guides: entries.map(item => ({ slug: item.slug, title: item.question })), status: entries.length ? 'documented' : ['ClientView.jsx','PrivacyPolicy.jsx'].includes(file) ? 'legacy_or_policy_reference' : 'needs_review' };
 });
-const report = { verified_at: '2026-10-05', source_commit: process.env.HELP_SOURCE_COMMIT || null, guide_count: guides.length, guide_words: guides.reduce((sum,item) => sum + item.answer_long.split(/\s+/).length,0), corrected_faq_count: corrections.length, topics: [...new Set(guides.map(item => item.feature_area))].sort(), pages: coverage };
+const report = { verified_at: '2026-10-06', source_commit: process.env.HELP_SOURCE_COMMIT || null, guide_count: guides.length, guide_words: guides.reduce((sum,item) => sum + item.answer_long.split(/\s+/).length,0), corrected_faq_count: corrections.length, topics: [...new Set(guides.map(item => item.feature_area))].sort(), pages: coverage };
 await fs.writeFile(path.join(docs, 'help-articles-coverage.json'), JSON.stringify(report, null, 2) + '\n');
 console.log(JSON.stringify({ guides: guides.length, words: report.guide_words, corrections: corrections.length, uncovered: coverage.filter(item => item.status === 'needs_review').map(item => item.page) }));

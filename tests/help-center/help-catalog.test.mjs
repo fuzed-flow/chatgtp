@@ -24,6 +24,7 @@ const migrations = await Promise.all([
   '20261005140001_recent_feature_help.sql',
   '20261005193000_recent_feature_help.sql',
   '20261005195600_recent_feature_help.sql',
+  '20261006161120_employee_portal_help_content.sql',
 ].map(name => fs.readFile(local('../../supabase/migrations/' + name), 'utf8')));
 const schema = await fs.readFile(local('./schema.sql'), 'utf8');
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -120,7 +121,7 @@ test('AI retrieves useful current sections for real notification, expense, prici
       {query: 'warranty claim intake tracking', slug: 'guide-warranty-claims', content: /New claim[\s\S]*Assigned team member/},
       {query: 'document approval electronic signature', slug: 'document-signature-availability', content: /Reviews & signatures[\s\S]*electronic consent[\s\S]*does not itself capture/},
       {query: 'general document signing signature tracking availability', slug: 'guide-feature-availability', content: /## Approval and general document signing[\s\S]*Request review \/ signature/},
-      {query: 'Employee Portal phone More menu Expenses', slug: 'guide-employee-portal', content: /## Navigate on a phone[\s\S]*\*\*More\*\*[\s\S]*Expenses/},
+      {query: 'Navigate on a phone field primary bottom bar', slug: 'guide-employee-portal', content: /## Navigate on a phone[\s\S]*Clock[\s\S]*Projects[\s\S]*Schedule[\s\S]*Tasks[\s\S]*More[\s\S]*Profile[\s\S]*Warranty/},
       {query: 'contractor portal quote email contact invitation', slug: 'guide-project-contractor-portal', content: /Fuzed Flow[\s\S]*configured business contact email[\s\S]*contact who sent their invitation/},
       {query: 'quote send me a copy company email retry copy', slug: 'guide-quotes-review-send', content: /Send me a copy[\s\S]*Branding & PDFs[\s\S]*Retry copy[\s\S]*without sending another client email/},
       {query: 'invoice send me a copy company email', slug: 'guide-invoices-share-customer-pay', content: /\[COPY\] Invoice from LBProjects - Invoice #INV-1001 for Jane Smith/},
@@ -131,7 +132,7 @@ test('AI retrieves useful current sections for real notification, expense, prici
       {query: 'AI Rewrite Professional Business usage limit undo expand', slug: 'guide-ai-writing-tools', content: /## Plans and usage protection[\s\S]*Professional and Business[\s\S]*10,000 characters/},
       {query: 'quote change order invoice leave without saving save and exit', slug: 'guide-builder-unsaved-changes', content: /Leave without saving[\s\S]*Save and exit/},
       {query: 'sales performance funnel pipeline value velocity monthly target', slug: 'guide-sales-performance', content: /## Set and use a monthly target[\s\S]*Edit target[\s\S]*approved quote value/},
-      {query: 'phone bottom navigation Dashboard Leads Projects Tasks More', slug: 'guide-mobile-navigation', content: /## Use the bottom navigation[\s\S]*Dashboard[\s\S]*More/},
+      {query: 'phone bottom navigation Dashboard Leads Projects Tasks More', slug: 'guide-mobile-navigation', content: /## Use the office bottom navigation[\s\S]*Dashboard[\s\S]*More/},
       {query: 'live sales funnel team performance Professional plan', slug: 'sales-performance-dashboard', content: /saved leads, quotes, payments[\s\S]*Professional and Business plans/},
     ];
     for (const example of cases) {

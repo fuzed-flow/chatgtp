@@ -12,6 +12,7 @@ import { Plus, Clock, FileText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
+import { hasModulePermission } from "@/lib/roleAccess";
 
 function buildLocalIsoString(dateStr, timeStr) {
   if (!dateStr || !timeStr) return null;
@@ -48,8 +49,9 @@ const STATUS_COLORS = {
 
 export default function EPTimesheets({ currentUser, companyId }) {
   const qc = useQueryClient();
-  const { profile } = useAuth();
+  const { profile, company } = useAuth();
   const identityReady = !!profile?.id && !!profile?.company_id && currentUser?.id === profile.id && companyId === profile.company_id;
+  const canBrowseProjects = hasModulePermission(profile, "projects", [], company?.plan_id);
   const entriesKey = ["employee_timesheets", profile?.company_id, profile?.id];
   const [open, setOpen] = useState(false);
   
@@ -64,14 +66,21 @@ export default function EPTimesheets({ currentUser, companyId }) {
   
   const [form, setForm] = useState(defaultForm);
 
-  const { data: projects = [] } = useQuery({ 
-    queryKey: ["projects", companyId], 
-    enabled: !!companyId,
+  const projectsQuery = useQuery({
+    queryKey: ["timesheet_projects_mine", profile?.company_id, profile?.id, canBrowseProjects],
+    enabled: identityReady,
     queryFn: async () => {
-      const { data } = await supabase.from("projects").select("id, name").eq("company_id", companyId);
-      return data || [];
+      if (canBrowseProjects) {
+        const { data, error } = await supabase.from("projects").select("id,name").eq("company_id", profile.company_id).order("name");
+        if (error) throw error;
+        return data || [];
+      }
+      const { data, error } = await supabase.from("project_staff").select("project_id,projects!inner(id,name,company_id)").eq("company_id", profile.company_id).eq("projects.company_id", profile.company_id).eq("user_id", profile.id).or("is_active.is.null,is_active.eq.true");
+      if (error) throw error;
+      return [...new Map((data || []).filter(item => item.projects).map(item => [item.project_id, item.projects])).values()];
     } 
   });
+  const projects = projectsQuery.data || [];
 
   const { data: sheets = [], isError, refetch } = useQuery({
     queryKey: entriesKey,
@@ -79,7 +88,7 @@ export default function EPTimesheets({ currentUser, companyId }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_entries")
-        .select("*")
+        .select("id,company_id,user_id,project_id,date,total_hours,clock_in,clock_out,entry_type,status,notes")
         .eq("company_id", profile.company_id)
         .eq("user_id", profile.id)
         .order("date", { ascending: false })
@@ -139,6 +148,10 @@ export default function EPTimesheets({ currentUser, companyId }) {
       toast.error("Invalid times. Please check your clock in/out and breaks.");
       return;
     }
+    if (form.project_id !== "none" && !projects.some(project => project.id === form.project_id)) {
+      toast.error("Choose a project currently available to you.");
+      return;
+    }
 
     const payload = {
       ...form,
@@ -169,6 +182,7 @@ export default function EPTimesheets({ currentUser, companyId }) {
 
       <div className="space-y-3">
         {isError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">Your recorded shifts could not load.<Button variant="outline" className="mt-2 min-h-11" onClick={() => refetch()}>Retry</Button></div>}
+        {projectsQuery.isError && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Your shifts are available, but project choices could not be loaded. You can still submit hours without a project.<Button variant="outline" className="mt-2 min-h-11" onClick={() => projectsQuery.refetch()}>Retry projects</Button></div>}
         {sheets.length === 0 && (
           <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-300">
             <Clock className="h-10 w-10 text-slate-300 mx-auto mb-3" />
@@ -278,6 +292,8 @@ export default function EPTimesheets({ currentUser, companyId }) {
                   {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {projectsQuery.isLoading && <p className="mt-1 text-xs text-slate-500">Loading available projects…</p>}
+              {projectsQuery.isError && <p className="mt-1 text-xs text-amber-700">Project choices are unavailable; leave this as No Project.</p>}
             </div>
             
             <div>

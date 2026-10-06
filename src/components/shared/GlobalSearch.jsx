@@ -14,7 +14,7 @@ const EMPTY_RESULTS = { scope: "", criteria: "", status: "idle", results: [], er
 const FIELD_CLASS = "h-12 min-w-0 w-full rounded-md border border-slate-300 bg-white px-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500";
 
 export default function GlobalSearch({ onCloseSidebar }) {
-  const { profile } = useAuth();
+  const { profile, company } = useAuth();
   const navigate = useNavigate();
   const id = useId();
   const inputRef = useRef(null);
@@ -25,13 +25,15 @@ export default function GlobalSearch({ onCloseSidebar }) {
   const generationRef = useRef(0);
   const profileRef = useRef(profile);
   profileRef.current = profile;
+  const planIdRef = useRef(company?.plan_id);
+  planIdRef.current = company?.plan_id;
 
   const permissions = Array.isArray(profile?.permissions) ? [...profile.permissions].sort() : Object.entries(profile?.permissions || {}).sort(([a], [b]) => a.localeCompare(b));
-  const scope = JSON.stringify([profile?.id, profile?.company_id, profile?.role, profile?.is_active, permissions]);
+  const scope = JSON.stringify([profile?.id, profile?.company_id, profile?.role, profile?.is_active, permissions, company?.plan_id]);
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
   const previousScopeRef = useRef(scope);
-  const availableTypes = getSearchTypes(profile);
+  const availableTypes = getSearchTypes(profile, company?.plan_id);
   const canOpen = availableTypes.length > 0;
   const availableEntities = SEARCH_ENTITY_TYPES.filter(entity => availableTypes.includes(entity.name));
   const ready = Boolean(profile?.id && profile?.company_id && profile?.is_active !== false && availableTypes.length);
@@ -133,7 +135,7 @@ export default function GlobalSearch({ onCloseSidebar }) {
       if (!currentRequest()) return;
       setSearchState({ ...EMPTY_RESULTS, scope, criteria, status: "loading" });
       try {
-        const response = await searchGlobalRecords({ query, filters, profile: profileRef.current, signal: controller.signal });
+        const response = await searchGlobalRecords({ query, filters, profile: profileRef.current, planId: planIdRef.current, signal: controller.signal });
         if (!currentRequest()) return;
         setSearchState({ scope, criteria, status: "done", results: response.results, errors: response.errors, hasMore: response.hasMore });
       } catch (error) {

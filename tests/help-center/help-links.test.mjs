@@ -136,7 +136,7 @@ const answerBundle = build({
   bundle: true, write: false, platform: 'browser', format: 'iife', define: { 'process.env.NODE_ENV': '"test"' },
 });
 
-async function browserDom(bundle) {
+async function browserDom(bundle, initializeWindow) {
   const errors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on('jsdomError', error => { if (!error.message.includes('navigation')) errors.push(error.message); });
@@ -145,6 +145,7 @@ async function browserDom(bundle) {
   const document = window.document;
   window.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   window.HTMLElement.prototype.scrollIntoView = () => {};
+  initializeWindow?.(window);
   const wait = async predicate => {
     for (let attempt = 0; attempt < 200; attempt++) { if (predicate()) return; await new Promise(resolve => setTimeout(resolve, 20)); }
     throw new Error(`Expected help link UI state: ${document.body.textContent}`);
@@ -196,7 +197,7 @@ const widgetBundle = build({
     import {BrowserRouter} from 'react-router-dom';
     import {Context} from 'test-help-auth';
     import AIHelpWidget from './src/components/shared/AIHelpWidget.jsx';
-    function Fixture(){const [profile,setProfile]=useState({id:'first-user',role:'owner'});window.changeHelpProfile=setProfile;return <Context.Provider value={{profile}}><BrowserRouter><nav aria-label="Primary mobile navigation" data-testid="mobile-navigation"/><AIHelpWidget/></BrowserRouter></Context.Provider>;}
+    function Fixture(){const [profile,setProfile]=useState({id:'first-user',role:'owner'});window.changeHelpProfile=setProfile;return <Context.Provider value={{profile}}><BrowserRouter><nav aria-label={window.helpNavigationLabel||"Primary mobile navigation"} data-testid="mobile-navigation"/><AIHelpWidget/></BrowserRouter></Context.Provider>;}
     createRoot(document.getElementById('root')).render(<Fixture/>);
   ` },
   bundle: true, write: false, platform: 'browser', format: 'iife', define: { 'process.env.NODE_ENV': '"test"' },
@@ -308,6 +309,44 @@ test('mobile AI Help opens on a tap and moves within the screen after a press an
 
     trigger.click();
     await view.wait(() => view.document.querySelector('[role="dialog"]'));
+    assert.deepEqual(view.errors, []);
+  } finally { view.dom.window.close(); }
+});
+
+test('mobile AI Help clamps above the field Employee Portal navigation', async () => {
+  const view = await browserDom(widgetBundle, window => { window.helpNavigationLabel = 'Employee portal mobile navigation'; });
+  try {
+    Object.defineProperty(view.window, 'innerWidth', { configurable: true, value: 390 });
+    Object.defineProperty(view.window, 'innerHeight', { configurable: true, value: 780 });
+    view.window.dispatchEvent(new view.window.Event('resize'));
+    await view.wait(() => view.document.querySelector('[aria-label="Open AI help"]')?.getAttribute('aria-describedby'));
+
+    const trigger = view.document.querySelector('[aria-label="Open AI help"]');
+    const portalNavigation = view.document.querySelector('[aria-label="Employee portal mobile navigation"]');
+    assert.ok(portalNavigation);
+    portalNavigation.getBoundingClientRect = () => ({ left: 0, top: 700, width: 390, height: 80, right: 390, bottom: 780 });
+    trigger.getBoundingClientRect = () => {
+      const left = Number.parseFloat(trigger.style.left) || 280;
+      const top = Number.parseFloat(trigger.style.top) || 700;
+      return { left, top, width: 102, height: 56, right: left + 102, bottom: top + 56 };
+    };
+    let capturedPointer = null;
+    trigger.setPointerCapture = pointerId => { capturedPointer = pointerId; };
+    trigger.hasPointerCapture = pointerId => capturedPointer === pointerId;
+    trigger.releasePointerCapture = pointerId => { if (capturedPointer === pointerId) capturedPointer = null; };
+    const pointer = (type, clientX, clientY) => {
+      const event = new view.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX, clientY });
+      Object.defineProperties(event, { pointerId: { value: 9 }, isPrimary: { value: true } });
+      trigger.dispatchEvent(event);
+    };
+
+    pointer('pointerdown', 330, 730);
+    await view.wait(() => trigger.dataset.dragging === 'true');
+    pointer('pointermove', 20, 900);
+    await view.wait(() => trigger.style.top === '636px');
+    pointer('pointerup', 20, 900);
+    assert.deepEqual(JSON.parse(view.window.sessionStorage.getItem('fuzedflow.ai-help.mobile-position')), { x: 8, y: 636 });
+    assert.ok(Number.parseFloat(trigger.style.top) + 56 + 8 <= 700, 'The widget stays above the field portal bar.');
     assert.deepEqual(view.errors, []);
   } finally { view.dom.window.close(); }
 });

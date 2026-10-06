@@ -12,20 +12,36 @@ import { Plus, Receipt, ExternalLink, Edit2, Trash2, Camera, ShieldAlert } from 
 import { format } from "date-fns";
 import { toast } from "sonner";
 import ExpenseCostContext from './ExpenseCostContext';
+import { useAuth } from "@/lib/AuthContext";
+import { hasModulePermission } from "@/lib/roleAccess";
 
 const STATUS_COLORS = {
   Submitted: "bg-blue-100 text-blue-800 border-blue-200",
   "Under Review": "bg-amber-100 text-amber-800 border-amber-200",
   Approved: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  Left: "bg-red-100 text-red-800 border-red-200",
+  Rejected: "bg-red-100 text-red-800 border-red-200",
   Reimbursed: "bg-slate-800 text-white border-slate-900",
 };
 
 const CATEGORIES = ["Materials", "Fuel", "Tools", "Meals", "Accommodation", "Parking", "Other"];
 const PAYMENT_METHODS = ["Personal Card", "Cash", "Company Card", "Other"];
+const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
+const RECEIPT_EXTENSIONS = new Map([
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+  ["image/heic", "heic"],
+  ["image/heif", "heif"],
+  ["application/pdf", "pdf"],
+]);
 
 export default function EPExpenses({ currentUser, companyId }) {
   const qc = useQueryClient();
+  const { profile, company } = useAuth();
+  const actorId = profile?.id;
+  const activeCompanyId = profile?.company_id;
+  const identityReady = !!actorId && actorId === currentUser?.id && !!activeCompanyId && activeCompanyId === companyId;
+  const canBrowseProjects = hasModulePermission(profile, "projects", [], company?.plan_id);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -42,36 +58,63 @@ export default function EPExpenses({ currentUser, companyId }) {
   const [form, setForm] = useState(defaultForm);
 
   // Fetch Projects
-  const { data: projects = [] } = useQuery({ 
-    queryKey: ["projects", companyId], 
-    enabled: !!companyId,
+  const projectsQuery = useQuery({
+    queryKey: ["expense_projects_mine", activeCompanyId, actorId, canBrowseProjects],
+    enabled: identityReady,
     queryFn: async () => {
-      const { data } = await supabase.from("projects").select("id, name").eq("company_id", companyId);
-      return data || [];
+      if (canBrowseProjects) {
+        const { data, error } = await supabase
+          .from("projects")
+          .select("id,name")
+          .eq("company_id", activeCompanyId)
+          .order("name");
+        if (error) throw error;
+        return data || [];
+      }
+
+      const { data, error } = await supabase
+        .from("project_staff")
+        .select("project_id,projects!inner(id,name,company_id)")
+        .eq("company_id", activeCompanyId)
+        .eq("projects.company_id", activeCompanyId)
+        .eq("user_id", actorId)
+        .or("is_active.is.null,is_active.eq.true");
+      if (error) throw error;
+      return [...new Map((data || [])
+        .filter(item => item.projects)
+        .map(item => [item.project_id, item.projects])).values()];
     } 
   });
+  const projects = projectsQuery.data || [];
 
   // Fetch My Expenses
-  const { data: expenses = [] } = useQuery({
-    queryKey: ["expenses_mine", currentUser?.id],
-    enabled: !!currentUser?.id,
+  const expensesQuery = useQuery({
+    queryKey: ["expenses_mine", activeCompanyId, actorId],
+    enabled: identityReady,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
-        .select("*")
-        .eq("user_id", currentUser.id)
+        .select("id,company_id,user_id,user_email,employee_name,project_id,date,category,amount,description,payment_method,receipt_url,status,admin_notes,created_at,purchase_order_id,project_material_id")
+        .eq("company_id", activeCompanyId)
+        .eq("user_id", actorId)
         .order("date", { ascending: false });
-      
-      if (error) return [];
+
+      if (error) throw error;
       return data || [];
     },
   });
+  const expenses = expensesQuery.data || [];
+  const editingExpense = editingId ? expenses.find(expense => expense.id === editingId) : null;
+  const retainsExistingProject = !!editingExpense?.project_id && editingExpense.project_id === form.project_id;
+  const selectedProjectAvailable = form.project_id === "none" || projects.some(project => project.id === form.project_id);
 
   // --- MUTATIONS ---
   const createMutation = useMutation({
     mutationFn: async (payload) => {
-      const { error } = await supabase.from("expenses").insert([payload]);
+      if (!identityReady) throw new Error("Your employee profile is unavailable. Sign in again before submitting an expense.");
+      const { data, error } = await supabase.from("expenses").insert([payload]).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("The expense was not saved. Refresh My Expenses and try again.");
     },
     onSuccess: () => { 
       qc.invalidateQueries({ queryKey: ["expenses_mine"] }); 
@@ -83,8 +126,17 @@ export default function EPExpenses({ currentUser, companyId }) {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, payload }) => {
-      const { error } = await supabase.from("expenses").update(payload).eq("id", id);
+      if (!identityReady) throw new Error("Your employee profile is unavailable. Sign in again before updating an expense.");
+      const { data, error } = await supabase
+        .from("expenses")
+        .update(payload)
+        .eq("company_id", activeCompanyId)
+        .eq("user_id", actorId)
+        .in("status", ["Submitted", "Under Review", "Rejected"])
+        .eq("id", id)
+        .select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("This expense changed or can no longer be edited. Refresh My Expenses and try again.");
     },
     onSuccess: () => { 
       qc.invalidateQueries({ queryKey: ["expenses_mine"] }); 
@@ -96,8 +148,17 @@ export default function EPExpenses({ currentUser, companyId }) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase.from("expenses").delete().eq("id", id);
+      if (!identityReady) throw new Error("Your employee profile is unavailable. Sign in again before deleting an expense.");
+      const { data, error } = await supabase
+        .from("expenses")
+        .delete()
+        .eq("company_id", activeCompanyId)
+        .eq("user_id", actorId)
+        .in("status", ["Submitted", "Under Review", "Rejected"])
+        .eq("id", id)
+        .select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("This expense changed or can no longer be deleted. Refresh My Expenses and try again.");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses_mine"] });
@@ -110,21 +171,38 @@ export default function EPExpenses({ currentUser, companyId }) {
   const handleReceiptUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const mimeType = String(file.type || "").toLowerCase();
+    const fileExt = RECEIPT_EXTENSIONS.get(mimeType);
+    if (!fileExt) {
+      e.target.value = "";
+      toast.error("Upload a JPG, PNG, WebP, HEIC, HEIF, or PDF receipt.");
+      return;
+    }
+    if (file.size <= 0 || file.size > MAX_RECEIPT_BYTES) {
+      e.target.value = "";
+      toast.error("Receipt files must be smaller than 10 MB.");
+      return;
+    }
+    if (!identityReady) {
+      e.target.value = "";
+      toast.error("Your employee profile is unavailable. Sign in again before uploading a receipt.");
+      return;
+    }
     
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${currentUser.id}/${fileName}`;
+      const uploadId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const filePath = `${activeCompanyId}/${actorId}/${uploadId}.${fileExt}`;
       
-      // Upload directly to public bucket
       const { error: uploadError } = await supabase.storage
         .from('receipts')
-        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+        .upload(filePath, file, { cacheControl: '3600', contentType: mimeType, upsert: false });
         
       if (uploadError) throw uploadError;
       
       const { data } = supabase.storage.from('receipts').getPublicUrl(filePath);
+      if (!data?.publicUrl) throw new Error("The receipt was uploaded but its link could not be created.");
       setForm(prev => ({ ...prev, receipt_url: data.publicUrl }));
       toast.success("Receipt image attached successfully!");
     } catch (err) {
@@ -132,6 +210,7 @@ export default function EPExpenses({ currentUser, companyId }) {
       toast.error(`Upload Blocked: ${err.message}`);
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -145,6 +224,10 @@ export default function EPExpenses({ currentUser, companyId }) {
   };
 
   const handleOpenNew = () => {
+    if (!identityReady) {
+      toast.error("Your employee profile is unavailable. Sign in again before submitting an expense.");
+      return;
+    }
     setEditingId(null);
     setForm(defaultForm);
     setOpen(true);
@@ -177,11 +260,16 @@ export default function EPExpenses({ currentUser, companyId }) {
       return;
     }
 
-    const payload = {
-      company_id: companyId || null,
-      user_id: currentUser.id,
-      user_email: currentUser.email,
-      employee_name: currentUser.full_name,
+    if (!identityReady) {
+      toast.error("Your employee profile is unavailable. Sign in again before submitting an expense.");
+      return;
+    }
+    if (form.project_id !== "none" && !projects.some(project => project.id === form.project_id) && !retainsExistingProject) {
+      toast.error("Choose a project currently available to you.");
+      return;
+    }
+
+    const expenseDetails = {
       project_id: form.project_id === "none" ? null : form.project_id,
       date: form.date,
       category: form.category,
@@ -195,15 +283,34 @@ export default function EPExpenses({ currentUser, companyId }) {
     };
 
     if (editingId) {
-      updateMutation.mutate({ id: editingId, payload });
+      updateMutation.mutate({ id: editingId, payload: expenseDetails });
     } else {
-      createMutation.mutate(payload);
+      createMutation.mutate({
+        ...expenseDetails,
+        company_id: activeCompanyId,
+        user_id: actorId,
+        user_email: profile.email || currentUser.email || null,
+        employee_name: profile.full_name || currentUser.full_name || "Team member",
+      });
     }
   };
 
   const pendingAmount = expenses
     .filter(e => ["Submitted", "Under Review", "Approved"].includes(e.status))
     .reduce((s, e) => s + Number(e.amount || 0), 0);
+
+  if (expensesQuery.isLoading) {
+    return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin" /></div>;
+  }
+
+  if (expensesQuery.isError) {
+    return (
+      <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <p>My Expenses could not be loaded. Check your connection and try again.</p>
+        <Button type="button" variant="outline" className="mt-3 min-h-11" onClick={() => expensesQuery.refetch()}>Retry</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -221,10 +328,18 @@ export default function EPExpenses({ currentUser, companyId }) {
         <Button 
           className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md shadow-amber-500/20" 
           onClick={handleOpenNew}
+          disabled={!identityReady}
         >
           <Plus className="h-4 w-4 mr-1.5" /> New Claim
         </Button>
       </div>
+
+      {projectsQuery.isError && (
+        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p>Your expense history is available, but project choices could not be loaded. You can still submit an expense without a project.</p>
+          <Button type="button" variant="outline" className="mt-3 min-h-11" onClick={() => projectsQuery.refetch()}>Retry projects</Button>
+        </div>
+      )}
 
       {/* CLAIM HISTORY */}
       <Card className="border-slate-200 shadow-sm bg-white">
@@ -345,12 +460,15 @@ export default function EPExpenses({ currentUser, companyId }) {
                 <SelectTrigger className="mt-1 bg-white font-medium"><SelectValue placeholder="Select project..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— No Project —</SelectItem>
+                  {retainsExistingProject && !selectedProjectAvailable && <SelectItem value={editingExpense.project_id}>Current linked project</SelectItem>}
                   {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {projectsQuery.isLoading && <p className="mt-1 text-xs text-slate-500">Loading available projects…</p>}
+              {projectsQuery.isError && <p className="mt-1 text-xs text-amber-700">Project choices are unavailable; leave this as No Project.</p>}
             </div>
 
-            <ExpenseCostContext companyId={companyId} projectId={form.project_id} value={form.purchase_context} onChange={purchase_context => setForm({ ...form, purchase_context })} />
+            {selectedProjectAvailable && <ExpenseCostContext companyId={activeCompanyId} projectId={form.project_id} value={form.purchase_context} onChange={purchase_context => setForm({ ...form, purchase_context })} />}
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description</label>
               <Textarea placeholder="What was this purchase for?" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} className="mt-1 bg-white" />
