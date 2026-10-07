@@ -12,12 +12,12 @@ const base = 'https://synthetic.supabase.co/functions/v1/';
 async function fixture(options = {}) {
   const old = { Deno: globalThis.Deno, fetch: globalThis.fetch, create: globalThis.__qboCreate,
     handler: globalThis.__qboHandler };
-  const states = new Map(), connections = new Map(), calls = [], requests = [];
+  const states = new Map(), connections = new Map(), productionConnections = new Map(), calls = [], requests = [];
   let role = options.role || 'admin', currentCompany = options.company || company;
   globalThis.Deno = { env: { get: name => ({ SUPABASE_URL: 'https://synthetic.supabase.co',
     SUPABASE_ANON_KEY: 'synthetic-anon', SUPABASE_SERVICE_ROLE_KEY: 'synthetic-service',
-    QBO_CLIENT_ID: 'synthetic-client-id', QBO_CLIENT_SECRET: 'synthetic-client-secret',
-    QBO_ENVIRONMENT: options.environment || 'sandbox' })[name] } };
+    QBO_CLIENT_ID: 'synthetic-live-id', QBO_CLIENT_SECRET: 'synthetic-live-secret',
+    QBO_SANDBOX_CLIENT_ID: 'synthetic-sandbox-id', QBO_SANDBOX_CLIENT_SECRET: 'synthetic-sandbox-secret' })[name] } };
   globalThis.__qboCreate = (_url, key) => ({
     auth: { getUser: async token => ({ data: { user: token === 'valid-user' ? { id: user } : null }, error: null }) },
     from: table => {
@@ -36,14 +36,22 @@ async function fixture(options = {}) {
           states.delete(hash);
           return { data: state, error: null };
         },
+        maybeSingle: async () => {
+          calls.push({ table, filters, key });
+          const requestedCompany = filters.find(([name]) => name === 'company_id')?.[1];
+          const rows = table === 'qbo_production_connections' ? productionConnections : connections;
+          return { data: rows.has(requestedCompany) ? { company_id: requestedCompany } : null, error: null };
+        },
       };
       return query;
     },
     rpc: async (name, args) => {
       calls.push({ name, args, key });
       if (name === 'qbo_read_tokens') return { data: connections.has(args.p_company) ? [connections.get(args.p_company)] : [], error: null };
-      if (name === 'qbo_store_tokens') {
-        connections.set(args.p_company, { realm_id: args.p_realm, access_token: args.p_access,
+      if (name === 'qbo_read_production_tokens') return { data: productionConnections.has(args.p_company) ? [productionConnections.get(args.p_company)] : [], error: null };
+      if (name === 'qbo_store_tokens' || name === 'qbo_store_production_tokens') {
+        const rows = name === 'qbo_store_production_tokens' ? productionConnections : connections;
+        rows.set(args.p_company, { realm_id: args.p_realm, access_token: args.p_access,
           refresh_token: args.p_refresh, access_expires_at: args.p_expires_at });
         return { data: null, error: null };
       }
@@ -52,10 +60,14 @@ async function fixture(options = {}) {
   });
   globalThis.fetch = async (url, init) => {
     requests.push({ url: String(url), init });
-    if (String(url).includes('/tokens/bearer')) return new Response(JSON.stringify({ access_token: 'sandbox-access',
-      refresh_token: 'sandbox-refresh', expires_in: 3600 }), { status: 200 });
-    if (String(url).includes('sandbox-quickbooks.api.intuit.com')) return new Response(JSON.stringify({
-      CompanyInfo: { CompanyName: 'Test Construction' },
+    if (String(url).includes('/tokens/bearer')) {
+      const environment = init.headers.Authorization === `Basic ${btoa('synthetic-live-id:synthetic-live-secret')}`
+        ? 'production' : 'sandbox';
+      return new Response(JSON.stringify({ access_token: `${environment}-access`,
+        refresh_token: `${environment}-refresh`, expires_in: 3600 }), { status: 200 });
+    }
+    if (String(url).includes('quickbooks.api.intuit.com')) return new Response(JSON.stringify({
+      CompanyInfo: { CompanyName: String(url).includes('sandbox-') ? 'Test Construction' : 'Real Construction' },
     }), { status: 200 });
     throw Error('Unexpected network destination');
   };
@@ -84,7 +96,7 @@ async function fixture(options = {}) {
   };
   const close = () => { globalThis.Deno = old.Deno; globalThis.fetch = old.fetch;
     globalThis.__qboCreate = old.create; globalThis.__qboHandler = old.handler; };
-  return { invoke, calls, requests, connections, states, close, setRole: value => { role = value; },
+  return { invoke, calls, requests, connections, productionConnections, states, close, setRole: value => { role = value; },
     setCompany: value => { currentCompany = value; } };
 }
 
@@ -162,5 +174,59 @@ test('an expired sandbox token refreshes and stores the rotated token before the
     assert.equal(h.connections.get(company).refresh_token, 'sandbox-refresh');
     assert.equal(h.requests.length, 2);
     assert.equal(h.requests[1].init.headers.Authorization, 'Bearer sandbox-access');
+  } finally { h.close(); }
+});
+
+test('live authorization uses production keys and the same registered callback without touching sandbox state', async () => {
+  const h = await fixture();
+  try {
+    const sandbox = await h.invoke('qbo-connect');
+    const live = await h.invoke('qbo-connect', { body: { environment: 'production', company_id: otherCompany } });
+    const liveUrl = new URL(live.body.url);
+    assert.equal(liveUrl.searchParams.get('client_id'), 'synthetic-live-id');
+    assert.equal(liveUrl.searchParams.get('redirect_uri'), base + 'qbo-callback');
+    assert.equal([...h.states.values()].find(row => row.environment === 'production').company_id, company);
+    assert.equal((await h.invoke('qbo-connect', { body: { environment: 'not-an-environment' } })).status, 400);
+    assert.equal(new URL(sandbox.body.url).searchParams.get('client_id'), 'synthetic-sandbox-id');
+    const path = `?code=live-code&realmId=321789&state=${liveUrl.searchParams.get('state')}`;
+    assert.match((await h.invoke('qbo-callback', { path })).location, /qbo=production_connected/);
+    assert.equal(h.productionConnections.get(company).realm_id, '321789');
+    assert.equal(h.connections.has(company), false);
+    assert.match((await h.invoke('qbo-callback', { path })).location, /qbo=failed/);
+    assert.equal(h.calls.find(call => call.name === 'qbo_store_production_tokens').args.p_company, company);
+  } finally { h.close(); }
+});
+
+test('live connection status and company check are scoped to the signed-in company and read-only', async () => {
+  const h = await fixture();
+  try {
+    h.productionConnections.set(company, { realm_id: '321789', access_token: 'production-access',
+      refresh_token: 'production-refresh', access_expires_at: new Date(Date.now() + 3600_000).toISOString() });
+    assert.equal((await h.invoke('qbo-api', { body: { action: 'status', environment: 'production', company_id: otherCompany } })).body.connected, true);
+    const info = await h.invoke('qbo-api', { body: { action: 'get_company_info', environment: 'production', company_id: otherCompany } });
+    assert.equal(info.body.company_name, 'Real Construction');
+    assert.equal(h.calls.find(call => call.name === 'qbo_read_production_tokens').args.p_company, company);
+    assert.equal(h.requests.length, 1);
+    assert.match(h.requests[0].url, /^https:\/\/quickbooks\.api\.intuit\.com/);
+    h.setCompany(otherCompany);
+    assert.equal((await h.invoke('qbo-api', { body: { action: 'status', environment: 'production' } })).body.connected, false);
+    assert.equal((await h.invoke('qbo-api', { body: { action: 'get_company_info', environment: 'production' } })).status, 400);
+    assert.equal((await h.invoke('qbo-api', { body: { action: 'create_invoice', environment: 'production' } })).status, 400);
+  } finally { h.close(); }
+});
+
+test('an expired live token refreshes with live credentials and leaves sandbox tokens alone', async () => {
+  const h = await fixture();
+  try {
+    h.connections.set(company, { realm_id: '123456', access_token: 'sandbox-access', refresh_token: 'sandbox-refresh',
+      access_expires_at: new Date(Date.now() + 3600_000).toISOString() });
+    h.productionConnections.set(company, { realm_id: '321789', access_token: 'old-live', refresh_token: 'old-refresh',
+      access_expires_at: new Date(Date.now() - 1000).toISOString() });
+    const info = await h.invoke('qbo-api', { body: { action: 'get_company_info', environment: 'production' } });
+    assert.equal(info.body.company_name, 'Real Construction');
+    assert.equal(h.productionConnections.get(company).refresh_token, 'production-refresh');
+    assert.equal(h.connections.get(company).refresh_token, 'sandbox-refresh');
+    assert.equal(h.requests[0].init.headers.Authorization, `Basic ${btoa('synthetic-live-id:synthetic-live-secret')}`);
+    assert.equal(h.requests[1].init.headers.Authorization, 'Bearer production-access');
   } finally { h.close(); }
 });
