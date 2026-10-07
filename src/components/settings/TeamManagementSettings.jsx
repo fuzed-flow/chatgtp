@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Users, UserPlus, Shield, HardHat, Mail, DollarSign, Edit, Search, Briefcase, Trash2, Loader2, CreditCard, AlertTriangle } from 'lucide-react';
+import { Users, UserPlus, Shield, HardHat, Mail, Phone, DollarSign, Edit, Search, Briefcase, Trash2, Loader2, CreditCard, AlertTriangle } from 'lucide-react';
+import { isValidOptionalPhone, normalizeOptionalPhone } from '@/lib/phoneNumber';
 
 export default function TeamManagementSettings() {
   const { company } = useAuth();
@@ -29,8 +30,8 @@ export default function TeamManagementSettings() {
 
   // Form & Filter States
   const [searchQuery, setSearchQuery] = useState('');
-  const [inviteForm, setInviteForm] = useState({ email: '', full_name: '', role: 'employee', hourly_rate: 0 });
-  const [editForm, setEditForm] = useState({ role: 'employee', hourly_rate: 0, is_active: true });
+  const [inviteForm, setInviteForm] = useState({ email: '', full_name: '', phone: '', role: 'employee', hourly_rate: 0 });
+  const [editForm, setEditForm] = useState({ phone: '', role: 'employee', hourly_rate: 0, is_active: true });
 
   // --- QUERIES ---
   // 1. Fetch Active Team Members (from profiles)
@@ -74,7 +75,9 @@ export default function TeamManagementSettings() {
       id: invite.id || invite.email, 
       email: invite.email, 
       full_name: invite.full_name || 'Awaiting Sign Up', 
+      phone: invite.phone || '',
       role: invite.role,
+      hourly_rate: invite.hourly_rate || 0,
       is_pending: invite.is_pending 
     }))
   ];
@@ -87,6 +90,7 @@ export default function TeamManagementSettings() {
         email: formData.email,
         role: formData.role,
         full_name: formData.full_name,
+        phone: normalizeOptionalPhone(formData.phone),
         hourly_rate: Number(formData.hourly_rate),
         is_pending: true
       }]).select(); 
@@ -100,7 +104,7 @@ export default function TeamManagementSettings() {
       queryClient.invalidateQueries({ queryKey: ['team_invites', company.id] });
       toast.success('Invitation saved. They can sign up with the invited email.');
       setIsInviteOpen(false);
-      setInviteForm({ email: '', full_name: '', role: 'employee', hourly_rate: 0 });
+      setInviteForm({ email: '', full_name: '', phone: '', role: 'employee', hourly_rate: 0 });
     },
     onError: (error) => {
       console.error(error);
@@ -167,6 +171,10 @@ export default function TeamManagementSettings() {
       toast.error('Name and Email are required.');
       return;
     }
+    if (!isValidOptionalPhone(inviteForm.phone)) {
+      toast.error('Use an international phone number, such as +14035551234.');
+      return;
+    }
 
     setIsCheckingLimit(true);
 
@@ -217,6 +225,7 @@ export default function TeamManagementSettings() {
     setSelectedUser(user);
     setEditForm({
       full_name: user.full_name || '', 
+      phone: user.phone || '',
       role: user.role || 'employee',
       hourly_rate: user.hourly_rate || 0,
       is_active: user.is_active !== false, permissions: user.permissions || []
@@ -226,11 +235,16 @@ export default function TeamManagementSettings() {
 
   const handleEditSubmit = (e) => {
     e.preventDefault();
+    if (!isValidOptionalPhone(editForm.phone)) {
+      toast.error('Use an international phone number, such as +14035551234.');
+      return;
+    }
     updateUserMutation.mutate({
       id: selectedUser.id,
       is_pending: selectedUser.is_pending, 
       updates: { 
         full_name: editForm.full_name,
+        phone: normalizeOptionalPhone(editForm.phone),
         role: editForm.role, 
         hourly_rate: Number(editForm.hourly_rate), 
         is_active: editForm.is_active,
@@ -245,6 +259,7 @@ export default function TeamManagementSettings() {
     return (
       user.full_name?.toLowerCase().includes(term) ||
       user.email?.toLowerCase().includes(term) ||
+      user.phone?.toLowerCase().includes(term) ||
       user.role?.toLowerCase().includes(term)
     );
   });
@@ -329,6 +344,7 @@ export default function TeamManagementSettings() {
                       )}
                     </h4>
                     <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-0.5"><Mail className="h-3 w-3" /> {user.email}</p>
+                    {user.phone ? <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slate-500"><Phone className="h-3 w-3" /> {user.phone}</p> : null}
                   </div>
                 </div>
 
@@ -415,6 +431,11 @@ export default function TeamManagementSettings() {
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address *</Label>
                 <Input type="email" value={inviteForm.email} onChange={e => setInviteForm({...inviteForm, email: e.target.value})} placeholder="john@company.com" required className="mt-1" />
               </div>
+              <div className="col-span-2">
+                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number <span className="font-medium normal-case text-slate-400">(optional)</span></Label>
+                <Input type="tel" autoComplete="tel" value={inviteForm.phone} onChange={e => setInviteForm({...inviteForm, phone: e.target.value})} placeholder="+14035551234" className="mt-1" />
+                <p className="mt-1 text-xs text-slate-500">Include the country code. This can be used if the employee later enables SMS alerts.</p>
+              </div>
               
               <div className="col-span-2 sm:col-span-1">
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Access Role</Label>
@@ -477,6 +498,10 @@ export default function TeamManagementSettings() {
                 <div>
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</p>
                   <p className="text-sm font-medium text-slate-700 mt-1">{selectedUser.email}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number <span className="font-medium normal-case text-slate-400">(optional)</span></Label>
+                  <Input type="tel" autoComplete="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} placeholder="+14035551234" className="mt-1 bg-white" />
                 </div>
               </div>
 

@@ -51,7 +51,16 @@ export default function PersonalNotificationSettings({ compact = false }) {
   const connectPush = async () => {
     if (pushBusy) return;
     setPushBusy(true);
-    try { setPushStatus(await enableNotificationPush()); change('push', true); toast.success('This device is connected. Save preferences to enable push alerts.'); }
+    try {
+      setPushStatus(await enableNotificationPush());
+      const nextForm = { ...form, push: true };
+      const { data, error } = await supabase.rpc('save_notification_preferences', { p_preferences: nextForm });
+      if (error) throw error;
+      setForm(nextForm);
+      queryClient.setQueryData(['notification-preferences', profile.id], { ...DEFAULT_NOTIFICATION_PREFERENCES, ...data, categories: data?.categories || {} });
+      queryClient.invalidateQueries({ queryKey: ['notifications', profile.company_id, profile.id] });
+      toast.success('Push notifications are enabled on this device.');
+    }
     catch (error) { toast.error(error.message); }
     finally { setPushBusy(false); }
   };
