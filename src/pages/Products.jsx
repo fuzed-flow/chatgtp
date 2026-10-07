@@ -15,6 +15,7 @@ import { formatCurrencyUSD } from "../components/utils/formatCurrency";
 import { Button } from "@/components/ui/button";
 
 const UNITS = ["ea", "ft", "sqft", "hr", "lft", "m", "sqm", "bag", "box", "roll"];
+const PRIORITY_IMAGE_COUNT = 10;
 
 const parseCSV = (text) => {
   const result = [];
@@ -157,6 +158,7 @@ export default function Products() {
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
+  const priorityImageIds = new Set(sortedProducts.filter(p => p.image_url).slice(0, PRIORITY_IMAGE_COUNT).map(p => p.id));
 
   const renderSortIcon = (key) => {
     if (sortConfig.key !== key) return <ArrowUpDown className="h-3 w-3 ml-1 text-slate-300 group-hover:text-slate-400" />;
@@ -716,7 +718,16 @@ export default function Products() {
                       <tr key={p.id} className="hover:bg-amber-50/30 transition-colors">
                         <td className="px-6 py-4">
                           {p.image_url ? (
-                            <img src={p.image_url} alt={p.name} className="h-10 w-10 object-cover rounded-lg border border-slate-200 shadow-sm" />
+                            <img
+                              src={p.image_url}
+                              alt={p.name}
+                              width="40"
+                              height="40"
+                              loading={priorityImageIds.has(p.id) ? "eager" : "lazy"}
+                              fetchPriority={priorityImageIds.has(p.id) ? "high" : "low"}
+                              decoding="async"
+                              className="h-10 w-10 object-cover rounded-lg border border-slate-200 shadow-sm"
+                            />
                           ) : (
                             <div className="h-10 w-10 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center">
                               <ImageIcon className="h-4 w-4 text-slate-300" />
