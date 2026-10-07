@@ -115,7 +115,7 @@ export default function DeficiencyItemDialog({ open, onOpenChange, mode = "guide
 
   return (
     <Dialog open={open} onOpenChange={value => { if (!saving) onOpenChange(value); }}>
-      <DialogContent closeButtonClassName="hidden" className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none border-0 p-0 sm:h-auto sm:max-h-[94dvh] sm:w-[96vw] sm:max-w-2xl sm:rounded-lg sm:border">
+      <DialogContent closeButtonClassName="hidden" className="h-[100dvh] max-h-none w-screen max-w-none overflow-y-auto rounded-none border-0 p-0 sm:h-auto sm:max-h-[94dvh] sm:w-[96vw] sm:max-w-2xl sm:rounded-lg sm:border">
         <div className="sticky top-0 z-20 flex items-start justify-between border-b border-slate-200 bg-white px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:static sm:px-6 sm:pt-6">
           <DialogHeader className="pr-4 text-left"><DialogTitle className="text-xl font-black">{item ? "Edit deficiency" : isQuick ? "Quick photo capture" : "Add deficiency"}</DialogTitle><DialogDescription>{isQuick ? "Take or select the photos now. Trade, description, and due date can be completed in the office." : "Add one or more photos and the details, then save and continue to the next deficiency."}</DialogDescription></DialogHeader>
           <button type="button" onClick={() => onOpenChange(false)} disabled={saving} aria-label="Close" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200"><X className="h-5 w-5" /></button>
