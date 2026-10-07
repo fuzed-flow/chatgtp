@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -24,6 +25,7 @@ export default function QuickBooksExportDialog({ invoice, onClose }) {
   const [sending, setSending] = useState(false);
   const [customerChoice, setCustomerChoice] = useState('new');
   const [customerId, setCustomerId] = useState('');
+  const [customerDisplayName, setCustomerDisplayName] = useState('');
   const [itemId, setItemId] = useState('');
   const [taxCodeId, setTaxCodeId] = useState('');
   const [depositAccountId, setDepositAccountId] = useState('');
@@ -45,6 +47,7 @@ export default function QuickBooksExportDialog({ invoice, onClose }) {
     setTaxCodeId('');
     setDepositAccountId('');
     setPaymentMethodIds({});
+    setCustomerDisplayName(invoice.client_name || '');
     if (!eligible) {
       setLoading(false);
       return;
@@ -77,28 +80,36 @@ export default function QuickBooksExportDialog({ invoice, onClose }) {
   const rate = selectedTax?.rates?.reduce((sum, row) => sum + Number(row.rate || 0), 0);
   const taxMatches = Number.isFinite(rate) && Math.abs(Math.round(Number(invoice?.subtotal || 0) * rate) / 100 - Number(invoice?.tax || 0)) <= 0.02;
   const resumePayments = catalog?.export?.status === 'exported' && catalog?.export?.payment_sync_status === 'pending';
-  const exportLocked = Boolean(catalog?.export) && !resumePayments;
+  const retryNameConflict = Boolean(catalog?.retryableNameConflict);
+  const exportLocked = Boolean(catalog?.export) && !resumePayments && !retryNameConflict;
   const paymentTypes = [...new Set((catalog?.payments || []).map(p => p.method || 'Other'))];
   const paymentReady = !catalog?.payments?.length || (depositAccountId && paymentsConfirmed && paymentTypes.every(method => paymentMethodIds[method]));
   const ready = eligible && !loading && !sending && !exportLocked && !error && catalog && paymentReady && confirmed &&
-    (resumePayments || (itemId && taxCodeId && taxMatches && (customerChoice === 'new' || Boolean(customerId))));
+    (resumePayments || (itemId && taxCodeId && taxMatches && (customerChoice === 'new'
+      ? customerDisplayName.trim() && (!retryNameConflict || customerDisplayName.trim().toLowerCase() !== (invoice?.client_name || '').trim().toLowerCase())
+      : Boolean(customerId))));
   const exportInvoice = async () => {
     setSending(true);
     setError('');
     const { data, error: requestError } = await supabase.functions.invoke('qbo-api', {
       body: { action: resumePayments ? 'sync_payments' : 'export_invoice', environment, invoiceId: invoice.id,
-        customerChoice, customerId, itemId, taxCodeId, depositAccountId, paymentMethodIds,
+        customerChoice, customerId, customerDisplayName, itemId, taxCodeId, depositAccountId, paymentMethodIds,
         previewSignature: catalog.previewSignature },
     });
-    setSending(false);
     if (requestError || data?.error || data?.reviewRequired) {
       const message = data?.reviewRequired
         ? `QuickBooks created invoice ${data.qbo_invoice_id}, but the total differs. Review it in QuickBooks before taking further action.`
         : await functionErrorMessage(requestError, data, 'QuickBooks export failed.');
+      const refreshed = await supabase.functions.invoke('qbo-api', {
+        body: { action: 'invoice_catalog', environment, invoiceId: invoice.id },
+      });
+      if (!refreshed.error && !refreshed.data?.error) setCatalog(refreshed.data);
+      setSending(false);
       setError(message);
       toast.error(message);
       return;
     }
+    setSending(false);
     toast.success(`QuickBooks invoice ${data.qbo_invoice_id}${data.payment_count ? ` and ${data.payment_count} payments` : ''} exported.`);
     onClose();
   };
@@ -119,6 +130,7 @@ export default function QuickBooksExportDialog({ invoice, onClose }) {
         {!eligible && <p className="rounded bg-amber-50 p-3 text-amber-900">This invoice must be issued in FuzedFlow before it can be exported to QuickBooks.</p>}
         {catalog && <>
           <p className="rounded bg-slate-50 p-3">Client: {invoice?.client_name}. FuzedFlow invoice: ${Number(invoice?.subtotal || 0).toFixed(2)} before tax + ${Number(invoice?.tax || 0).toFixed(2)} tax = <strong>${Number(invoice?.total || 0).toFixed(2)}</strong>. QuickBooks currency: {catalog.currency}; country: {catalog.country || 'unknown'}.</p>
+          {retryNameConflict && <p className="rounded bg-amber-50 p-3 text-amber-900">QuickBooks already uses “{invoice?.client_name}” as a name. No QuickBooks invoice was linked to this attempt. Select the correct existing customer if shown below, or create a customer with a distinct QuickBooks display name. Before retrying, the server checks QuickBooks for this invoice number again.</p>}
           {exportLocked ? <p className="rounded bg-amber-50 p-3 text-amber-900">Invoice export: {catalog.export.status}. Payment sync: {catalog.export.payment_sync_status || 'not applicable'}. {catalog.export.qbo_invoice_id ? `QuickBooks invoice ID: ${catalog.export.qbo_invoice_id}.` : 'Review QuickBooks before trying this invoice again.'} {catalog.export.error_message} {catalog.payments?.filter(p => p.export?.status === 'review_required').map(p => `Payment ${p.date} needs review: ${p.export.error_message}`).join(' ')}</p> : <>
             {resumePayments && <p className="rounded bg-amber-50 p-3 text-amber-900">Invoice {catalog.export.qbo_invoice_id} is already in QuickBooks. Continue only the remaining payments after checking QuickBooks for any payments already entered.</p>}
             {!resumePayments && <>
@@ -128,7 +140,10 @@ export default function QuickBooksExportDialog({ invoice, onClose }) {
                   <SelectItem value="new">Create a new QuickBooks customer</SelectItem>
                   {catalog.customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}{c.email ? ` (${c.email})` : ''}</SelectItem>)}
                 </SelectContent></Select>}
-              {customerChoice === 'new' && <p className="text-slate-600 mt-1">Creating a customer with the same name as an existing QuickBooks customer is blocked.</p>}
+              {customerChoice === 'new' && <div className="mt-2 space-y-1"><label htmlFor="qbo-customer-display-name" className="font-semibold">QuickBooks customer display name</label>
+                <Input id="qbo-customer-display-name" value={customerDisplayName} maxLength={100} onChange={event => { setCustomerDisplayName(event.target.value); setConfirmed(false); }} />
+                <p className="text-slate-600">This changes the new customer’s name in QuickBooks only. Use a distinct name if QuickBooks already has a customer, supplier, or employee with the original name.</p>
+              </div>}
             </div>
             <div><label className="font-semibold">QuickBooks product or service</label><Select value={itemId} onValueChange={value => { setItemId(value); setConfirmed(false); }}>
               <SelectTrigger><SelectValue placeholder="Choose where invoice lines are recorded" /></SelectTrigger><SelectContent>
