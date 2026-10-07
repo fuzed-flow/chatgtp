@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
-import { Plus, Receipt, Trash2, Eye, DollarSign, CheckCircle2, AlertCircle, Search, Edit2 } from "lucide-react";
+import { Plus, Receipt, Trash2, Eye, DollarSign, CheckCircle2, AlertCircle, Search, Edit2, BookOpen } from "lucide-react";
 import { createPageUrl } from "../utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import RecordPaymentDialog from "../components/invoices/RecordPaymentDialog";
 import { Mail } from "lucide-react"; // <-- Add Mail here if missing
 import SendReceiptDialog from "../components/invoices/SendReceiptDialog";
+import QuickBooksExportDialog from "../components/invoices/QuickBooksExportDialog";
 
 const DATE_OPTIONS = [
   { label: "All", value: "all" },
@@ -52,6 +53,7 @@ export default function Invoices() {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [qboInvoice, setQboInvoice] = useState(null);
 
   // --- QUERIES ---
   const { data: invoices = [] } = useQuery({ 
@@ -263,6 +265,7 @@ export default function Invoices() {
             actions={(invoice) => (
               <ActionMenu actions={[
                 { label: "Manage Progress Billing", icon: Eye, onClick: () => window.location.href = createPageUrl(`InvoiceBuilder?id=${invoice.id}`) },
+                ...(['admin', 'owner'].includes(profile?.role) ? [{ label: "Export to QuickBooks", icon: BookOpen, onClick: () => setQboInvoice(invoice) }] : []),
                 { label: "Record Payment", icon: DollarSign, onClick: () => { setSelectedInvoice(invoice); setEditingPaymentId(null); setPaymentDialogOpen(true); } },
                 { label: "Delete Invoice", icon: Trash2, destructive: true, onClick: () => { if(window.confirm("Delete this invoice?")) deleteInvoiceMutation.mutate(invoice.id); } },
               ]} />
@@ -363,6 +366,7 @@ export default function Invoices() {
         invoices={invoices}
         clients={clients}
       />  
+      {qboInvoice && <QuickBooksExportDialog invoice={qboInvoice} onClose={() => setQboInvoice(null)} />}
     </div>
   );
 }
