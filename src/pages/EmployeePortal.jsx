@@ -34,6 +34,7 @@ import EPVacationTracker from "@/components/employee/EPVacationTracker";
 import EPTimeClock from "@/components/employee/EPTimeClock";
 import EPInventory from "@/components/employee/EPInventory";
 import EPAssignedWork from "@/components/employee/EPAssignedWork";
+import EmployeePushSetupPrompt from "@/components/employee/EmployeePushSetupPrompt";
 
 const HR_TABS = new Set(["time_clock", "timesheets", "payroll", "vacation_tracker", "expenses"]);
 const PORTAL_CONTEXT_PARAMS = [
@@ -270,7 +271,10 @@ export default function EmployeePortal() {
         ) : null}
 
         <div ref={isFieldRole ? fieldContentRef : undefined} data-employee-portal-content className={isFieldRole ? "min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-4 sm:px-6 lg:px-8 lg:pb-8 lg:pt-8" : "px-4 py-5 sm:px-6 lg:px-8 lg:py-8"}>
-          <div className="mx-auto max-w-5xl">{renderContent()}</div>
+          <div className="mx-auto max-w-5xl">
+            {isFieldRole ? <EmployeePushSetupPrompt /> : null}
+            {renderContent()}
+          </div>
         </div>
       </main>
 
