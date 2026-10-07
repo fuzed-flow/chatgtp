@@ -31,6 +31,33 @@ function subjectText(value: unknown) {
 }
 
 async function copyContext(supabase: any, companyId: string, body: any) {
+  if (body.copy_document_type === "project_closeout_trade") {
+    if (!uuidPattern.test(body.copy_document_id || "") || !uuidPattern.test(body.copy_vendor_id || "")
+      || !uuidPattern.test(body.request_id || "")) throw new Error("A saved closeout, assigned trade and send request are required for a company copy.");
+    const { data: company, error: companyError } = await supabase.from("companies")
+      .select("name,settings").eq("id", companyId).single();
+    if (companyError || !company || !validCompanyEmail(company.settings?.email)) {
+      throw new Error("Add a valid company email in Settings to receive a copy.");
+    }
+    const { data: closeout, error: closeoutError } = await supabase.from("project_closeouts")
+      .select("title").eq("id", body.copy_document_id).eq("company_id", companyId).single();
+    const { data: vendor, error: vendorError } = await supabase.from("vendors")
+      .select("name").eq("id", body.copy_vendor_id).eq("company_id", companyId).single();
+    const { data: assignment, error: assignmentError } = await supabase.from("project_closeout_items")
+      .select("id").eq("closeout_id", body.copy_document_id).eq("assigned_vendor_id", body.copy_vendor_id)
+      .eq("company_id", companyId).limit(1).maybeSingle();
+    if (closeoutError || vendorError || assignmentError || !closeout || !vendor || !assignment) {
+      throw new Error("The assigned trade closeout was not found in your company.");
+    }
+    const companyName = subjectText(company.name);
+    const title = subjectText(closeout.title);
+    const vendorName = subjectText(vendor.name);
+    if (!companyName || !title || !vendorName) throw new Error("Save the company, closeout and trade names before requesting a copy.");
+    return {
+      recipient: company.settings.email.trim(), clientId: null,
+      subject: `[COPY] Project Closeout from ${companyName} - ${title} for ${vendorName}`,
+    };
+  }
   if (!Object.prototype.hasOwnProperty.call(documents, body.document_type)
     || !uuidPattern.test(body.document_id || "") || !uuidPattern.test(body.request_id || "")) {
     throw new Error("A saved document and valid send request are required for a company copy.");
@@ -217,7 +244,7 @@ serve(async (req) => {
 
     // Provider IDs are trusted UUIDs. Replaying a send must not duplicate outreach.
     // Logging failure never changes an already accepted email into a send failure.
-    try {
+    if (body.copy_document_type !== "project_closeout_trade") try {
       const { error } = await supabase.from("client_communications").upsert({
         id: resendData.id, company_id: companyId, client_id: deliveryContext?.clientId || (copy ? copy.clientId : (client_id || null)),
         lead_id: deliveryContext?.leadId || null, provider: "resend", provider_message_id: resendData.id,

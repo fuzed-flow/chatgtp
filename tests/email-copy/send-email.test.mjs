@@ -279,6 +279,44 @@ for (const [type, info] of Object.entries(documentTypes)) {
   });
 }
 
+test('assigned trade closeout copy uses the Settings address and preserves the trade PDF', async () => {
+  const vendor = {id: uuid(10), company_id: COMPANY, name: 'Reliable Electrical'};
+  const fixture = edgeFixture({documents: {
+    project_closeouts: [{id: DOCUMENT, company_id: COMPANY, title: 'Final deficiencies'}],
+    vendors: [vendor],
+    project_closeout_items: [{id: uuid(11), company_id: COMPANY, closeout_id: DOCUMENT, assigned_vendor_id: vendor.id}],
+  }});
+  const payload = requestBody({to_email: 'trade@example.invalid', client_id: undefined, document_type: undefined, document_id: undefined,
+    copy_document_type: 'project_closeout_trade', copy_document_id: DOCUMENT, copy_vendor_id: vendor.id});
+  const {response, body} = await fixture.request(payload);
+  assert.equal(response.status, 200);
+  assert.equal(body.copy_status, 'sent');
+  assert.equal(fixture.observed.delivered.length, 2);
+  const [original, copy] = fixture.observed.delivered;
+  assert.deepEqual(recipients(original.payload.to), ['trade@example.invalid']);
+  assert.deepEqual(recipients(copy.payload.to), [COMPANY_EMAIL]);
+  assert.equal(copy.payload.subject, '[COPY] Project Closeout from LBProjects - Final deficiencies for Reliable Electrical');
+  assert.equal(copy.payload.html, original.payload.html);
+  assert.deepEqual(copy.payload.attachments, original.payload.attachments);
+  assert.equal(fixture.communications.size, 0, 'Trade mail is not logged as a client communication.');
+  assert.ok(fixture.observed.queries.find(query => query.table === 'project_closeout_items').filters.some(filter => filter.field === 'assigned_vendor_id' && filter.value === vendor.id));
+});
+
+test('unassigned or wrong-company trades cannot trigger a closeout send with a copy', async () => {
+  for (const vendorCompany of [OTHER_COMPANY, COMPANY]) {
+    const vendor = {id: uuid(10), company_id: vendorCompany, name: 'Reliable Electrical'};
+    const fixture = edgeFixture({documents: {
+      project_closeouts: [{id: DOCUMENT, company_id: COMPANY, title: 'Final deficiencies'}],
+      vendors: [vendor],
+      project_closeout_items: vendorCompany === COMPANY ? [] : [{id: uuid(11), company_id: COMPANY, closeout_id: DOCUMENT, assigned_vendor_id: vendor.id}],
+    }});
+    const {response} = await fixture.request(requestBody({client_id: undefined, document_type: undefined, document_id: undefined,
+      copy_document_type: 'project_closeout_trade', copy_document_id: DOCUMENT, copy_vendor_id: vendor.id}));
+    assert.ok(response.status >= 400);
+    assert.equal(fixture.observed.providerAttempts.length, 0);
+  }
+});
+
 test('lead-linked quotes use the saved lead contact and a company-scoped lookup', async () => {
   const fixture = edgeFixture({documents: {quotes: [{id: DOCUMENT, company_id: COMPANY, client_id: null, lead_id: LEAD, quote_number: 'Q-1001'}]}});
   const {response, body} = await fixture.request(requestBody({document_type: 'quote'}));

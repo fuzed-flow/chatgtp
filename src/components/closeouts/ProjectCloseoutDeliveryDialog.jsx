@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { escapeEmailHtml } from "@/lib/clientUpdates";
 import { projectCloseoutPortalUrl } from "@/lib/projectCloseouts";
+import { isValidCompanyEmail } from "@/lib/emailCopy";
 
 async function edgeFunctionError(error, fallback) {
   let message = error?.message || fallback;
@@ -42,6 +43,7 @@ export default function ProjectCloseoutDeliveryDialog({ open, onOpenChange, mode
   const [sendCopy, setSendCopy] = useState(false);
   const [saving, setSaving] = useState(false);
   const intent = useRef(null);
+  const tradeIntent = useRef(null);
   const vendorById = useMemo(() => Object.fromEntries((vendors || []).map(vendor => [vendor.id, vendor])), [vendors]);
   const assignments = useMemo(() => {
     const groups = new Map();
@@ -60,7 +62,7 @@ export default function ProjectCloseoutDeliveryDialog({ open, onOpenChange, mode
     setRecipient(mode === "email" ? client?.email || "" : client?.phone || "");
     setSubject(mode === "vendors" ? `Closeout deficiencies - ${project?.name || "Project"}` : `Project Closeout - ${project?.name || "Your Project"}`);
     setMessage(mode === "vendors" ? "Please review the attached closeout deficiencies assigned to your company. Complete each item by its due date and contact us with any questions." : mode === "email" ? "Please find the project closeout deficiency checklist, including photos, assignments, and the current completion status." : `Hi ${(client?.name || "there").split(" ")[0]}, the closeout checklist for ${project?.name || "your project"} is ready to review.`);
-    setAttachPdf(true); setSendCopy(false); setSaving(false); intent.current = null;
+    setAttachPdf(true); setSendCopy(false); setSaving(false); intent.current = null; tradeIntent.current = null;
   }, [open, closeout, project, client, mode]);
 
   const publish = async () => {
@@ -73,6 +75,7 @@ export default function ProjectCloseoutDeliveryDialog({ open, onOpenChange, mode
     const { data, error } = await supabase.functions.invoke("send-email", { body });
     if (error) throw await edgeFunctionError(error, "Email could not be sent.");
     if (data?.success !== true) throw new Error(data?.error || "Email delivery could not be confirmed.");
+    return data;
   };
 
   const handleSubmit = async event => {
@@ -83,19 +86,37 @@ export default function ProjectCloseoutDeliveryDialog({ open, onOpenChange, mode
     try {
       if (mode === "vendors") {
         if (!deliverableAssignments.length) throw new Error("Assign at least one deficiency to a subcontractor with an email address.");
+        const signature = JSON.stringify([closeout.id, subject, message, sendCopy, deliverableAssignments.map(group => [group.vendor.id, group.items.map(item => item.id)])]);
+        if (tradeIntent.current?.signature !== signature) tradeIntent.current = { signature, groups: {} };
         for (const group of deliverableAssignments) {
-          const content = await generateProjectCloseoutPDF(closeout, group.items.map(item => ({ ...item, vendor: group.vendor })), project, client, company, { returnBase64: true, audience: group.vendor.name });
-          await sendEmail({
-            to_email: group.vendor.email, subject: subject.trim(), html_body: vendorEmailTemplate({ company, closeout, project, vendor: group.vendor, message, itemCount: group.items.length }),
-            request_id: crypto.randomUUID(), reply_to: company?.settings?.email || undefined,
-            attachments: [{ filename: `${safeFile(project?.project_number || project?.name)}-Closeout-${safeFile(group.vendor.name)}.pdf`, content, type: "application/pdf" }],
-          });
-          const ids = group.items.map(item => item.id);
-          const { error: itemError } = await supabase.from("project_closeout_items").update({ subcontractor_sent_at: new Date().toISOString() }).in("id", ids).eq("company_id", closeout.company_id);
-          if (itemError) throw new Error(`Email was sent to ${group.vendor.name}, but its delivery status could not be saved.`);
+          const entry = tradeIntent.current.groups[group.vendor.id] ||= { requestId: crypto.randomUUID(), accepted: false, copyComplete: false, statusSaved: false, createdAt: Date.now(), payload: null };
+          if (!entry.payload) {
+            const content = await generateProjectCloseoutPDF(closeout, group.items.map(item => ({ ...item, vendor: group.vendor })), project, client, company, { returnBase64: true, audience: group.vendor.name });
+            entry.payload = {
+              to_email: group.vendor.email, subject: subject.trim(), html_body: vendorEmailTemplate({ company, closeout, project, vendor: group.vendor, message, itemCount: group.items.length }),
+              request_id: entry.requestId, reply_to: company?.settings?.email || undefined,
+              send_copy_to_company: sendCopy,
+              copy_document_type: "project_closeout_trade", copy_document_id: closeout.id, copy_vendor_id: group.vendor.id,
+              attachments: [{ filename: `${safeFile(project?.project_number || project?.name)}-Closeout-${safeFile(group.vendor.name)}.pdf`, content, type: "application/pdf" }],
+            };
+          }
+          if (!entry.accepted || !entry.copyComplete) {
+            if (Date.now() - entry.createdAt >= (24 * 60 - 5) * 60 * 1000) throw new Error("This trade email was sent earlier. The copy request is too old to retry safely; check delivery before sending again.");
+            const result = await sendEmail(entry.payload);
+            entry.accepted = true;
+            entry.copyComplete = !sendCopy || result.copy_status === "sent";
+          }
+          if (!entry.statusSaved) {
+            const ids = group.items.map(item => item.id);
+            const { error: itemError } = await supabase.from("project_closeout_items").update({ subcontractor_sent_at: new Date().toISOString() }).in("id", ids).eq("company_id", closeout.company_id);
+            if (itemError) throw new Error(`Email was sent to ${group.vendor.name}, but its delivery status could not be saved.`);
+            entry.statusSaved = true;
+          }
+          if (!entry.copyComplete) throw new Error(`Sent to ${group.vendor.name}, but your company copy could not be confirmed. Retry copy without emailing the trade again.`);
         }
         const { error } = await supabase.from("project_closeouts").update({ subcontractors_sent_at: new Date().toISOString() }).eq("id", closeout.id).eq("company_id", closeout.company_id);
         if (error) throw new Error("Trade packages were sent, but the closeout delivery status could not be saved.");
+        tradeIntent.current = null;
         toast.success(`Closeout sent to ${deliverableAssignments.length} subcontractor${deliverableAssignments.length === 1 ? "" : "s"}.`, { id: loadingToast });
       } else {
         await publish();
@@ -129,12 +150,16 @@ export default function ProjectCloseoutDeliveryDialog({ open, onOpenChange, mode
   };
 
   const copyEmail = company?.settings?.email || "";
+  const copyAvailable = isValidCompanyEmail(copyEmail);
   const title = mode === "vendors" ? "Send to assigned subcontractors" : mode === "email" ? "Email project closeout" : "Text project closeout";
   return <Dialog open={open} onOpenChange={value => { if (!saving) onOpenChange(value); }}><DialogContent className="max-h-[92dvh] w-[96vw] overflow-y-auto pt-10 sm:max-w-xl sm:pt-6"><DialogHeader className="pr-8"><DialogTitle className="flex items-center gap-2 text-xl font-black">{mode === "vendors" ? <UsersRound className="h-5 w-5 text-amber-600" /> : mode === "email" ? <Mail className="h-5 w-5 text-amber-600" /> : <MessageSquare className="h-5 w-5 text-amber-600" />}{title}</DialogTitle><DialogDescription>{mode === "vendors" ? "Each subcontractor receives a PDF containing only their assigned deficiencies." : "The closeout will be published to the Client Portal before it is sent."}</DialogDescription></DialogHeader><form className="space-y-5 pt-2" onSubmit={handleSubmit}>
     {mode === "vendors" ? <div className="space-y-2"><Label>Recipients</Label><div className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-slate-50">{assignments.length ? assignments.map(group => <div key={group.vendor.id} className="flex items-center justify-between gap-4 p-3 text-sm"><div><strong className="text-slate-900">{group.vendor.name}</strong><p className="text-xs text-slate-500">{group.vendor.email || "Email address required"}</p></div><span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-700">{group.items.length} item{group.items.length === 1 ? "" : "s"}</span></div>) : <p className="p-4 text-sm text-amber-800">No deficiencies are assigned to subcontractors yet.</p>}</div>{assignments.some(group => !group.vendor.email) && <p className="text-xs text-amber-700">Subcontractors without an email address will be skipped.</p>}</div> : <div className="space-y-2"><Label htmlFor="closeout-recipient">{mode === "email" ? "Client email" : "Client mobile number"}</Label><Input id="closeout-recipient" type={mode === "email" ? "email" : "tel"} value={recipient} disabled={saving} onChange={event => setRecipient(event.target.value)} required /></div>}
     {mode !== "sms" && <div className="space-y-2"><Label htmlFor="closeout-subject">Subject</Label><Input id="closeout-subject" value={subject} disabled={saving} onChange={event => setSubject(event.target.value)} required /></div>}
     <div className="space-y-2"><Label htmlFor="closeout-message">Message</Label><Textarea id="closeout-message" value={message} disabled={saving} onChange={event => setMessage(event.target.value)} rows={5} required /></div>
-    {mode === "email" && <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex items-center justify-between gap-4"><Label htmlFor="closeout-attach" className="flex items-center gap-2"><FileText className="h-4 w-4 text-slate-500" />Attach branded PDF</Label><Switch id="closeout-attach" checked={attachPdf} disabled={saving} onCheckedChange={setAttachPdf} /></div><div><label htmlFor="closeout-copy" className="flex min-h-10 items-center gap-2 text-sm font-medium text-slate-700"><input id="closeout-copy" type="checkbox" checked={sendCopy} disabled={saving || !copyEmail} onChange={event => setSendCopy(event.target.checked)} className="h-4 w-4 accent-amber-500" />Send me a copy</label><p className="text-xs text-slate-500">{copyEmail ? `Copy to: ${copyEmail}` : "Add a company email in Settings to enable copies."}</p></div></div>}
-    <div className="flex justify-end gap-3 border-t border-slate-200 pt-4"><Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit" disabled={saving || (mode === "vendors" ? !deliverableAssignments.length : !recipient.trim())} className="bg-amber-500 font-bold text-slate-950 hover:bg-amber-600"><Send className="mr-2 h-4 w-4" />{saving ? "Sending…" : mode === "vendors" ? "Send trade packages" : mode === "email" ? "Send email" : "Send text"}</Button></div>
+    {mode === "email" && <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex items-center justify-between gap-4"><Label htmlFor="closeout-attach" className="flex items-center gap-2"><FileText className="h-4 w-4 text-slate-500" />Attach branded PDF</Label><Switch id="closeout-attach" checked={attachPdf} disabled={saving} onCheckedChange={setAttachPdf} /></div></div>}
+    <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:items-end sm:justify-between">
+      {mode !== "sms" && <div className="text-left"><label htmlFor="closeout-copy" className="flex min-h-10 items-center gap-2 text-sm font-medium text-slate-700"><input id="closeout-copy" type="checkbox" checked={sendCopy} disabled={saving || !copyAvailable || (mode === "vendors" && !!tradeIntent.current)} onChange={event => setSendCopy(event.target.checked)} className="h-4 w-4 accent-amber-500" />Send me a copy</label><p className="text-xs text-slate-500">{copyAvailable ? `Copy to: ${copyEmail.trim()}` : "Add a valid company email in Settings to enable copies."}</p></div>}
+      <div className="flex gap-3 sm:ml-auto"><Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit" disabled={saving || (mode === "vendors" ? !deliverableAssignments.length : !recipient.trim())} className="bg-amber-500 font-bold text-slate-950 hover:bg-amber-600"><Send className="mr-2 h-4 w-4" />{saving ? "Sending…" : mode === "vendors" ? "Send trade packages" : mode === "email" ? "Send email" : "Send text"}</Button></div>
+    </div>
   </form></DialogContent></Dialog>;
 }

@@ -10,6 +10,7 @@ import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Upload, X, FileText, Send } from "lucide-react";
 import { toast } from "sonner";
+import { isValidCompanyEmail } from "@/lib/emailCopy";
 
 // Helper to format client names
 const getClientName = (c) => {
@@ -43,6 +44,7 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
   });
 
   const [customFiles, setCustomFiles] = useState([]);
+  const [sendCopy, setSendCopy] = useState(false);
   const [contextFiles, setContextFiles] = useState([]); 
   const [selectedContextFiles, setSelectedContextFiles] = useState([]);
 
@@ -76,6 +78,7 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
         setForm({ vendor_id: "none", context_type: "none", context_id: "none", email_to: "", email_cc: "", email_bcc: "", title: "", scope_of_work: "", due_date: "", priority: "Medium" });
       }
       setCustomFiles([]); setContextFiles([]); setSelectedContextFiles([]);
+      setSendCopy(false);
     }
   }, [open, initialVendor]);
 
@@ -163,7 +166,7 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
       if (!delivery.current) {
         const { data: request, error: dbError } = await supabase.from("vendor_requests").insert([dbPayload]).select('id,response_token').single();
         if (dbError) throw dbError;
-        delivery.current = { request, requestId: crypto.randomUUID(), sent: false, payload: null };
+        delivery.current = { request, requestId: crypto.randomUUID(), sent: false, copyPending: false, statusSaved: false, payload: null };
       }
 
       let contextName = null;
@@ -221,14 +224,20 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
           company_email: company?.settings?.email,
           request_id: delivery.current.requestId,
           vendor_request_id: delivery.current.request.id,
+          send_copy_to_company: sendCopy,
         };
-      if (!delivery.current.sent) {
-        const { data: result, error: fnError } = await supabase.functions.invoke("send-vendor-request", { body: delivery.current.payload });
-        if (fnError || result?.error || !(result?.id || result?.resend_id || result?.success)) throw fnError || new Error(result?.error || 'Request email was not accepted');
+      if (!delivery.current.sent || (delivery.current.copyPending && delivery.current.statusSaved)) {
+        const { data: result, error: fnError } = await supabase.functions.invoke("send-vendor-request", { body: { ...delivery.current.payload, copy_only: delivery.current.copyPending } });
+        if (fnError || result?.error || result?.success !== true) throw fnError || new Error(result?.error || 'Request email was not accepted');
         delivery.current.sent = true;
+        delivery.current.copyPending = delivery.current.payload.send_copy_to_company && result.copy_status !== 'sent';
       }
-      const { error: recordedError } = await supabase.from('vendor_requests').update({ status: 'Sent', delivered_at: new Date().toISOString() }).eq('id', delivery.current.request.id).eq('company_id', companyId);
-      if (recordedError) throw new Error('Email sent; recording delivery failed. Retry to finish recording without sending it twice.');
+      if (!delivery.current.statusSaved) {
+        const { error: recordedError } = await supabase.from('vendor_requests').update({ status: 'Sent', delivered_at: new Date().toISOString() }).eq('id', delivery.current.request.id).eq('company_id', companyId);
+        if (recordedError) throw new Error('Email sent; recording delivery failed. Retry to finish recording without sending it twice.');
+        delivery.current.statusSaved = true;
+      }
+      if (delivery.current.copyPending) throw new Error('Request sent, but the company copy could not be confirmed. Retry to send the copy without emailing the vendor again.');
       qc.invalidateQueries({ queryKey: ['project-trade-requests', companyId] });
       } finally { sendLock.current = false; }
     },
@@ -241,6 +250,8 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
 
   const photos = contextFiles.filter(f => f.type === "photo");
   const docs = contextFiles.filter(f => f.type === "document");
+  const copyEmail = company?.settings?.email?.trim() || "";
+  const copyAvailable = isValidCompanyEmail(copyEmail);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -384,15 +395,23 @@ export default function VendorRequestDialog({ open, onOpenChange, initialVendor 
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t border-slate-200 mt-6">
+          <div className="flex flex-col gap-2 pt-4 border-t border-slate-200 mt-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="text-left">
+              <label htmlFor="vendor-request-copy" className="flex min-h-10 items-center gap-2 text-sm font-medium text-slate-700">
+                <input id="vendor-request-copy" type="checkbox" checked={sendCopy} disabled={sendRequestMutation.isPending || !copyAvailable || !!delivery.current} onChange={event => setSendCopy(event.target.checked)} className="h-4 w-4 accent-amber-500" />Send me a copy
+              </label>
+              <p className="text-xs text-slate-500">{copyAvailable ? `Copy to: ${copyEmail}` : "Add a valid company email in Settings to enable copies."}</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
             <Button variant="outline" onClick={() => onOpenChange(false)} className="font-bold order-2 sm:order-1">Cancel</Button>
             <Button 
               className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black shadow-md order-1 sm:order-2" 
               onClick={() => { if (!sendLock.current) sendRequestMutation.mutate(); }}
               disabled={sendRequestMutation.isPending || !form.title || !form.scope_of_work || form.vendor_id === "none" || !form.email_to}
             >
-              {sendRequestMutation.isPending ? "Sending..." : "Send Request"}
+              {sendRequestMutation.isPending ? "Sending..." : delivery.current?.copyPending ? "Retry copy" : "Send Request"}
             </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

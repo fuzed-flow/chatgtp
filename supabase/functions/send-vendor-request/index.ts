@@ -11,6 +11,8 @@ const parseEmails = (emailStr: string | undefined | null) => {
   const arr = emailStr.split(',').map(e => e.trim()).filter(e => e);
   return arr.length > 0 ? arr : undefined;
 };
+const validCompanyEmail = (value: unknown) => typeof value === 'string' && value.trim().length <= 254
+  && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) && !/[\r\n]/.test(value);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,6 +22,7 @@ serve(async (req) => {
   let deliveryContext: { companyId: string; requestId: string; actor: string; sendKey: string } | null = null;
   let serviceDb: any = null;
   let providerAccepted = false;
+  let copyOnly = false;
   try {
     const authorization = req.headers.get('Authorization');
     if (!authorization?.startsWith('Bearer ')) throw new Error('Authentication required');
@@ -38,20 +41,35 @@ serve(async (req) => {
       company_name, company_logo, brand_color,
       signature_name, signature_role, signature_phone,
       sender_email, company_email,
-      request_id, vendor_request_id,
+      request_id, vendor_request_id, send_copy_to_company, copy_only,
     } = await req.json()
+    copyOnly = copy_only === true;
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (request_id != null && (typeof request_id !== 'string' || !uuid.test(request_id))) throw new Error('Invalid send request');
     let requestRecord: any = null;
     if (vendor_request_id != null) {
       if (typeof vendor_request_id !== 'string' || !uuid.test(vendor_request_id)) throw new Error('Invalid vendor request');
-      const { data, error } = await db.from('vendor_requests').select('id,company_id,project_id,attachments').eq('id', vendor_request_id).eq('company_id', profile.company_id).single();
+      const { data, error } = await db.from('vendor_requests').select('id,company_id,project_id,attachments,status,title').eq('id', vendor_request_id).eq('company_id', profile.company_id).single();
       if (error || !data) throw new Error('Vendor request is unavailable');
       requestRecord = data;
       deliveryContext = { companyId: profile.company_id, requestId: vendor_request_id, actor: authData.user.id, sendKey: request_id || vendor_request_id };
       const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       if (!serviceKey) throw new Error('Email delivery tracking unavailable');
       serviceDb = createClient(supabaseUrl, serviceKey);
+    }
+    if (copy_only === true && (!send_copy_to_company || !requestRecord || requestRecord.status !== 'Sent' || !request_id)) {
+      throw new Error('A sent request is required before retrying the company copy');
+    }
+    let copyRecipient: string | null = null;
+    let copyCompanyName = '';
+    if (send_copy_to_company === true) {
+      if (!requestRecord || !request_id) throw new Error('A saved vendor request is required for a company copy');
+      const { data: company, error } = await db.from('companies').select('name,settings').eq('id', profile.company_id).single();
+      if (error || !company || !validCompanyEmail(company.settings?.email)) throw new Error('Add a valid company email in Settings to receive a copy');
+      copyRecipient = company.settings.email.trim();
+      copyCompanyName = String(company.name || '').replace(/[\r\n]+/g, ' ').trim();
+      if (!copyCompanyName) throw new Error('Save your company name before requesting a copy');
+      if (!String(requestRecord.title || '').trim()) throw new Error('Save the request title before requesting a copy');
     }
     const allowedAttachment = (path: string) => {
       try {
@@ -169,14 +187,7 @@ serve(async (req) => {
     }
 
     // 3. Send via Resend
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        ...(request_id ? { 'Idempotency-Key': `fuzedflow/${profile.company_id}/${request_id}/vendor-request` } : {}),
-      },
-      body: JSON.stringify({
+    const emailPayload = {
         from: 'FuzedFlow <alerts@mail.fuzedflow.com>', 
         reply_to: replyToArray.length > 0 ? replyToArray : undefined, // ⚡ Added Dynamic Reply-To 
         to: toArray,
@@ -246,13 +257,21 @@ serve(async (req) => {
             </div>
           </div>
         `,
-      }),
-    })
-
-    const data = await res.json()
-    providerAccepted = res.ok;
-    if (!res.ok) throw new Error(data?.message || 'Email provider could not send this request');
-    if (res.ok && serviceDb && deliveryContext && data.id) {
+    };
+    const sendProvider = async (payload: typeof emailPayload, suffix: string) => {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RESEND_API_KEY}`,
+          ...(request_id ? { 'Idempotency-Key': `fuzedflow/${profile.company_id}/${request_id}/${suffix}` } : {}) },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !uuid.test(data?.id || '')) throw new Error('Email provider could not confirm this request');
+      return data;
+    };
+    const data = copy_only === true ? null : await sendProvider(emailPayload, 'vendor-request');
+    if (data) providerAccepted = true;
+    if (data && serviceDb && deliveryContext) {
       const { error: trackingError } = await serviceDb.rpc('register_outbound_delivery', {
         p_provider: 'resend', p_provider_id: data.id, p_company: deliveryContext.companyId,
         p_related: 'Trade', p_id: deliveryContext.requestId, p_actor: deliveryContext.actor,
@@ -260,12 +279,31 @@ serve(async (req) => {
       });
       if (trackingError) console.error('Vendor delivery accepted; delivery tracking could not be saved');
     }
-    return new Response(JSON.stringify(data), {
+    let copyStatus = 'not_requested';
+    if (copyRecipient) {
+      try {
+        const copy = await sendProvider({ ...emailPayload, to: [copyRecipient], cc: undefined, bcc: undefined,
+          subject: `[COPY] Quote Request from ${copyCompanyName} - ${String(requestRecord.title).replace(/[\r\n]+/g, ' ').trim()}` }, 'vendor-request-copy');
+        copyStatus = 'sent';
+        if (serviceDb && deliveryContext) {
+          const { error } = await serviceDb.rpc('register_outbound_delivery', {
+            p_provider: 'resend', p_provider_id: copy.id, p_company: deliveryContext.companyId,
+            p_related: 'Trade', p_id: deliveryContext.requestId, p_actor: deliveryContext.actor,
+            p_kind: 'document', p_copy: true, p_recipient: copyRecipient, p_sender: 'alerts@mail.fuzedflow.com',
+          });
+          if (error) console.error('Vendor company copy accepted; delivery tracking could not be saved');
+        }
+      } catch {
+        copyStatus = 'failed';
+        console.error('Vendor company copy could not be confirmed');
+      }
+    }
+    return new Response(JSON.stringify({ success: true, id: data?.id, copy_status: copyStatus }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      status: res.ok ? 200 : 400,
+      status: 200,
     })
   } catch (error: any) {
-    if (serviceDb && deliveryContext && !providerAccepted) {
+    if (serviceDb && deliveryContext && !providerAccepted && !copyOnly) {
       try {
         await serviceDb.rpc('record_sales_event', { p_id: deliveryContext.requestId, p_company: deliveryContext.companyId, p_related: 'Trade', p_event: 'vendor_request_delivery_failed', p_actor: deliveryContext.actor, p_reference: deliveryContext.sendKey, p_message: 'Trade request email could not be sent. Review the recipient and attachments, then retry.' });
       } catch { console.error('Vendor request delivery failure could not be recorded'); }

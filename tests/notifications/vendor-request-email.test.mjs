@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 
-const C='00000000-0000-4000-8000-000000000001', USER='00000000-0000-4000-8000-000000000002', REQUEST='00000000-0000-4000-8000-000000000003', SEND='00000000-0000-4000-8000-000000000004', PROVIDER='00000000-0000-4000-8000-000000000005';
+const C='00000000-0000-4000-8000-000000000001', USER='00000000-0000-4000-8000-000000000002', REQUEST='00000000-0000-4000-8000-000000000003', SEND='00000000-0000-4000-8000-000000000004', PROVIDER='00000000-0000-4000-8000-000000000005', COPY_PROVIDER='00000000-0000-4000-8000-000000000006';
 const storage='https://synthetic.supabase.co/storage/v1/object/public/vendor/'+C+'/scope.pdf';
 let generation=0;
 
@@ -16,7 +16,7 @@ async function harness(options={}) {
     from:table=>{
       const filters=[]; const chain={select:()=>chain,eq:(name,value)=>{filters.push([name,value]);return chain;},single:async()=>{
         queries.push({table,filters});
-        return {data:table==='profiles'?{company_id:C,role:options.role||'admin',is_active:options.active!==false,permissions:options.permissions||[]}:options.unowned?null:{id:REQUEST,company_id:C,project_id:null,attachments:[storage]},error:options.unowned&&table==='vendor_requests'?{message:'Not found'}:null};
+        return {data:table==='profiles'?{company_id:C,role:options.role||'admin',is_active:options.active!==false,permissions:options.permissions||[]}:table==='companies'?{name:'Synthetic company',settings:{email:options.companyEmail===undefined?'office@example.invalid':options.companyEmail}}:options.unowned?null:{id:REQUEST,company_id:C,project_id:null,attachments:[storage],status:options.status||'Draft',title:'Synthetic scope request'},error:options.unowned&&table==='vendor_requests'?{message:'Not found'}:null};
       }};return chain;
     },
     rpc:async(name,args)=>{rpcs.push({name,args,service:key==='synthetic-service'});return{data:1,error:options.trackingFailure?{message:'Unavailable'}:null};},
@@ -24,7 +24,9 @@ async function harness(options={}) {
   globalThis.fetch=async(url,init)=>{
     calls.push({url,init});
     if(String(url).includes('/storage/')) return new Response(new Uint8Array([1,2,3]),{status:options.attachmentFailure?404:200,headers:{'content-length':'3'}});
-    return new Response(JSON.stringify(options.providerFailure?{message:'Synthetic provider failure'}:{id:PROVIDER}),{status:options.providerFailure?422:200,headers:{'content-type':'application/json'}});
+    const isCopy=init?.headers?.['Idempotency-Key']?.endsWith('/vendor-request-copy');
+    const failed=options.providerFailure||options.copyFailure&&isCopy;
+    return new Response(JSON.stringify(failed?{message:'Synthetic provider failure'}:{id:isCopy?COPY_PROVIDER:PROVIDER}),{status:failed?422:200,headers:{'content-type':'application/json'}});
   };
   const source=await readFile(new URL('../../supabase/functions/send-vendor-request/index.ts',import.meta.url),'utf8');
   const output=await build({stdin:{contents:source,loader:'ts'},bundle:true,write:false,platform:'node',format:'esm',plugins:[{name:'synthetic-edge-imports',setup(b){
@@ -49,6 +51,40 @@ test('vendor requests retain CC/BCC formatting and use scoped idempotency plus v
     assert.equal(email.init.headers['Idempotency-Key'],`fuzedflow/${C}/${SEND}/vendor-request`);
     assert.ok(h.rpcs.some(r=>r.name==='register_outbound_delivery'&&r.service&&r.args.p_related==='Trade'&&r.args.p_id===REQUEST&&r.args.p_actor===USER));
   }finally{h.close();}
+});
+
+test('requested vendor copy uses the saved company address and exact original HTML and attachments',async()=>{
+  const h=await harness();try{
+    const result=await h.invoke({send_copy_to_company:true,attachments:[{filename:'scope.pdf',path:storage}]});
+    assert.equal(result.status,200);assert.equal(result.body.copy_status,'sent');
+    const emails=h.calls.filter(c=>c.url==='https://api.resend.com/emails').map(c=>({payload:JSON.parse(c.init.body),key:c.init.headers['Idempotency-Key']}));
+    assert.equal(emails.length,2);assert.deepEqual(emails[1].payload.to,['office@example.invalid']);
+    assert.equal(emails[1].payload.cc,undefined);assert.equal(emails[1].payload.bcc,undefined);
+    assert.equal(emails[1].payload.html,emails[0].payload.html);
+    assert.deepEqual(emails[1].payload.attachments,emails[0].payload.attachments);
+    assert.equal(emails[1].payload.subject,'[COPY] Quote Request from Synthetic company - Synthetic scope request');
+    assert.equal(emails[1].key,`fuzedflow/${C}/${SEND}/vendor-request-copy`);
+    assert.ok(h.rpcs.some(r=>r.name==='register_outbound_delivery'&&r.args.p_copy===true&&r.args.p_recipient==='office@example.invalid'));
+  }finally{h.close();}
+});
+
+test('a failed vendor copy reports accepted trade delivery and copy-only retry never resends the original',async()=>{
+  let h=await harness({copyFailure:true});try{
+    const result=await h.invoke({send_copy_to_company:true});assert.equal(result.status,200);assert.equal(result.body.copy_status,'failed');
+    assert.equal(h.calls.filter(c=>c.url==='https://api.resend.com/emails').length,2);
+  }finally{h.close();}
+  h=await harness({status:'Sent'});try{
+    const result=await h.invoke({send_copy_to_company:true,copy_only:true});assert.equal(result.status,200);assert.equal(result.body.copy_status,'sent');
+    const email=h.calls.filter(c=>c.url==='https://api.resend.com/emails');assert.equal(email.length,1);
+    assert.deepEqual(JSON.parse(email[0].init.body).to,['office@example.invalid']);
+    assert.equal((await h.invoke({send_copy_to_company:true,copy_only:true,request_id:undefined})).status,400);
+  }finally{h.close();}
+});
+
+test('invalid or unowned company copy cannot send an original email',async()=>{
+  for(const options of [{companyEmail:'invalid'},{unowned:true}]){
+    const h=await harness(options);try{assert.equal((await h.invoke({send_copy_to_company:true})).status,400);assert.equal(h.calls.length,0);}finally{h.close();}
+  }
 });
 
 test('vendor attachments are limited to persisted request files in project storage',async()=>{
