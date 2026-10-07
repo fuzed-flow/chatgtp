@@ -22,6 +22,7 @@ import SendChangeOrderTextDialog from "../components/change-orders/SendChangeOrd
 import { useDocumentChanges, useDocumentState } from "@/hooks/useDocumentChanges";
 import UnsavedChangesGuard from "@/components/shared/UnsavedChangesGuard";
 import { normalizePhaseOrder } from "@/lib/phaseOrdering";
+import { validateProjectPhotoUpload } from "@/lib/projectPhotoLimits";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -300,9 +301,14 @@ export default function ChangeOrderBuilder() {
   };
 
   const handlePhotoUpload = async (phaseIdx, files) => {
+    const { files: filesArray, error: validationError } = validateProjectPhotoUpload(files, phases[phaseIdx]?.photos?.length || 0);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     setUploadingPhoto(true);
     try {
-      const filesArray = Array.from(files);
       const urls = [];
       for (const file of filesArray) {
         const fileName = `${companyId}/change_orders/${coId || 'new'}/${Date.now()}_${file.name}`;
@@ -315,8 +321,7 @@ export default function ChangeOrderBuilder() {
       updated[phaseIdx].photos = [...(updated[phaseIdx].photos || []), ...urls];
       setPhases(updated);
       toast.success(`${urls.length} photo(s) uploaded`);
-    } catch (error) { toast.error("Upload failed"); }
-    setUploadingPhoto(false);
+    } catch (error) { toast.error("Upload failed"); } finally { setUploadingPhoto(false); }
   };
 
   const handleLineItemPhotoUpload = async (phaseIdx, itemIdx, file) => {
