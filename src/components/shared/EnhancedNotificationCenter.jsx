@@ -119,8 +119,8 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
           {unreadCount > 0 && <span className="absolute -top-0.5 -right-1 min-w-5 px-1 h-5 bg-red-600 text-white text-[10px] rounded-full flex items-center justify-center font-bold">{unreadCount > 99 ? "99+" : unreadCount}</span>}
         </button>
       </DialogTrigger>
-      <DialogContent showAIHelp={false} className="sm:max-w-xl bg-white p-0 overflow-hidden z-[100]" aria-describedby="notification-description">
-        <DialogHeader className="p-4 pr-12 border-b bg-slate-50">
+      <DialogContent showAIHelp={false} className="z-[100] flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden rounded-lg bg-white p-0 sm:w-full sm:max-w-xl" aria-describedby="notification-description">
+        <DialogHeader className="shrink-0 p-4 pr-12 border-b bg-slate-50">
           <div className="flex flex-wrap gap-2 items-center justify-between">
             <DialogTitle className="text-lg font-bold text-slate-900">Notifications</DialogTitle>
             <div className="flex gap-1">
@@ -130,7 +130,7 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
           </div>
           <p id="notification-description" className="text-xs text-slate-500">Updates for your role and assigned work.{actionOnly ? " Showing action required only." : ""}</p>
         </DialogHeader>
-        {showSettings && <div className="max-h-[65vh] overflow-y-auto border-b bg-slate-50">
+        {showSettings && <div className="min-h-0 overflow-y-auto border-b bg-slate-50">
           <div className="p-4 border-b">
           <label className="flex items-start justify-between gap-4 text-sm">
             <span><span className="block font-semibold">Notify me only when action is required</span><span className="block text-xs text-slate-500 mt-1">Hide Important and FYI updates. Turn this off to see them again.</span></span>
@@ -139,13 +139,13 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
           </div>
           <PersonalNotificationSettings compact />
         </div>}
-        {!showSettings && <div className="flex overflow-x-auto gap-2 p-3 border-b" aria-label="Notification filters">
+        {!showSettings && <div className="flex shrink-0 overflow-x-auto gap-2 p-3 border-b" aria-label="Notification filters">
           {FILTERS.map(value => <button type="button" key={value} aria-pressed={filter === value} onClick={() => { setFilter(value); setPage(0); }}
             className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold focus-visible:ring-2 focus-visible:ring-blue-400 ${filter === value ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
             {value}{value === "Unread" && unreadCount > 0 ? ` (${unreadCount})` : ""}
           </button>)}
         </div>}
-        {!showSettings && <div className="max-h-[55vh] overflow-y-auto" aria-live="polite" aria-busy={feed.isFetching}>
+        {!showSettings && <div className="min-h-0 max-h-[55dvh] overflow-y-auto" aria-live="polite" aria-busy={feed.isFetching}>
           {!inAppEnabled ? <div className="p-8 text-center text-sm text-slate-600">Your in-app notifications are paused. Open notification settings to enable them. Your history is retained.</div> : feed.isPending ? <div className="py-12 flex justify-center" role="status"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /><span className="sr-only">Loading notifications</span></div>
             : feed.isError ? <div className="p-8 text-center text-sm text-slate-600"><p role="alert">Could not load your notifications.</p><Button variant="outline" className="mt-3" onClick={() => feed.refetch()}>Retry</Button></div>
             : !notifications.length ? <div className="text-center py-12 px-4"><Bell className="h-9 w-9 text-slate-300 mx-auto mb-3" /><p className="text-sm text-slate-600">No {filter.toLowerCase()} notifications to show.</p>{actionOnly && <p className="text-xs text-slate-500 mt-2">Your action-only preference is on.</p>}</div>
@@ -172,7 +172,7 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
               </li>;
             })}</ul>}
         </div>}
-        {!showSettings && (page > 0 || notifications.length === PAGE_SIZE) && <div className="flex justify-between items-center px-4 py-3 border-t text-xs text-slate-500">
+        {!showSettings && (page > 0 || notifications.length === PAGE_SIZE) && <div className="flex shrink-0 justify-between items-center px-4 py-3 border-t text-xs text-slate-500">
           <Button variant="outline" size="sm" disabled={page === 0 || feed.isFetching} onClick={() => setPage(p => p - 1)}>Previous</Button>
           <span>Page {page + 1}</span>
           <Button variant="outline" size="sm" disabled={notifications.length < PAGE_SIZE || feed.isFetching} onClick={() => setPage(p => p + 1)}>Next</Button>
