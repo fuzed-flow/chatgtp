@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/api/supabaseClient';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Toaster } from 'sonner';
 import { checkAccess } from '@/lib/planConfig'; // 👈 NEW IMPORT
 import UpgradeWall from '@/components/shared/UpgradeWall'; // 👈 NEW IMPORT
 import { 
-  Building2, Globe, CreditCard, Zap, MonitorSmartphone, Lock, 
-  Bell, Blocks, Users, Palette, MessageSquare, FileText, Loader2, DollarSign
+  Globe, CreditCard, Zap, MonitorSmartphone, Lock, 
+  Bell, Blocks, Users, Palette, MessageSquare, FileText, Loader2
 } from 'lucide-react';
 
 // UI Components
@@ -29,8 +28,7 @@ import NotificationSettings from "../components/settings/NotificationSettings";
 import ClientPortalSettings from "../components/settings/ClientPortalSettings";
 
 export default function AdminSettings() {
-  const { profile, company } = useAuth();
-  const navigate = useNavigate();
+  const { profile, company, refreshAccess } = useAuth();
   
   // 1. Define Role Bools
   const isAdmin = profile?.role === 'admin' || profile?.role === 'owner';
@@ -47,6 +45,21 @@ export default function AdminSettings() {
   const [isConnectingQBO, setIsConnectingQBO] = useState(false);
   const [isManagingBilling, setIsManagingBilling] = useState(false);
   const [isConnectingStripe, setIsConnectingStripe] = useState(false);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const outcome = url.searchParams.get('qbo');
+    if (outcome !== 'connected' && outcome !== 'failed') return;
+    url.searchParams.delete('qbo');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    if (outcome === 'connected') {
+      refreshAccess().then(() => toast.success('QuickBooks sandbox connected.')).catch(() => {
+        toast.info('QuickBooks connected. Refresh Settings to see its status.');
+      });
+    } else {
+      toast.error('QuickBooks sandbox connection failed or expired. Please try again.');
+    }
+  }, [refreshAccess]);
 
   // Security Check: Only allow Admins and Managers
   if (!isAdmin && !isManager) {
@@ -67,7 +80,25 @@ export default function AdminSettings() {
 
   // A. QuickBooks Connection
   const handleQBOConnect = async () => {
-    toast.info("Coming soon!");
+    setIsConnectingQBO(true);
+    try {
+      const action = company?.qbo_connected ? 'get_company_info' : null;
+      const { data, error } = await supabase.functions.invoke(action ? 'qbo-api' : 'qbo-connect', {
+        body: action ? { action } : {},
+      });
+      if (error || data?.error) throw new Error(data?.error || 'QuickBooks sandbox request failed.');
+      if (action) {
+        toast.success(`QuickBooks sandbox verified${data?.company_name ? `: ${data.company_name}` : '.'}`);
+      } else if (data?.url?.startsWith('https://appcenter.intuit.com/connect/oauth2?')) {
+        window.location.assign(data.url);
+      } else {
+        throw new Error('QuickBooks authorization URL is missing.');
+      }
+    } catch (error) {
+      toast.error(error.message || 'QuickBooks sandbox request failed.');
+      setIsConnectingQBO(false);
+    }
+    if (company?.qbo_connected) setIsConnectingQBO(false);
   };
 
   // B. Stripe Connect (Money flowing TO the user from their clients)
@@ -206,18 +237,20 @@ export default function AdminSettings() {
             {/* QUICKBOOKS BUTTON */}
             <div className="flex flex-col">
               <Button 
-  onClick={() => toast.info("Coming soon!")}
+  onClick={handleQBOConnect}
+  disabled={isConnectingQBO}
   className={`w-full font-bold h-10 shadow-sm transition-all ${
     company?.qbo_connected 
       ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-200 hover:bg-emerald-100' 
       : 'bg-[#2ca01c] hover:bg-[#238016] text-white'
   }`}
 >
-  <svg className="h-4 w-4 mr-2 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+  {isConnectingQBO ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <svg className="h-4 w-4 mr-2 shrink-0" viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.664 16.336c-.464.464-1.08.704-1.728.704-.648 0-1.264-.24-1.728-.704l-3.52-3.52v3.312c0 .48-.384.88-.88.88s-.88-.384-.88-.88V7.808c0-.48.384-.88.88-.88s.88.384.88.88v3.312l3.52-3.52c.464-.464 1.08-.704 1.728-.704.648 0 1.264.24 1.728.704.944.944.944 2.496 0 3.44L14.32 12l3.344 3.344c.944.944.944 2.496 0 3.44z"/>
-  </svg>
-  {company?.qbo_connected ? 'QuickBooks Connected' : 'Connect QuickBooks'}
+  </svg>}
+  {company?.qbo_connected ? 'Test QuickBooks Sandbox' : 'Connect QuickBooks Sandbox'}
 </Button>
+              <p className="mt-1 text-xs text-slate-500">Sandbox test only. No accounting data is changed.</p>
             </div>
 
             {/* MANAGE APP SUBSCRIPTION BUTTON */}
