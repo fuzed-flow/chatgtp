@@ -6,6 +6,8 @@ const money = (value: unknown) => Math.round(Number(value || 0) * 100) / 100;
 const validId = (value: unknown) => typeof value === 'string' && /^[0-9]+$/.test(value);
 const safeName = (value: unknown) => String(value || '').trim().replace(/[\r\n\t]/g, ' ').slice(0, 100);
 const esc = (value: string) => value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+const duplicateNameError = (message: unknown) => typeof message === 'string' &&
+  /Duplicate Name Exists Error/i.test(message);
 const invoiceSignature = async (invoice: Record<string, unknown>, payments: { id: string; amount: unknown; payment_date?: string; payment_method?: string }[]) => {
   const snapshot = [invoice.id, invoice.client_id, invoice.invoice_number, invoice.issue_date, invoice.due_date,
     invoice.status, money(invoice.subtotal), money(invoice.tax), money(invoice.total),
@@ -196,7 +198,7 @@ serve(async req => {
         query('SELECT * FROM TaxRate WHERE Active = true MAXRESULTS 1000'),
         api(`companyinfo/${realm}`), api('preferences'),
         db.from('qbo_customer_links').select('qbo_customer_id,realm_id').eq('company_id', companyId).eq('environment', environment).eq('client_id', invoice.client_id).maybeSingle(),
-        db.from('qbo_invoice_exports').select('status,qbo_invoice_id,error_message,payment_sync_status').eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id).maybeSingle(),
+        db.from('qbo_invoice_exports').select('status,qbo_invoice_id,qbo_customer_id,realm_id,error_message,payment_sync_status').eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id).maybeSingle(),
         readPayments(invoice.id),
       ]);
       if (link.error || exportRow.error) throw new Error('QuickBooks mappings unavailable.');
@@ -221,6 +223,11 @@ serve(async req => {
         linkedCustomerId: link.data?.realm_id === saved.realm_id ? link.data.qbo_customer_id : null,
         previewSignature: await invoiceSignature(invoice, payments),
         export: exportRow.data,
+        retryableNameConflict: exportRow.data?.status === 'review_required' &&
+          !exportRow.data.qbo_invoice_id && !exportRow.data.qbo_customer_id &&
+          exportRow.data.realm_id === saved.realm_id && exportRow.data.payment_sync_status === 'not_applicable' &&
+          duplicateNameError(exportRow.data.error_message) &&
+          !(exportedPayments.data || []).length,
         payments: payments.map(p => ({ id: p.id, amount: p.amount, date: p.payment_date, method: p.payment_method || 'Other',
           export: (exportedPayments.data || []).find(x => x.payment_id === p.id) || null })),
         paymentMethods: (methods.PaymentMethod || []).map((m: { Id: string; Name: string }) => ({ id: m.Id, name: m.Name })),
@@ -305,6 +312,10 @@ serve(async req => {
       throw new Error('This client is already linked to a different QuickBooks customer.');
     }
     if (customerId && input.customerChoice === 'new') throw new Error('This client is already linked to QuickBooks.');
+    const customerName = safeName(input.customerDisplayName || client.name);
+    if (input.customerChoice === 'new' && (!customerName || customerName.includes(':'))) {
+      throw new Error('Enter a QuickBooks customer display name without a colon.');
+    }
     if (!customerId && input.customerChoice === 'existing') {
       if (!validId(input.customerId)) throw new Error('Select a QuickBooks customer.');
       const found = await query(`SELECT * FROM Customer WHERE Id = '${input.customerId}'`);
@@ -316,15 +327,40 @@ serve(async req => {
     const claim = await db.rpc('qbo_claim_invoice_export', { p_company: companyId, p_environment: environment,
       p_invoice: invoice.id, p_realm: saved.realm_id, p_request: requestId });
     if (claim.error) throw new Error('Could not reserve invoice export.');
-    if (!claim.data?.[0]?.claimed) throw new Error(`Invoice already ${claim.data?.[0]?.export_status || 'being exported'} in QuickBooks. Review its export status before retrying.`);
+    if (!claim.data?.[0]?.claimed) {
+      const { data: previous, error: previousError } = await db.from('qbo_invoice_exports')
+        .select('request_id,status,realm_id,qbo_invoice_id,qbo_customer_id,error_message,payment_sync_status')
+        .eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id).single();
+      if (previousError || previous?.status !== 'review_required' || previous.realm_id !== saved.realm_id ||
+        previous.qbo_invoice_id || previous.qbo_customer_id || previous.payment_sync_status !== 'not_applicable' ||
+        !duplicateNameError(previous.error_message)) {
+        throw new Error(`Invoice already ${claim.data?.[0]?.export_status || 'being exported'} in QuickBooks. Review its export status before retrying.`);
+      }
+      if (input.customerChoice === 'new' && customerName.toLowerCase() === safeName(client.name).toLowerCase()) {
+        throw new Error('QuickBooks already uses this name. Choose an existing customer or enter a distinct QuickBooks display name.');
+      }
+      const { data: mappedPayments, error: mappingError } = await db.from('qbo_payment_exports')
+        .select('payment_id').eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id).limit(1);
+      if (mappingError || mappedPayments?.length) throw new Error('An accounting payment may exist. Review QuickBooks before retrying.');
+      // The remote invoice-number check above ran before this compare-and-swap. Only the
+      // exact pre-invoice name conflict can release its own reservation.
+      const released = await db.from('qbo_invoice_exports').update({ status: 'processing', request_id: requestId,
+        error_message: null, created_at: new Date().toISOString() })
+        .eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id)
+        .eq('realm_id', saved.realm_id).eq('request_id', previous.request_id)
+        .eq('status', 'review_required').eq('error_message', previous.error_message)
+        .is('qbo_invoice_id', null).is('qbo_customer_id', null)
+        .select('request_id').single();
+      if (released.error || released.data?.request_id !== requestId) {
+        throw new Error('The invoice export state changed. Reopen this dialog before trying again.');
+      }
+    }
     try {
       if (!customerId) {
-        const name = safeName(client.name);
-        if (!name) throw new Error('Client name is required.');
-        const names = await query(`SELECT * FROM Customer WHERE DisplayName = '${esc(name)}'`);
+        const names = await query(`SELECT * FROM Customer WHERE DisplayName = '${esc(customerName)}'`);
         if (names.Customer?.length) throw new Error('A QuickBooks customer already has this name. Select that customer explicitly.');
         const created = await api(`customer?requestid=${encodeURIComponent(requestId)}-customer`, {
-          DisplayName: name, ...(client.email ? { PrimaryEmailAddr: { Address: client.email } } : {}),
+          DisplayName: customerName, ...(client.email ? { PrimaryEmailAddr: { Address: client.email } } : {}),
           ...(client.phone ? { PrimaryPhone: { FreeFormNumber: client.phone } } : {}),
         });
         customerId = created.Customer?.Id;

@@ -9,7 +9,7 @@ const invoiceId = '00000000-0000-4000-8000-000000000002';
 const clientId = '00000000-0000-4000-8000-000000000003';
 const money = value => Math.round(Number(value || 0) * 100) / 100;
 
-async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, invoiceStatus = 'Sent', payments = [], paymentFailureOn = 0, matchingPayment = false, initialRemoteBalance = 105 } = {}) {
+async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, invoiceStatus = 'Sent', payments = [], paymentFailureOn = 0, matchingPayment = false, initialRemoteBalance = 105, duplicateCustomerName = false } = {}) {
   const previous = { Deno: globalThis.Deno, fetch: globalThis.fetch, create: globalThis.__qboCreate, handler: globalThis.__qboHandler };
   const requests = [], rows = new Map(), paymentRows = new Map();
   let remoteBalance = initialRemoteBalance;
@@ -22,7 +22,7 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
       const filters = [];
       const q = {
         select: () => q, eq: (name, value) => { filters.push([name, value]); return q; },
-        order: () => q,
+        order: () => q, limit: () => q, is: (name, value) => { filters.push([name, value]); return q; },
         update: payload => { q.updated = payload; return q; },
         upsert: async row => { rows.set(table, row); return { error: null }; },
         maybeSingle: async () => ({ data: rows.get(table) || null, error: null }),
@@ -37,6 +37,10 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
           if (table === 'companies') return { data: { settings: { currency: 'CAD' } }, error: null };
           if (table === 'qbo_customer_links') return { data: rows.get(table), error: null };
           if (table === 'qbo_invoice_exports' && q.updated) {
+            const current = rows.get(table);
+            if (filters.some(([name, value]) =>
+              ['status', 'request_id', 'realm_id', 'error_message', 'qbo_invoice_id', 'qbo_customer_id'].includes(name)
+              && (current?.[name] ?? null) !== (value ?? null))) return { data: null, error: { message: 'State changed' } };
             rows.set(table, { ...rows.get(table), ...q.updated });
             return { data: rows.get(table), error: null };
           }
@@ -68,7 +72,8 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
         access_expires_at: new Date(Date.now() + 3600000).toISOString() }], error: null };
       if (name === 'qbo_claim_invoice_export') {
         const claimed = !rows.has('qbo_invoice_exports');
-        if (claimed) rows.set('qbo_invoice_exports', { status: 'processing', request_id: args.p_request });
+        if (claimed) rows.set('qbo_invoice_exports', { status: 'processing', request_id: args.p_request,
+          realm_id: args.p_realm, payment_sync_status: 'not_applicable' });
         return { data: [{ claimed, export_status: rows.get('qbo_invoice_exports').status }], error: null };
       }
       if (name === 'qbo_claim_payment_export') {
@@ -94,7 +99,13 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
       if (sql.includes('FROM PaymentMethod')) body = { QueryResponse: { PaymentMethod: [{ Id: '70', Name: 'Check', Active: true }] } };
       if (sql.includes('FROM Invoice')) body = { QueryResponse: { Invoice: existingInvoice ? [{ Id: '99' }] : [] } };
       if (/FROM Payment\s/.test(sql)) body = { QueryResponse: { Payment: matchingPayment ? [{ Id: '99', TotalAmt: payments[0]?.amount }] : [] } };
-      if (sql.includes('FROM Customer')) body = { QueryResponse: { Customer: [{ Id: '40', Active: true }] } };
+      if (sql.includes('FROM Customer')) body = { QueryResponse: { Customer: sql.includes('DisplayName') ? [] : [{ Id: '40', Active: true }] } };
+    } else if (u.pathname.endsWith('/customer')) {
+      const sent = JSON.parse(init.body);
+      if (duplicateCustomerName && sent.DisplayName === 'Client A') {
+        return new Response(JSON.stringify({ Fault: { Error: [{ Message: 'Duplicate Name Exists Error', code: '6240' }] } }), { status: 400 });
+      }
+      body = { Customer: { Id: '40' } };
     } else if (u.pathname.endsWith('/invoice')) body = { Invoice: { Id: '50', DocNumber: 'INV-100', TotalAmt: remoteTotal } };
     else if (u.pathname.endsWith('/invoice/50')) body = { Invoice: { Id: '50', CustomerRef: { value: '40' }, TotalAmt: remoteTotal, Balance: remoteBalance } };
     else if (u.pathname.endsWith('/payment')) {
@@ -282,5 +293,49 @@ test('a pending export resumes only the payment that has not been posted', async
     assert.equal(result.status, 200);
     assert.equal(h.rows.get('qbo_invoice_exports').payment_sync_status, 'complete');
     assert.deepEqual(h.requests.filter(r => r.init.method === 'POST').map(r => JSON.parse(r.init.body).TotalAmt), [65]);
+  } finally { h.close(); }
+});
+
+test('duplicate customer name permits one guarded retry with a distinct QuickBooks display name', async () => {
+  const payments = [
+    { id: '00000000-0000-4000-8000-000000000011', amount: 40, payment_date: '2026-09-09', payment_method: 'Check' },
+    { id: '00000000-0000-4000-8000-000000000012', amount: 65, payment_date: '2026-10-06', payment_method: 'Check' },
+  ];
+  const h = await fixture({ invoiceStatus: 'Paid', payments, duplicateCustomerName: true });
+  try {
+    const input = { ...payload, customerChoice: 'new', customerId: '', depositAccountId: '60', paymentMethodIds: { Check: '70' } };
+    const first = await h.invoke(input);
+    assert.equal(first.status, 400);
+    assert.match(first.body.error, /Duplicate Name Exists Error/);
+    assert.equal(h.rows.get('qbo_invoice_exports').status, 'review_required');
+    assert.equal(h.requests.filter(r => r.init.method === 'POST').length, 1);
+    const catalog = await h.invoke({ action: 'invoice_catalog', environment: 'production', invoiceId });
+    assert.equal(catalog.body.retryableNameConflict, true);
+    assert.equal((await h.invoke(input)).status, 400);
+    assert.equal(h.requests.filter(r => r.init.method === 'POST').length, 1);
+    const resolved = await h.invoke({ ...input, customerDisplayName: 'Client A (FuzedFlow)' });
+    assert.equal(resolved.status, 200);
+    assert.equal(resolved.body.payment_count, 2);
+    const writes = h.requests.filter(r => r.init.method === 'POST');
+    assert.deepEqual(writes.map(r => r.url.pathname), ['/v3/company/123456/customer',
+      '/v3/company/123456/customer', '/v3/company/123456/invoice',
+      '/v3/company/123456/payment', '/v3/company/123456/payment']);
+    assert.equal(JSON.parse(writes[1].init.body).DisplayName, 'Client A (FuzedFlow)');
+    assert.equal((await h.invoke({ ...input, customerDisplayName: 'Client A (FuzedFlow)' })).status, 400);
+    assert.equal(h.requests.filter(r => r.init.method === 'POST').length, 5);
+  } finally { h.close(); }
+});
+
+test('a remotely existing invoice still blocks duplicate-name recovery', async () => {
+  const h = await fixture({ existingInvoice: true });
+  try {
+    h.rows.set('qbo_invoice_exports', { status: 'review_required', request_id: '00000000-0000-4000-8000-000000000099',
+      realm_id: '123456', error_message: 'QuickBooks rejected the request: Duplicate Name Exists Error',
+      payment_sync_status: 'not_applicable' });
+    const result = await h.invoke({ ...payload, customerChoice: 'new', customerDisplayName: 'Client A (FuzedFlow)' });
+    assert.equal(result.status, 400);
+    assert.match(result.body.error, /already has this invoice number/);
+    assert.equal(h.requests.filter(r => r.init.method === 'POST').length, 0);
+    assert.equal(h.rows.get('qbo_invoice_exports').status, 'review_required');
   } finally { h.close(); }
 });
