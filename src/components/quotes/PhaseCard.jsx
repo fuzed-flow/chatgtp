@@ -9,6 +9,7 @@ import { Plus, Trash2, Image as ImageIcon, Copy, ChevronUp, ChevronDown, ListFil
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import LineItemRow from "./LineItemRow";
 import { Badge } from "@/components/ui/badge"; // Ensure Badge is imported if used
+import { MAX_PROJECT_PHOTOS, PROJECT_PHOTO_LIMIT_HINT } from "@/lib/projectPhotoLimits";
 
 export default function PhaseCard({ 
   phase, 
@@ -66,6 +67,8 @@ export default function PhaseCard({
     const clientSelected = clientSelections[phase.id] !== false;
     return clientSelected !== (phase.default_selected === true);
   })() : false;
+  const photoCount = phase.photos?.length || 0;
+  const canAddPhotos = photoCount < MAX_PROJECT_PHOTOS;
   
   return (
     <Card className={`bg-slate-50/50 border shadow-sm relative overflow-hidden transition-colors ${isPhaseModified ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}>
@@ -213,7 +216,11 @@ export default function PhaseCard({
 
             {/* PHOTOS */}
             <div className="mb-5">
-              <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-2 block">Phase Inspiration / Photos</Label>
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Phase Inspiration / Photos</Label>
+                <span className="text-[10px] font-bold text-slate-400">{photoCount} / {MAX_PROJECT_PHOTOS}</span>
+              </div>
+              <p className="text-[10px] font-medium text-slate-400 mb-2">{PROJECT_PHOTO_LIMIT_HINT}</p>
               <div className="flex flex-wrap gap-2">
                 {phase.photos?.map((photo, photoIdx) => (
                   <div key={photo} className="relative group">
@@ -229,12 +236,13 @@ export default function PhaseCard({
                     </button>
                   </div>
                 ))}
-                <label className="h-16 w-16 border-2 border-dashed border-slate-300 bg-white rounded-lg flex items-center justify-center cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-colors shadow-sm">
+                <label className={`h-16 w-16 border-2 border-dashed border-slate-300 bg-white rounded-lg flex items-center justify-center transition-colors shadow-sm ${canAddPhotos ? "cursor-pointer hover:border-amber-400 hover:bg-amber-50" : "cursor-not-allowed opacity-50"}`}>
                   <input
                     type="file"
                     accept="image/*"
                     multiple
                     className="hidden"
+                    disabled={!canAddPhotos}
                     onChange={(e) => {
                       if (e.target.files && e.target.files.length > 0) {
                         onPhotoUpload(phaseIdx, e.target.files);

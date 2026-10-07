@@ -26,6 +26,7 @@ import { useDocumentChanges, useDocumentState } from "@/hooks/useDocumentChanges
 import UnsavedChangesGuard from "@/components/shared/UnsavedChangesGuard";
 import { issueQuoteShareToken } from "@/lib/quoteSharing";
 import { normalizePhaseOrder } from "@/lib/phaseOrdering";
+import { MAX_PROJECT_PHOTOS, PROJECT_PHOTO_LIMIT_HINT, validateProjectPhotoUpload } from "@/lib/projectPhotoLimits";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -536,11 +537,15 @@ export default function QuoteBuilder() {
   };
 
   const handlePhotoUpload = async (phaseIdx, files) => {
+    const { files: filesArray, error: validationError } = validateProjectPhotoUpload(files, phases[phaseIdx]?.photos?.length || 0);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     markDirty();
     setUploadingPhoto(true);
     try {
-      // Ensure files is iterable (it might be a FileList object)
-      const filesArray = Array.from(files);
       const urls = [];
 
       for (const file of filesArray) {
@@ -557,16 +562,25 @@ export default function QuoteBuilder() {
       toast.success(`${urls.length} phase photo(s) uploaded`);
     } catch (error) { 
       toast.error("Upload failed: " + error.message); 
+    } finally {
+      setUploadingPhoto(false);
     }
-    setUploadingPhoto(false);
   };
 
   const handleEndPhotoUpload = async (file) => {
+    const existingGalleryPhotos = form.hero_image_url ? form.end_photos?.length || 0 : 0;
+    const { files: filesArray, error: validationError } = validateProjectPhotoUpload([file], existingGalleryPhotos);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     markDirty();
     setUploadingPhoto(true);
     try {
-      const fileName = `${companyId}/${quoteId || 'new'}/hero/${Date.now()}_${file.name}`;
-      const { error } = await supabase.storage.from('quotes').upload(fileName, file);
+      const [photo] = filesArray;
+      const fileName = `${companyId}/${quoteId || 'new'}/hero/${Date.now()}_${photo.name}`;
+      const { error } = await supabase.storage.from('quotes').upload(fileName, photo);
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('quotes').getPublicUrl(fileName);
       
@@ -577,16 +591,21 @@ export default function QuoteBuilder() {
         setForm({ ...form, end_photos: [...form.end_photos, publicUrl] });
         toast.success("Project photo uploaded");
       }
-    } catch (error) { toast.error("Upload failed"); }
-    setUploadingPhoto(false);
+    } catch (error) { toast.error("Upload failed"); } finally { setUploadingPhoto(false); }
   };
 
   const handleMultiplePhotosUpload = async (files) => {
+    const { files: filesArray, error: validationError } = validateProjectPhotoUpload(files, form.end_photos?.length || 0);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     markDirty();
     setUploadingPhoto(true);
     try {
       const urls = [];
-      for (const file of Array.from(files)) {
+      for (const file of filesArray) {
         const fileName = `${companyId}/${quoteId || 'new'}/gallery/${Date.now()}_${file.name}`;
         const { error } = await supabase.storage.from('quotes').upload(fileName, file);
         if (error) throw error;
@@ -595,8 +614,7 @@ export default function QuoteBuilder() {
       }
       setForm({ ...form, end_photos: [...form.end_photos, ...urls] });
       toast.success(`${urls.length} photos uploaded`);
-    } catch (error) { toast.error("Upload failed"); }
-    setUploadingPhoto(false);
+    } catch (error) { toast.error("Upload failed"); } finally { setUploadingPhoto(false); }
   };
 
   const handleDocumentUpload = async (file) => {
@@ -1774,9 +1792,12 @@ export default function QuoteBuilder() {
           </Card>
 
           <Card className="p-5 mb-4 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600 border-yellow-500/30 shadow-lg">
-            <div className="mb-3">
-              <Label className="block text-slate-900 font-medium">Past Project Photos</Label>
-              <p className="text-xs text-slate-900 mt-1">Showcase similar completed projects to the client</p>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <Label className="block text-slate-900 font-medium">Past Project Photos</Label>
+                <p className="text-xs text-slate-900 mt-1">Showcase similar completed projects to the client. {PROJECT_PHOTO_LIMIT_HINT}</p>
+              </div>
+              <span className="text-xs font-bold text-slate-900 whitespace-nowrap">{form.end_photos.length} / {MAX_PROJECT_PHOTOS}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {form.end_photos.map((photo, idx) => (
@@ -1785,8 +1806,8 @@ export default function QuoteBuilder() {
                   <button onClick={() => setForm({ ...form, end_photos: form.end_photos.filter((_, i) => i !== idx) })} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center">×</button>
                 </div>
               ))}
-              <label className="h-24 w-24 border-2 border-dashed border-slate-300 rounded flex items-center justify-center cursor-pointer hover:border-amber-400 transition-colors bg-white/50">
-                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => e.target.files && e.target.files.length > 0 && handleMultiplePhotosUpload(e.target.files)} />
+              <label className={`h-24 w-24 border-2 border-dashed border-slate-300 rounded flex items-center justify-center transition-colors bg-white/50 ${form.end_photos.length < MAX_PROJECT_PHOTOS ? "cursor-pointer hover:border-amber-400" : "cursor-not-allowed opacity-50"}`}>
+                <input type="file" accept="image/*" multiple disabled={form.end_photos.length >= MAX_PROJECT_PHOTOS} className="hidden" onChange={(e) => e.target.files && e.target.files.length > 0 && handleMultiplePhotosUpload(e.target.files)} />
                 <Image className="h-8 w-8 text-slate-400" />
               </label>
             </div>
