@@ -119,7 +119,7 @@ export default function EnhancedNotificationCenter({ onCloseSidebar }) {
           {unreadCount > 0 && <span className="absolute -top-0.5 -right-1 min-w-5 px-1 h-5 bg-red-600 text-white text-[10px] rounded-full flex items-center justify-center font-bold">{unreadCount > 99 ? "99+" : unreadCount}</span>}
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-xl bg-white p-0 overflow-hidden z-[100]" aria-describedby="notification-description">
+      <DialogContent showAIHelp={false} className="sm:max-w-xl bg-white p-0 overflow-hidden z-[100]" aria-describedby="notification-description">
         <DialogHeader className="p-4 pr-12 border-b bg-slate-50">
           <div className="flex flex-wrap gap-2 items-center justify-between">
             <DialogTitle className="text-lg font-bold text-slate-900">Notifications</DialogTitle>

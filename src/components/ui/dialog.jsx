@@ -15,12 +15,12 @@ const DialogPortal = DialogPrimitive.Portal
 
 const DialogClose = DialogPrimitive.Close
 
-const DialogAIHelpTrigger = () => {
+const DialogAIHelpTrigger = ({ enabled = true }) => {
   const { isAvailable, openHelp, registerModalDialog } = useAIHelp()
 
   React.useEffect(() => registerModalDialog(), [registerModalDialog])
 
-  if (!isAvailable) return null
+  if (!enabled || !isAvailable) return null
 
   return (
     <button
@@ -48,7 +48,7 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-const DialogContent = React.forwardRef(({ className, children, closeButtonClassName, ...props }, ref) => (
+const DialogContent = React.forwardRef(({ className, children, closeButtonClassName, showAIHelp = true, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -58,7 +58,7 @@ const DialogContent = React.forwardRef(({ className, children, closeButtonClassN
         className
       )}
       {...props}>
-      <DialogAIHelpTrigger />
+      <DialogAIHelpTrigger enabled={showAIHelp} />
       {children}
       <DialogPrimitive.Close
         className={cn(

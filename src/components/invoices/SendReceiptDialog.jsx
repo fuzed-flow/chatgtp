@@ -227,7 +227,7 @@ export default function SendReceiptDialog({ open, onOpenChange, payments, invoic
                     variant="ghost" 
                     size="sm" 
                     onClick={() => setSelectedPaymentIds(availablePayments.length === selectedPaymentIds.length ? [] : availablePayments.map(p => p.id))}
-                    className="h-6 text-xs font-bold text-blue-600 hover:text-blue-700"
+                    className="h-6 text-xs font-bold text-amber-700 hover:text-amber-900"
                   >
                     <CheckSquare className="h-3 w-3 mr-1" /> Select All
                   </Button>
@@ -272,7 +272,7 @@ export default function SendReceiptDialog({ open, onOpenChange, payments, invoic
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="font-bold">Cancel</Button>
-              <Button type="button" onClick={handleNextStep} disabled={selectedPaymentIds.length === 0} className="bg-blue-600 hover:bg-blue-700 text-white font-bold">
+              <Button type="button" onClick={handleNextStep} disabled={selectedPaymentIds.length === 0} className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold">
                 Next Step <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>

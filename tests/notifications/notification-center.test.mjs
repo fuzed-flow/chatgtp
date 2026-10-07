@@ -34,8 +34,13 @@ test('notification centre counts beyond 100, filters, pages, persists preference
   try {
     window.eval(bundle.outputFiles[0].text);
     await wait(() => window.document.querySelector('[aria-label="Notifications, 140 unread"]'));
+    await wait(() => window.document.querySelector('[aria-label="Open AI help"]'));
+    const helpTrigger = window.document.querySelector('[aria-label="Open AI help"]');
+    assert.ok(!helpTrigger.classList.contains('pointer-events-none'));
     window.document.querySelector('[aria-label="Notifications, 140 unread"]').click();
     await wait(() => button('Next') && window.document.querySelectorAll('li').length === 30);
+    await wait(() => helpTrigger.classList.contains('pointer-events-none'));
+    assert.equal(window.document.querySelector('[data-ai-help-dialog-trigger]'), null, 'Notifications has no AI Help control.');
     button('Next').click();
     await wait(() => window.document.body.textContent.includes('Page 2'));
     button('Financial').click();
@@ -47,6 +52,7 @@ test('notification centre counts beyond 100, filters, pages, persists preference
     await wait(() => window.document.querySelectorAll('li').length === 30);
     window.document.querySelector('[aria-label="Notification settings"]').click();
     await wait(() => window.document.querySelector('input[type="checkbox"]'));
+    assert.equal(window.document.querySelector('[data-ai-help-dialog-trigger]'), null, 'Notification settings also hides AI Help.');
     window.document.querySelector('input[type="checkbox"]').click();
     await wait(() => window.localStorage.getItem('fixture-action-only') === 'true');
     window.document.querySelector('[aria-label="Notification settings"]').click();
@@ -69,6 +75,7 @@ test('notification centre counts beyond 100, filters, pages, persists preference
       ![...window.document.querySelectorAll('li')].some(row => /Task overdue|Quote approved|Client viewed quote/.test(row.textContent)));
     window.document.querySelector('li button').click();
     await wait(() => window.location.pathname === '/QuoteBuilder');
+    await wait(() => !helpTrigger.classList.contains('pointer-events-none'));
     assert.equal(window.location.search, '?id=fixture-quote');
     assert.deepEqual(errors, []);
   } finally { window.close(); }

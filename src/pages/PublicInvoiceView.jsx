@@ -21,17 +21,6 @@ const safeBrandColor = value => /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(String(va
   ? String(value)
   : "#f59e0b";
 
-const readableBrandText = value => {
-  const compact = value.slice(1);
-  const hex = compact.length === 3 ? compact.split("").map(character => character.repeat(2)).join("") : compact;
-  const channels = [0, 2, 4].map(offset => parseInt(hex.slice(offset, offset + 2), 16) / 255)
-    .map(channel => channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
-  const luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-  const whiteContrast = 1.05 / (luminance + 0.05);
-  const slateContrast = (luminance + 0.05) / 0.0586;
-  return whiteContrast >= slateContrast ? "#ffffff" : "#0f172a";
-};
-
 export default function PublicInvoiceView() {
   const params = new URLSearchParams(window.location.search);
   const invoiceId = params.get("id");
@@ -147,7 +136,6 @@ export default function PublicInvoiceView() {
   // ==========================================
   const settings = company?.settings || {};
   const brandColor = safeBrandColor(settings?.pdf?.brand_color);
-  const brandTextColor = readableBrandText(brandColor);
   const logoUrl = company?.logo_url || company?.company_logo_url;
   
   const primaryTaxRate = (settings?.tax_rate ?? 5) / 100;
@@ -483,8 +471,7 @@ export default function PublicInvoiceView() {
               <Button 
                 onClick={handlePayInvoice} 
                 disabled={isProcessingPayment}
-                className="shadow-lg font-black h-12 px-8 transition-transform hover:scale-105"
-                style={{ backgroundColor: brandColor, color: brandTextColor }}
+                className="bg-amber-500 hover:bg-amber-600 text-slate-900 shadow-lg font-black h-12 px-8 transition-transform hover:scale-105"
               >
                 {isProcessingPayment ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>

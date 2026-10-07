@@ -425,8 +425,7 @@ export default function InvoiceView() {
               <Button 
                 onClick={handleStripeCheckout} 
                 disabled={isProcessingPayment}
-                className="text-white font-bold h-12 px-10 rounded-full shadow-lg transition-transform hover:scale-105" 
-                style={{ backgroundColor: brandColor }}
+                className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold h-12 px-10 rounded-full shadow-lg transition-transform hover:scale-105"
               >
                 <DollarSign className="h-5 w-5 mr-1.5" /> 
                 {isProcessingPayment ? "Connecting to secure checkout..." : `Pay ${formatCurrencyUSD(invoice.balance_due)}`}

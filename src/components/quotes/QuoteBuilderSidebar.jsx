@@ -2,23 +2,25 @@ import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { FileText, Image, ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
 
 export default function QuoteBuilderSidebar({ allDocuments, allPhotos, notes }) {
   const [minimized, setMinimized] = useState(false);
 
   if (minimized) {
     return (
-      <div className="w-12 shrink-0 flex items-start pt-6">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setMinimized(false)}
-          className="h-8 w-8 p-0"
-          title="Expand sidebar"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+      <div className="w-12 shrink-0">
+        <div className="sticky top-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMinimized(false)}
+            className="h-8 w-8 p-0"
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     );
   }
@@ -33,6 +35,7 @@ export default function QuoteBuilderSidebar({ allDocuments, allPhotos, notes }) 
             onClick={() => setMinimized(true)}
             className="h-8 w-8 p-0"
             title="Minimize sidebar"
+            aria-label="Minimize sidebar"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

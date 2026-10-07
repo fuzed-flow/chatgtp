@@ -776,7 +776,7 @@ export default function InvoiceBuilder() {
             <Button 
               onClick={() => handleSave()} 
               disabled={saving}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md"
+              className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold shadow-md"
             >
               {saving ? "Saving..." : <><Save className="h-4 w-4 mr-2" /> Save Invoice</>}
             </Button>
@@ -794,8 +794,8 @@ export default function InvoiceBuilder() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Share</div>
-                  <DropdownMenuItem onClick={() => openSendDialog("email")} className="cursor-pointer font-medium text-slate-700 focus:bg-blue-50 focus:text-blue-700">
-                    <Mail className="h-4 w-4 mr-2 text-blue-500" /> Send via Email
+                  <DropdownMenuItem onClick={() => openSendDialog("email")} className="cursor-pointer font-medium text-slate-700 focus:bg-amber-50 focus:text-amber-900">
+                    <Mail className="h-4 w-4 mr-2 text-amber-600" /> Send via Email
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => openSendDialog("sms")} className="cursor-pointer font-medium text-slate-700 focus:bg-amber-50 focus:text-amber-700">
                     <Smartphone className="h-4 w-4 mr-2 text-amber-500" /> Send via Text Message
@@ -1009,7 +1009,7 @@ export default function InvoiceBuilder() {
                         </div>
                         
                         <div className="flex flex-col gap-1 border-l border-slate-200 pl-3">
-                          <Button size="sm" variant="ghost" onClick={() => { setMilestoneForm({ payment_name: item.payment_name, due_event: item.due_event, amount: item.amount || 0, amount_type: item.amount_type || "fixed", percentage: item.percentage || 0 }); setEditingMilestoneIndex(idx); setMilestoneDialog(true); }} className="text-blue-600 hover:bg-blue-50 h-6 w-6 p-0">
+                          <Button size="sm" variant="ghost" onClick={() => { setMilestoneForm({ payment_name: item.payment_name, due_event: item.due_event, amount: item.amount || 0, amount_type: item.amount_type || "fixed", percentage: item.percentage || 0 }); setEditingMilestoneIndex(idx); setMilestoneDialog(true); }} className="text-amber-700 hover:bg-amber-50 hover:text-amber-900 h-6 w-6 p-0">
                             <Settings className="h-3 w-3" />
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => removeMilestoneScheduleItem(idx)} className="text-red-600 hover:bg-red-50 h-6 w-6 p-0">
