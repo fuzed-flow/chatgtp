@@ -6,6 +6,14 @@ const money = (value: unknown) => Math.round(Number(value || 0) * 100) / 100;
 const validId = (value: unknown) => typeof value === 'string' && /^[0-9]+$/.test(value);
 const safeName = (value: unknown) => String(value || '').trim().replace(/[\r\n\t]/g, ' ').slice(0, 100);
 const esc = (value: string) => value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+const invoiceSignature = async (invoice: Record<string, unknown>, payments: { id: string; amount: unknown; payment_date?: string; payment_method?: string }[]) => {
+  const snapshot = [invoice.id, invoice.client_id, invoice.invoice_number, invoice.issue_date, invoice.due_date,
+    invoice.status, money(invoice.subtotal), money(invoice.tax), money(invoice.total),
+    money(invoice.amount_paid), money(invoice.balance_due), payments.map(p =>
+      [p.id, money(p.amount), p.payment_date, p.payment_method || 'Other'])];
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(snapshot)));
+  return [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+};
 
 serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -72,22 +80,135 @@ serve(async req => {
       if (clientError || !data) throw new Error('Client not found in this company.');
       return data;
     };
+    const readPayments = async (invoiceId: string) => {
+      const { data, error: paymentError } = await db.from('payments')
+        .select('id,amount,payment_date,payment_method,notes')
+        .eq('company_id', companyId).eq('invoice_id', invoiceId)
+        .order('payment_date', { ascending: true }).order('id', { ascending: true });
+      if (paymentError) throw new Error('Invoice payments are unavailable.');
+      return data || [];
+    };
+    const checkPayments = (invoice: Record<string, unknown>, payments: { amount: unknown; payment_date?: string }[]) => {
+      const totalPaid = money(payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
+      if (money(invoice.amount_paid) !== totalPaid || Math.abs(money(invoice.total) - totalPaid - money(invoice.balance_due)) > 0.02 ||
+        totalPaid > money(invoice.total) || payments.some(p => money(p.amount) <= 0 || !p.payment_date)) {
+        throw new Error('FuzedFlow payment totals or dates are inconsistent. Review the invoice before exporting.');
+      }
+      return totalPaid;
+    };
+    const paymentSettings = async (payments: { payment_method?: string }[]) => {
+      if (!payments.length) return null;
+      if (!validId(input.depositAccountId) || !input.paymentMethodIds || typeof input.paymentMethodIds !== 'object') {
+        throw new Error('Choose a QuickBooks deposit account and payment method for every payment.');
+      }
+      const methods = [...new Set(payments.map(p => p.payment_method || 'Other'))];
+      const ids = methods.map(method => input.paymentMethodIds[method]);
+      if (ids.some(id => !validId(id))) throw new Error('Choose a QuickBooks payment method for every recorded method.');
+      const [account, availableMethods] = await Promise.all([
+        query(`SELECT * FROM Account WHERE Id = '${input.depositAccountId}'`),
+        query('SELECT * FROM PaymentMethod WHERE Active = true MAXRESULTS 1000'),
+      ]);
+      if (!account.Account?.[0]?.Active || !['Bank','Other Current Asset'].includes(account.Account[0].AccountType) ||
+        ids.some(id => !(availableMethods.PaymentMethod || []).some((m: { Id: string; Active: boolean }) => m.Id === id && m.Active))) {
+        throw new Error('Selected QuickBooks deposit account or payment method is inactive or unavailable.');
+      }
+      return { depositAccountId: input.depositAccountId as string, methodIds: input.paymentMethodIds as Record<string, string> };
+    };
+    const checkExistingPayments = async (customerId: string, payments: { amount: number; payment_date: string }[]) => {
+      for (const payment of payments) {
+        const existing = await query(`SELECT * FROM Payment WHERE CustomerRef = '${customerId}' AND TxnDate = '${payment.payment_date}' MAXRESULTS 1000`);
+        if ((existing.Payment || []).some((candidate: { TotalAmt: number }) => Math.abs(money(candidate.TotalAmt) - money(payment.amount)) <= 0.01)) {
+          throw new Error(`A QuickBooks payment on ${payment.payment_date} matches ${money(payment.amount)}. Review it before exporting payments.`);
+        }
+      }
+    };
+    const syncPayments = async (
+      invoice: { id: string; total: number; balance_due: number }, payments: { id: string; amount: number; payment_date: string; payment_method?: string; notes?: string }[],
+      qboInvoiceId: string, customerId: string, settings: { depositAccountId: string; methodIds: Record<string, string> },
+    ) => {
+      const { data: previous, error: previousError } = await db.from('qbo_payment_exports')
+        .select('payment_id,status,qbo_payment_id').eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id);
+      if (previousError) throw new Error('QuickBooks payment export status unavailable.');
+      if (previous?.some((row: { status: string }) => row.status === 'processing' || row.status === 'review_required')) {
+        throw new Error('A QuickBooks payment needs manual review. No further payments were posted.');
+      }
+      const remoteInvoice = (await api(`invoice/${encodeURIComponent(qboInvoiceId)}`)).Invoice;
+      const alreadyExported = payments.filter(p => previous?.some((row: { payment_id: string; status: string }) =>
+        row.payment_id === p.id && row.status === 'exported'));
+      const expectedBalance = money(Number(invoice.total) - alreadyExported.reduce((sum, p) => sum + Number(p.amount), 0));
+      if (remoteInvoice?.CustomerRef?.value !== customerId || Math.abs(money(remoteInvoice?.TotalAmt) - money(invoice.total)) > 0.02 ||
+        Math.abs(money(remoteInvoice?.Balance) - expectedBalance) > 0.02) {
+        throw new Error('QuickBooks invoice balance or customer changed. Review its payments before continuing.');
+      }
+      await checkExistingPayments(customerId, payments.filter(p => !alreadyExported.some(exported => exported.id === p.id)));
+      for (const payment of payments) {
+        if (previous?.some((row: { payment_id: string; status: string }) => row.payment_id === payment.id && row.status === 'exported')) continue;
+        const requestId = crypto.randomUUID();
+        const claim = await db.rpc('qbo_claim_payment_export', { p_company: companyId, p_environment: environment,
+          p_invoice: invoice.id, p_payment: payment.id, p_realm: saved.realm_id,
+          p_remote_invoice: qboInvoiceId, p_request: requestId });
+        if (claim.error || !claim.data?.[0]?.claimed) throw new Error('Payment already being exported or needs review in QuickBooks.');
+        try {
+          const amount = money(payment.amount);
+          const body = await api(`payment?requestid=${encodeURIComponent(requestId)}`, {
+            CustomerRef: { value: customerId }, TotalAmt: amount, TxnDate: payment.payment_date,
+            PaymentMethodRef: { value: settings.methodIds[payment.payment_method || 'Other'] },
+            DepositToAccountRef: { value: settings.depositAccountId }, ProcessPayment: false,
+            PrivateNote: `FuzedFlow payment ${payment.id}${payment.notes ? ` — ${payment.notes}` : ''}`.slice(0, 4000),
+            Line: [{ Amount: amount, LinkedTxn: [{ TxnId: qboInvoiceId, TxnType: 'Invoice' }] }],
+          });
+          const remote = body.Payment;
+          const applied = remote?.Line?.some((line: { LinkedTxn?: { TxnId: string; TxnType: string }[] }) =>
+            line.LinkedTxn?.some(link => link.TxnId === qboInvoiceId && link.TxnType === 'Invoice'));
+          if (!remote?.Id || Math.abs(money(remote.TotalAmt) - amount) > 0.01 ||
+            Math.abs(money(remote.UnappliedAmt)) > 0.01 || !applied) {
+            throw new Error('QuickBooks returned a payment that does not reconcile to the invoice. Review it there.');
+          }
+          const recorded = await db.from('qbo_payment_exports').update({ status: 'exported', qbo_payment_id: remote.Id,
+            completed_at: new Date().toISOString() }).eq('company_id', companyId).eq('environment', environment)
+            .eq('payment_id', payment.id).eq('request_id', requestId).select('status').single();
+          if (recorded.error || !recorded.data) throw new Error('QuickBooks payment posted but its local link could not be saved. Contact support.');
+        } catch (paymentError) {
+          await db.from('qbo_payment_exports').update({ status: 'review_required',
+            error_message: paymentError instanceof Error ? paymentError.message.slice(0, 240) : 'Payment needs review.' })
+            .eq('company_id', companyId).eq('environment', environment).eq('payment_id', payment.id).eq('request_id', requestId).eq('status', 'processing');
+          await db.from('qbo_invoice_exports').update({ payment_sync_status: 'review_required' })
+            .eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id);
+          throw paymentError;
+        }
+      }
+      const result = await db.from('qbo_invoice_exports').update({ payment_sync_status: 'complete' })
+        .eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id).select('payment_sync_status').single();
+      if (result.error || !result.data) throw new Error('Payments were posted, but reconciliation status could not be saved. Contact support.');
+      return respond({ success: true, qbo_invoice_id: qboInvoiceId, payment_count: payments.length,
+        total_paid: money(payments.reduce((sum, p) => sum + Number(p.amount), 0)), balance_due: money(invoice.balance_due) });
+    };
     if (action === 'get_company_info') {
       const body = await api(`companyinfo/${realm}`);
       return respond({ success: true, company_name: body.CompanyInfo?.CompanyName || null, realm_id: saved.realm_id });
     }
     if (action === 'invoice_catalog') {
       const invoice = await requireInvoice();
-      const [customers, items, taxCodes, taxRates, companyInfo, preferences, link, exportRow] = await Promise.all([
+      const [customers, items, taxCodes, taxRates, companyInfo, preferences, link, exportRow, payments] = await Promise.all([
         query('SELECT * FROM Customer WHERE Active = true MAXRESULTS 1000'),
         query('SELECT * FROM Item WHERE Active = true MAXRESULTS 1000'),
         query('SELECT * FROM TaxCode WHERE Active = true MAXRESULTS 1000'),
         query('SELECT * FROM TaxRate WHERE Active = true MAXRESULTS 1000'),
         api(`companyinfo/${realm}`), api('preferences'),
         db.from('qbo_customer_links').select('qbo_customer_id,realm_id').eq('company_id', companyId).eq('environment', environment).eq('client_id', invoice.client_id).maybeSingle(),
-        db.from('qbo_invoice_exports').select('status,qbo_invoice_id,error_message').eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id).maybeSingle(),
+        db.from('qbo_invoice_exports').select('status,qbo_invoice_id,error_message,payment_sync_status').eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id).maybeSingle(),
+        readPayments(invoice.id),
       ]);
       if (link.error || exportRow.error) throw new Error('QuickBooks mappings unavailable.');
+      checkPayments(invoice, payments);
+      const needsPayments = payments.length > 0;
+      const [methods, accounts, exportedPayments] = needsPayments ? await Promise.all([
+        query('SELECT * FROM PaymentMethod WHERE Active = true MAXRESULTS 1000'),
+        query('SELECT * FROM Account WHERE Active = true MAXRESULTS 1000'),
+        db.from('qbo_payment_exports').select('payment_id,status,qbo_payment_id,error_message')
+          .eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id),
+      ]) : [{}, {}, { data: [], error: null }];
+      if (exportedPayments.error) throw new Error('QuickBooks payment mappings unavailable.');
       const homeCurrency = preferences.Preferences?.CurrencyPrefs?.HomeCurrency?.value || 'USD';
       return respond({
         country: companyInfo.CompanyInfo?.Country || null, currency: homeCurrency,
@@ -98,18 +219,42 @@ serve(async req => {
           rates: ((c.SalesTaxRateList as { TaxRateDetail?: { TaxRateRef?: { value?: string } }[] })?.TaxRateDetail || [])
             .map(d => ({ id: d.TaxRateRef?.value, rate: (taxRates.TaxRate || []).find((r: { Id: string }) => r.Id === d.TaxRateRef?.value)?.RateValue })) })),
         linkedCustomerId: link.data?.realm_id === saved.realm_id ? link.data.qbo_customer_id : null,
+        previewSignature: await invoiceSignature(invoice, payments),
         export: exportRow.data,
+        payments: payments.map(p => ({ id: p.id, amount: p.amount, date: p.payment_date, method: p.payment_method || 'Other',
+          export: (exportedPayments.data || []).find(x => x.payment_id === p.id) || null })),
+        paymentMethods: (methods.PaymentMethod || []).map((m: { Id: string; Name: string }) => ({ id: m.Id, name: m.Name })),
+        depositAccounts: (accounts.Account || []).filter((a: { AccountType?: string }) => ['Bank','Other Current Asset'].includes(a.AccountType || ''))
+          .map((a: { Id: string; Name: string; AccountType: string }) => ({ id: a.Id, name: a.Name, type: a.AccountType })),
       });
     }
-    if (action !== 'export_invoice') return respond({ error: 'Unknown QuickBooks action.' }, 400);
+    if (!['export_invoice','sync_payments'].includes(action)) return respond({ error: 'Unknown QuickBooks action.' }, 400);
     const invoice = await requireInvoice();
-    if (invoice.status === 'Draft' || money(invoice.amount_paid) !== 0 || ['Paid', 'Partial'].includes(invoice.status)) {
-      throw new Error('Send the invoice first. Paid, partially paid, and draft invoices cannot be exported.');
+    if (invoice.status === 'Draft' || !['Sent','Viewed','Overdue','Partial','Paid'].includes(invoice.status)) {
+      throw new Error('Send the invoice first. Only issued invoices can be exported.');
+    }
+    const payments = await readPayments(invoice.id);
+    const totalPaid = checkPayments(invoice, payments);
+    if (input.previewSignature !== await invoiceSignature(invoice, payments)) {
+      throw new Error('Invoice or payments changed since the QuickBooks review. Close and reopen export to review current amounts.');
     }
     if (!invoice.client_id || !invoice.invoice_number || !invoice.issue_date || !invoice.due_date || !money(invoice.total)) {
       throw new Error('Invoice must have a client, number, dates, and a positive total.');
     }
     if (invoice.invoice_number.length > 21) throw new Error('Invoice number exceeds QuickBooks 21-character limit.');
+    if (action === 'sync_payments') {
+      if (!payments.length || !totalPaid) throw new Error('There are no recorded payments to sync.');
+      const { data: exported, error: exportError } = await db.from('qbo_invoice_exports')
+        .select('status,qbo_invoice_id,qbo_customer_id,realm_id,payment_sync_status')
+        .eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id).single();
+      if (exportError || exported?.status !== 'exported' || exported.realm_id !== saved.realm_id ||
+        !validId(exported.qbo_invoice_id) || !validId(exported.qbo_customer_id) || exported.payment_sync_status !== 'pending') {
+        throw new Error('Invoice payments cannot be synced automatically. Review its QuickBooks export status.');
+      }
+      const settings = await paymentSettings(payments);
+      return await syncPayments(invoice, payments, exported.qbo_invoice_id, exported.qbo_customer_id, settings!);
+    }
+    const settings = await paymentSettings(payments);
     if (!validId(input.itemId) || !validId(input.taxCodeId) || !['new', 'existing'].includes(input.customerChoice)) {
       throw new Error('Choose a QuickBooks product, tax code, and customer.');
     }
@@ -166,6 +311,7 @@ serve(async req => {
       if (!found.Customer?.[0]?.Active) throw new Error('QuickBooks customer is inactive or missing.');
       customerId = input.customerId;
     }
+    if (customerId && payments.length) await checkExistingPayments(customerId, payments);
     const requestId = crypto.randomUUID();
     const claim = await db.rpc('qbo_claim_invoice_export', { p_company: companyId, p_environment: environment,
       p_invoice: invoice.id, p_realm: saved.realm_id, p_request: requestId });
@@ -212,8 +358,10 @@ serve(async req => {
         && qboInvoice.DocNumber === invoice.invoice_number;
       const savedExport = await db.from('qbo_invoice_exports').update({ qbo_invoice_id: qboInvoice.Id, qbo_customer_id: customerId,
         status: exact ? 'exported' : 'review_required', error_message: exact ? null : `QuickBooks returned number ${qboInvoice.DocNumber || 'unknown'} and total ${qboInvoice.TotalAmt}; expected ${invoice.invoice_number} and ${invoice.total}.`,
+        payment_sync_status: exact && payments.length ? 'pending' : 'not_applicable',
         completed_at: new Date().toISOString() }).eq('company_id', companyId).eq('environment', environment).eq('invoice_id', invoice.id).eq('request_id', requestId).select('status').single();
       if (savedExport.error || !savedExport.data) throw new Error('QuickBooks invoice was created but export status could not be saved. Contact support.');
+      if (exact && payments.length) return await syncPayments(invoice, payments, qboInvoice.Id, customerId, settings!);
       return respond({ success: exact, reviewRequired: !exact, qbo_invoice_id: qboInvoice.Id, qbo_total: qboInvoice.TotalAmt,
         fuzedflow_total: invoice.total });
     } catch (writeError) {
