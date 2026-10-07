@@ -148,7 +148,22 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
 const payload = { action: 'export_invoice', environment: 'production', invoiceId,
   customerChoice: 'existing', customerId: '40', itemId: '10', taxCodeId: '20' };
 
-test('exports once with a linked customer, matching tax code, and isolated realm', async () => {
+test('QuickBooks exports are paused before any accounting request or local reservation', async () => {
+  const h = await fixture();
+  try {
+    for (const action of ['export_invoice', 'sync_payments']) {
+      const result = await h.invoke({ ...payload, action });
+      assert.equal(result.status, 403);
+      assert.match(result.body.error, /coming soon/i);
+    }
+    assert.equal(h.requests.length, 0);
+    assert.equal(h.rows.has('qbo_invoice_exports'), false);
+    assert.equal(h.paymentRows.size, 0);
+  } finally { h.close(); }
+});
+
+// Keep the full accounting tests available when this paused capability resumes.
+test.skip('exports once with a linked customer, matching tax code, and isolated realm', async () => {
   const h = await fixture();
   try {
     h.rows.set('qbo_customer_links', { realm_id: '123456', qbo_customer_id: '40' });
@@ -167,7 +182,7 @@ test('exports once with a linked customer, matching tax code, and isolated realm
   } finally { h.close(); }
 });
 
-test('rejects mismatched tax and an existing invoice number without writes', async () => {
+test.skip('rejects mismatched tax and an existing invoice number without writes', async () => {
   for (const options of [{ tax: 7 }, { existingInvoice: true }]) {
     const h = await fixture(options);
     try {
@@ -178,7 +193,7 @@ test('rejects mismatched tax and an existing invoice number without writes', asy
   }
 });
 
-test('non-admin cannot read or write QuickBooks accounting data', async () => {
+test.skip('non-admin cannot read or write QuickBooks accounting data', async () => {
   const h = await fixture();
   try {
     h.setRole('employee');
@@ -187,7 +202,7 @@ test('non-admin cannot read or write QuickBooks accounting data', async () => {
   } finally { h.close(); }
 });
 
-test('a created invoice with a mismatched QuickBooks total requires review and cannot be repeated', async () => {
+test.skip('a created invoice with a mismatched QuickBooks total requires review and cannot be repeated', async () => {
   const h = await fixture({ remoteTotal: 106 });
   try {
     h.rows.set('qbo_customer_links', { realm_id: '123456', qbo_customer_id: '40' });
@@ -199,7 +214,7 @@ test('a created invoice with a mismatched QuickBooks total requires review and c
   } finally { h.close(); }
 });
 
-test('a draft invoice cannot create a QuickBooks accounting record', async () => {
+test.skip('a draft invoice cannot create a QuickBooks accounting record', async () => {
   const h = await fixture({ invoiceStatus: 'Draft' });
   try {
     h.rows.set('qbo_customer_links', { realm_id: '123456', qbo_customer_id: '40' });
@@ -211,7 +226,7 @@ test('a draft invoice cannot create a QuickBooks accounting record', async () =>
   } finally { h.close(); }
 });
 
-test('a paid invoice exports its two dated payments and does not repeat them', async () => {
+test.skip('a paid invoice exports its two dated payments and does not repeat them', async () => {
   const payments = [
     { id: '00000000-0000-4000-8000-000000000011', amount: 40, payment_date: '2026-09-09', payment_method: 'Check' },
     { id: '00000000-0000-4000-8000-000000000012', amount: 65, payment_date: '2026-10-06', payment_method: 'Check' },
@@ -233,7 +248,7 @@ test('a paid invoice exports its two dated payments and does not repeat them', a
   } finally { h.close(); }
 });
 
-test('a changed invoice preview cannot create an invoice or payment', async () => {
+test.skip('a changed invoice preview cannot create an invoice or payment', async () => {
   const h = await fixture({ invoiceStatus: 'Paid', payments: [
     { id: '00000000-0000-4000-8000-000000000011', amount: 105, payment_date: '2026-09-09', payment_method: 'Check' },
   ] });
@@ -244,7 +259,7 @@ test('a changed invoice preview cannot create an invoice or payment', async () =
   } finally { h.close(); }
 });
 
-test('a matching QuickBooks payment stops payment posting for review', async () => {
+test.skip('a matching QuickBooks payment stops payment posting for review', async () => {
   const h = await fixture({ invoiceStatus: 'Paid', matchingPayment: true, payments: [
     { id: '00000000-0000-4000-8000-000000000011', amount: 105, payment_date: '2026-09-09', payment_method: 'Check' },
   ] });
@@ -258,7 +273,7 @@ test('a matching QuickBooks payment stops payment posting for review', async () 
   } finally { h.close(); }
 });
 
-test('an uncertain payment failure locks that payment against automatic retry', async () => {
+test.skip('an uncertain payment failure locks that payment against automatic retry', async () => {
   const payments = [
     { id: '00000000-0000-4000-8000-000000000011', amount: 40, payment_date: '2026-09-09', payment_method: 'Check' },
     { id: '00000000-0000-4000-8000-000000000012', amount: 65, payment_date: '2026-10-06', payment_method: 'Check' },
@@ -278,7 +293,7 @@ test('an uncertain payment failure locks that payment against automatic retry', 
   } finally { h.close(); }
 });
 
-test('a pending export resumes only the payment that has not been posted', async () => {
+test.skip('a pending export resumes only the payment that has not been posted', async () => {
   const payments = [
     { id: '00000000-0000-4000-8000-000000000011', amount: 40, payment_date: '2026-09-09', payment_method: 'Check' },
     { id: '00000000-0000-4000-8000-000000000012', amount: 65, payment_date: '2026-10-06', payment_method: 'Check' },
@@ -296,7 +311,7 @@ test('a pending export resumes only the payment that has not been posted', async
   } finally { h.close(); }
 });
 
-test('duplicate customer name permits one guarded retry with a distinct QuickBooks display name', async () => {
+test.skip('duplicate customer name permits one guarded retry with a distinct QuickBooks display name', async () => {
   const payments = [
     { id: '00000000-0000-4000-8000-000000000011', amount: 40, payment_date: '2026-09-09', payment_method: 'Check' },
     { id: '00000000-0000-4000-8000-000000000012', amount: 65, payment_date: '2026-10-06', payment_method: 'Check' },
@@ -326,7 +341,7 @@ test('duplicate customer name permits one guarded retry with a distinct QuickBoo
   } finally { h.close(); }
 });
 
-test('a remotely existing invoice still blocks duplicate-name recovery', async () => {
+test.skip('a remotely existing invoice still blocks duplicate-name recovery', async () => {
   const h = await fixture({ existingInvoice: true });
   try {
     h.rows.set('qbo_invoice_exports', { status: 'review_required', request_id: '00000000-0000-4000-8000-000000000099',

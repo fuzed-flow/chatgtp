@@ -26,6 +26,9 @@ serve(async req => {
     const { action, environment: requestedEnvironment } = input;
     const environment: QboEnvironment = requestedEnvironment || 'sandbox';
     if (environment !== 'sandbox' && environment !== 'production') return respond({ error: 'Invalid QuickBooks environment.' }, 400);
+    if (action === 'export_invoice' || action === 'sync_payments') {
+      return respond({ error: 'QuickBooks invoice and payment exports are coming soon.' }, 403);
+    }
     const db = adminDb();
     if (action === 'status') {
       const table = environment === 'production' ? 'qbo_production_connections' : 'qbo_connections';

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/api/supabaseClient';
 import { toast } from 'sonner';
@@ -28,7 +28,7 @@ import NotificationSettings from "../components/settings/NotificationSettings";
 import ClientPortalSettings from "../components/settings/ClientPortalSettings";
 
 export default function AdminSettings() {
-  const { profile, company, refreshAccess } = useAuth();
+  const { profile, company } = useAuth();
   
   // 1. Define Role Bools
   const isAdmin = profile?.role === 'admin' || profile?.role === 'owner';
@@ -42,47 +42,8 @@ export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState(isAdmin ? 'branding' : 'quote_custom');
   
   // 4. Loading States for Integrations
-  const [isConnectingQBO, setIsConnectingQBO] = useState(false);
-  const [isProductionConnected, setIsProductionConnected] = useState(null);
   const [isManagingBilling, setIsManagingBilling] = useState(false);
   const [isConnectingStripe, setIsConnectingStripe] = useState(false);
-
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const outcome = url.searchParams.get('qbo');
-    if (!['connected', 'failed', 'production_connected', 'production_failed'].includes(outcome)) return;
-    url.searchParams.delete('qbo');
-    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
-    if (outcome === 'connected' || outcome === 'production_connected') {
-      if (outcome === 'production_connected') {
-        setIsProductionConnected(true);
-        toast.success('QuickBooks Live connected. You can run the read-only test now.');
-      } else {
-        refreshAccess().then(() => toast.success('QuickBooks sandbox connected.')).catch(() => {
-          toast.info('QuickBooks sandbox connected. Refresh Settings to see its status.');
-        });
-      }
-    } else {
-      toast.error(`QuickBooks ${outcome === 'production_failed' ? 'Live' : 'sandbox'} connection failed or expired. Please try again.`);
-    }
-  }, [refreshAccess]);
-
-  useEffect(() => {
-    if (!isAdmin || !profile?.company_id) return;
-    let cancelled = false;
-    supabase.functions.invoke('qbo-api', { body: { action: 'status', environment: 'production' } })
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        setIsProductionConnected(Boolean(data?.connected));
-        if (error || data?.error) toast.error('QuickBooks Live status could not be loaded.');
-      }).catch(() => {
-        if (!cancelled) {
-          setIsProductionConnected(false);
-          toast.error('QuickBooks Live status could not be loaded.');
-        }
-      });
-    return () => { cancelled = true; };
-  }, [isAdmin, profile?.company_id]);
 
   // Security Check: Only allow Admins and Managers
   if (!isAdmin && !isManager) {
@@ -101,31 +62,7 @@ export default function AdminSettings() {
 
   // --- EDGE FUNCTION INTEGRATIONS ---
 
-  // A. QuickBooks Connection
-  const handleQBOConnect = async (environment = 'sandbox', forceConnect = false) => {
-    setIsConnectingQBO(true);
-    try {
-      const connected = environment === 'production' ? isProductionConnected : company?.qbo_connected;
-      const action = connected && !forceConnect ? 'get_company_info' : null;
-      const { data, error } = await supabase.functions.invoke(action ? 'qbo-api' : 'qbo-connect', {
-        body: action ? { action, environment } : { environment },
-      });
-      if (error || data?.error) throw new Error(data?.error || `QuickBooks ${environment} request failed.`);
-      if (action) {
-        toast.success(`QuickBooks ${environment === 'production' ? 'Live' : 'sandbox'} verified${data?.company_name ? `: ${data.company_name}` : '.'}`);
-      } else if (data?.url?.startsWith('https://appcenter.intuit.com/connect/oauth2?')) {
-        window.location.assign(data.url);
-      } else {
-        throw new Error('QuickBooks authorization URL is missing.');
-      }
-    } catch (error) {
-      toast.error(error.message || `QuickBooks ${environment} request failed.`);
-      setIsConnectingQBO(false);
-    }
-    if (environment === 'production' ? isProductionConnected : company?.qbo_connected) setIsConnectingQBO(false);
-  };
-
-  // B. Stripe Connect (Money flowing TO the user from their clients)
+  // Stripe Connect (Money flowing TO the user from their clients)
   const handleStripeConnect = async () => {
     setIsConnectingStripe(true);
     toast.loading("Setting up your payments portal...");
@@ -258,44 +195,10 @@ export default function AdminSettings() {
         {isAdmin && (
           <div className="pt-4 border-t border-slate-200 px-2 grid grid-cols-1 gap-3 w-full">
             
-            {/* QUICKBOOKS BUTTON */}
             <div className="flex flex-col">
-              <Button 
-  onClick={() => handleQBOConnect('sandbox')}
-  disabled={isConnectingQBO}
-  className={`w-full font-bold h-10 shadow-sm transition-all ${
-    company?.qbo_connected 
-      ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-200 hover:bg-emerald-100' 
-      : 'bg-[#2ca01c] hover:bg-[#238016] text-white'
-  }`}
->
-  {isConnectingQBO ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <svg className="h-4 w-4 mr-2 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.664 16.336c-.464.464-1.08.704-1.728.704-.648 0-1.264-.24-1.728-.704l-3.52-3.52v3.312c0 .48-.384.88-.88.88s-.88-.384-.88-.88V7.808c0-.48.384-.88.88-.88s.88.384.88.88v3.312l3.52-3.52c.464-.464 1.08-.704 1.728-.704.648 0 1.264.24 1.728.704.944.944.944 2.496 0 3.44L14.32 12l3.344 3.344c.944.944.944 2.496 0 3.44z"/>
-  </svg>}
-  {company?.qbo_connected ? 'Test QuickBooks Sandbox' : 'Connect QuickBooks Sandbox'}
-</Button>
-              <p className="mt-1 text-xs text-slate-500">Sandbox test only. No accounting data is changed.</p>
-            </div>
-
-            <div className="flex flex-col">
-              <Button
-                onClick={() => handleQBOConnect('production')}
-                disabled={isConnectingQBO || isProductionConnected === null}
-                className={`w-full font-bold h-10 shadow-sm ${isProductionConnected
-                  ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-200 hover:bg-emerald-100'
-                  : 'bg-amber-400 hover:bg-amber-500 text-slate-950'}`}
-              >
-                {isConnectingQBO && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {isProductionConnected === null ? 'Checking QuickBooks Live...' : isProductionConnected
-                  ? 'Test QuickBooks Live' : 'Connect QuickBooks Live'}
+              <Button disabled className="w-full h-10 font-bold bg-slate-100 text-slate-500 border border-slate-200 shadow-none">
+                QuickBooks — Coming Soon
               </Button>
-              {isProductionConnected && (
-                <button type="button" onClick={() => handleQBOConnect('production', true)}
-                  disabled={isConnectingQBO} className="self-start mt-1 text-xs text-slate-600 underline hover:text-slate-900">
-                  Reconnect QuickBooks Live
-                </button>
-              )}
-              <p className="mt-1 text-xs text-slate-500">Connect a real company. The connection test only reads its name; no accounting data is changed.</p>
             </div>
 
             {/* MANAGE APP SUBSCRIPTION BUTTON */}
