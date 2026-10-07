@@ -1,71 +1,44 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { adminDb, callbackUrl, clientCredentials, sandboxOnly, stateHash } from '../_shared/qboSandbox.ts';
 
-const CLIENT_ID = Deno.env.get('ABh0yHpeOSWecCiJMXsDMQs8LZmWdO2k0kF0nK6jeB2FnyRpfZ')!;
-const CLIENT_SECRET = Deno.env.get('YALc1MIhcqo4NfwxcZeBPycwuwLmGpyfYYZNkI4E')!;
-// You will update this URL once you register your app in Intuit
-const REDIRECT_URI = "https://your-api.com/functions/v1/qbo-callback";
+const finish = (outcome: 'connected' | 'failed') => Response.redirect(`https://app.fuzedflow.com/AdminSettings?qbo=${outcome}`, 302);
+const realmPattern = /^[0-9]{1,30}$/;
 
-serve(async (req) => {
-  const url = new URL(req.url);
-  const code = url.searchParams.get("code");
-  const realmId = url.searchParams.get("realmId"); 
-
-  if (!code || !realmId) {
-    return new Response("Missing parameters from Intuit", { status: 400 });
-  }
-
-  // In production, you would validate the "state" parameter here to securely fetch the company_id.
-  // We will use a placeholder here until your frontend state management is wired up.
-  const companyId = "00000000-0000-0000-0000-000000000000"; 
-
-  const credentials = btoa(`${CLIENT_ID}:${CLIENT_SECRET}`);
-  
+serve(async req => {
+  if (req.method !== 'GET') return new Response('Method not allowed', { status: 405 });
   try {
-    const tokenResponse = await fetch("https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer", {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${credentials}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: REDIRECT_URI,
-      }),
+    sandboxOnly();
+    const url = new URL(req.url);
+    const code = url.searchParams.get('code');
+    const state = url.searchParams.get('state');
+    const realm = url.searchParams.get('realmId');
+    if (url.searchParams.has('error') || !code || !state || state.length > 128 || !realm || !realmPattern.test(realm)) return finish('failed');
+    const db = adminDb();
+    const { data: attempt, error } = await db.from('qbo_oauth_states').delete()
+      .eq('state_hash', await stateHash(state)).gt('expires_at', new Date().toISOString())
+      .select('company_id,initiated_by').single();
+    if (error || !attempt) return finish('failed');
+    const { data: admin } = await db.from('profiles').select('company_id,role,is_active')
+      .eq('id', attempt.initiated_by).single();
+    if (!admin || admin.company_id !== attempt.company_id || admin.is_active === false
+      || !['owner', 'admin'].includes(admin.role)) return finish('failed');
+    const { id, secret } = clientCredentials();
+    const response = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
+      method: 'POST', headers: { Authorization: `Basic ${btoa(`${id}:${secret}`)}`,
+        'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: callbackUrl() }),
     });
-
-    const tokenData = await tokenResponse.json();
-    
-    if (tokenData.error) {
-      return new Response(JSON.stringify(tokenData), { status: 400 });
-    }
-
-    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
-
-    // Connect securely to your database using the built-in Supabase service keys
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!, 
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
-    
-    // Save the tokens to your qbo_tokens table
-    const { error } = await supabase
-      .from('qbo_tokens')
-      .upsert({
-        company_id: companyId,
-        qbo_realm_id: realmId,
-        access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token,
-        expires_at: expiresAt,
-      }, { onConflict: 'company_id' });
-
-    if (error) throw error;
-
-    // Redirect the user back to your SaaS dashboard on success
-    return Response.redirect(`https://your-saas-app.com/settings?qbo=connected`, 302);
-    
-  } catch (err: any) {
-    return new Response(`Sync Error: ${err.message}`, { status: 500 });
+    const token = await response.json();
+    if (!response.ok || typeof token.access_token !== 'string' || typeof token.refresh_token !== 'string'
+      || !Number.isFinite(Number(token.expires_in))) throw new Error('Token exchange failed.');
+    const expires = new Date(Date.now() + Number(token.expires_in) * 1000).toISOString();
+    const saved = await db.rpc('qbo_store_tokens', { p_company: attempt.company_id, p_realm: realm,
+      p_actor: attempt.initiated_by, p_access: token.access_token, p_refresh: token.refresh_token,
+      p_expires_at: expires });
+    if (saved.error) throw new Error('Connection could not be saved.');
+    return finish('connected');
+  } catch {
+    console.error('QuickBooks sandbox callback failed');
+    return finish('failed');
   }
 });

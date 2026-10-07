@@ -1,108 +1,46 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { adminDb, clientCredentials, companyAdmin, corsHeaders, respond, sandboxBase, sandboxOnly } from '../_shared/qboSandbox.ts';
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-// Use sandbox URL for testing, change to production later
-const QBO_BASE_URL = "https://sandbox-quickbooks.api.intuit.com/v3/company";
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 405,
-  });
-
+serve(async req => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return respond({ error: 'Method not allowed.' }, 405);
   try {
-    const authorization = req.headers.get("Authorization");
-    if (!authorization?.startsWith("Bearer ")) throw new Error("Authentication required");
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    if (!supabaseUrl || !anonKey) throw new Error("QuickBooks service unavailable");
-    const userDb = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authorization } } });
-    const { data: auth, error: authError } = await userDb.auth.getUser(authorization.slice(7).trim());
-    if (authError || !auth?.user) throw new Error("Authentication required");
-    const { data: profile, error: profileError } = await userDb.from("profiles")
-      .select("company_id,role,is_active").eq("id", auth.user.id).single();
-    if (profileError || !profile?.company_id || profile.is_active === false || !["owner", "admin"].includes(profile.role)) {
-      throw new Error("Company administrator access required");
+    sandboxOnly();
+    const { companyId, userId } = await companyAdmin(req);
+    const { action } = await req.json();
+    if (action !== 'get_company_info') return respond({ error: 'Only the sandbox connection test is available.' }, 400);
+    const db = adminDb();
+    const { data: credentials, error } = await db.rpc('qbo_read_tokens', { p_company: companyId });
+    const saved = credentials?.[0];
+    if (error || !saved?.access_token || !saved?.refresh_token || !saved?.realm_id) {
+      return respond({ error: 'QuickBooks sandbox is not connected for this company.' }, 400);
     }
-    const { action, payload } = await req.json();
-    const companyId = profile.company_id;
-
-    const supabase = createClient(
-      supabaseUrl,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-
-    // 1. Get the QBO credentials from the database
-    const { data: company, error } = await supabase
-      .from("companies")
-      .select("qbo_access_token, qbo_realm_id, qbo_refresh_token")
-      .eq("id", companyId)
-      .single();
-
-    if (error || !company?.qbo_access_token) {
-      throw new Error("QuickBooks is not connected for this company.");
-    }
-
-    // (Insert Token Refresh Logic Here if needed based on expiration time)
-    const accessToken = company.qbo_access_token;
-    const realmId = company.qbo_realm_id;
-
-    let qboResponse;
-
-    // 2. Route the Action
-    if (action === "create_customer") {
-      
-      // Example: Pushing a new client to QuickBooks
-      const qboReq = await fetch(`${QBO_BASE_URL}/${realmId}/customer`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          DisplayName: payload.client_name,
-          PrimaryEmailAddr: { Address: payload.email },
-          PrimaryPhone: { FreeFormNumber: payload.phone }
-        }),
+    let accessToken = saved.access_token;
+    if (new Date(saved.access_expires_at).getTime() < Date.now() + 60_000) {
+      const { id, secret } = clientCredentials();
+      const refresh = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
+        method: 'POST', headers: { Authorization: `Basic ${btoa(`${id}:${secret}`)}`,
+          'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+        body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: saved.refresh_token }),
       });
-      
-      qboResponse = await qboReq.json();
-      if (!qboReq.ok) throw new Error(JSON.stringify(qboResponse));
-
-    } else if (action === "get_company_info") {
-      
-      // Example: Reading data from QuickBooks
-      const qboReq = await fetch(`${QBO_BASE_URL}/${realmId}/companyinfo/${realmId}`, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept": "application/json",
-        },
-      });
-      
-      qboResponse = await qboReq.json();
-      if (!qboReq.ok) throw new Error(JSON.stringify(qboResponse));
-      
-    } else {
-      throw new Error("Invalid QBO action specified.");
+      const token = await refresh.json();
+      if (!refresh.ok || typeof token.access_token !== 'string' || typeof token.refresh_token !== 'string'
+        || !Number.isFinite(Number(token.expires_in))) throw new Error('QuickBooks sandbox needs to be reconnected.');
+      const stored = await db.rpc('qbo_store_tokens', { p_company: companyId, p_realm: saved.realm_id,
+        p_actor: userId, p_access: token.access_token, p_refresh: token.refresh_token,
+        p_expires_at: new Date(Date.now() + Number(token.expires_in) * 1000).toISOString() });
+      if (stored.error) throw new Error('QuickBooks token refresh could not be saved.');
+      accessToken = token.access_token;
     }
-
-    return new Response(JSON.stringify({ success: true, data: qboResponse }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
+    const realm = encodeURIComponent(saved.realm_id);
+    const response = await fetch(`${sandboxBase}/${realm}/companyinfo/${realm}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
     });
-
-  } catch (err: any) {
-    console.error("QBO API Error:", err.message);
-    return new Response(JSON.stringify({ error: err.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
-    });
+    if (!response.ok) throw new Error('QuickBooks sandbox connection test failed.');
+    const body = await response.json();
+    return respond({ success: true, company_name: body.CompanyInfo?.CompanyName || null, realm_id: saved.realm_id });
+  } catch (error) {
+    console.error('QuickBooks sandbox connection check failed');
+    return respond({ error: error instanceof Error ? error.message : 'QuickBooks sandbox connection check failed.' }, 400);
   }
 });

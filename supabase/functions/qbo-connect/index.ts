@@ -1,27 +1,25 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { adminDb, callbackUrl, clientCredentials, companyAdmin, corsHeaders, respond, sandboxOnly, stateHash } from '../_shared/qboSandbox.ts';
 
-const CLIENT_ID = Deno.env.get('ABh0yHpeOSWecCiJMXsDMQs8LZmWdO2k0kF0nK6jeB2FnyRpfZ')!;
-// Replace this URI with your actual Supabase project URL once deployed
-const REDIRECT_URI = "https://ochqexofahdssmarnict.supabase.co/functions/v1/qbo-callback"; 
-
-serve(async (req) => {
-  const { company_id } = await req.json();
-
-  if (!company_id) {
-    return new Response(JSON.stringify({ error: "Missing company_id" }), { status: 400 });
+serve(async req => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return respond({ error: 'Method not allowed.' }, 405);
+  try {
+    sandboxOnly();
+    const { companyId, userId } = await companyAdmin(req);
+    const { id } = clientCredentials();
+    const state = crypto.randomUUID();
+    const { error } = await adminDb().from('qbo_oauth_states').insert({
+      state_hash: await stateHash(state), company_id: companyId, initiated_by: userId,
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    });
+    if (error) throw new Error('QuickBooks authorization could not be started.');
+    const url = new URL('https://appcenter.intuit.com/connect/oauth2');
+    url.search = new URLSearchParams({ client_id: id, response_type: 'code', scope: 'com.intuit.quickbooks.accounting',
+      redirect_uri: callbackUrl(), state }).toString();
+    return respond({ url: url.toString() });
+  } catch (error) {
+    console.error('QuickBooks authorization start failed');
+    return respond({ error: error instanceof Error ? error.message : 'QuickBooks authorization could not be started.' }, 400);
   }
-
-  // Generate a cryptographically secure random state variable
-  const state = crypto.randomUUID();
-
-  const authUrl = `https://appcenter.intuit.com/connect/oauth2` +
-    `?client_id=${CLIENT_ID}` +
-    `&response_type=code` +
-    `&scope=com.intuit.quickbooks.accounting` +
-    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-    `&state=${state}`;
-
-  return new Response(JSON.stringify({ url: authUrl }), {
-    headers: { "Content-Type": "application/json" },
-  });
 });
