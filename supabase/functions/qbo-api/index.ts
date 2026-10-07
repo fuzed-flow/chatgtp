@@ -11,12 +11,29 @@ const QBO_BASE_URL = "https://sandbox-quickbooks.api.intuit.com/v3/company";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 405,
+  });
 
   try {
-    const { action, payload, company_id } = await req.json();
+    const authorization = req.headers.get("Authorization");
+    if (!authorization?.startsWith("Bearer ")) throw new Error("Authentication required");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    if (!supabaseUrl || !anonKey) throw new Error("QuickBooks service unavailable");
+    const userDb = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authorization } } });
+    const { data: auth, error: authError } = await userDb.auth.getUser(authorization.slice(7).trim());
+    if (authError || !auth?.user) throw new Error("Authentication required");
+    const { data: profile, error: profileError } = await userDb.from("profiles")
+      .select("company_id,role,is_active").eq("id", auth.user.id).single();
+    if (profileError || !profile?.company_id || profile.is_active === false || !["owner", "admin"].includes(profile.role)) {
+      throw new Error("Company administrator access required");
+    }
+    const { action, payload } = await req.json();
+    const companyId = profile.company_id;
 
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
@@ -24,7 +41,7 @@ serve(async (req) => {
     const { data: company, error } = await supabase
       .from("companies")
       .select("qbo_access_token, qbo_realm_id, qbo_refresh_token")
-      .eq("id", company_id)
+      .eq("id", companyId)
       .single();
 
     if (error || !company?.qbo_access_token) {
