@@ -7,10 +7,12 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const company = '00000000-0000-4000-8000-000000000001';
 const invoiceId = '00000000-0000-4000-8000-000000000002';
 const clientId = '00000000-0000-4000-8000-000000000003';
+const money = value => Math.round(Number(value || 0) * 100) / 100;
 
-async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, invoiceStatus = 'Sent' } = {}) {
+async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, invoiceStatus = 'Sent', payments = [], paymentFailureOn = 0, matchingPayment = false, initialRemoteBalance = 105 } = {}) {
   const previous = { Deno: globalThis.Deno, fetch: globalThis.fetch, create: globalThis.__qboCreate, handler: globalThis.__qboHandler };
-  const requests = [], rows = new Map();
+  const requests = [], rows = new Map(), paymentRows = new Map();
+  let remoteBalance = initialRemoteBalance;
   let role = 'admin';
   globalThis.Deno = { env: { get: key => ({ SUPABASE_URL: 'https://synthetic.supabase.co',
     SUPABASE_ANON_KEY: 'anon', SUPABASE_SERVICE_ROLE_KEY: 'service' })[key] } };
@@ -20,6 +22,7 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
       const filters = [];
       const q = {
         select: () => q, eq: (name, value) => { filters.push([name, value]); return q; },
+        order: () => q,
         update: payload => { q.updated = payload; return q; },
         upsert: async row => { rows.set(table, row); return { error: null }; },
         maybeSingle: async () => ({ data: rows.get(table) || null, error: null }),
@@ -27,7 +30,9 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
           if (table === 'profiles') return { data: { company_id: company, role, is_active: true }, error: null };
           if (table === 'invoices') return { data: { id: invoiceId, company_id: company, client_id: clientId,
             status: invoiceStatus, invoice_number: 'INV-100', issue_date: '2026-10-01', due_date: '2026-11-01',
-            subtotal: 100, tax, total: 100 + tax, amount_paid: 0 }, error: null };
+            subtotal: 100, tax, total: 100 + tax,
+            amount_paid: payments.reduce((sum, p) => sum + p.amount, 0),
+            balance_due: 100 + tax - payments.reduce((sum, p) => sum + p.amount, 0) }, error: null };
           if (table === 'clients') return { data: { id: clientId, name: 'Client A', email: 'client@example.com' }, error: null };
           if (table === 'companies') return { data: { settings: { currency: 'CAD' } }, error: null };
           if (table === 'qbo_customer_links') return { data: rows.get(table), error: null };
@@ -35,11 +40,26 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
             rows.set(table, { ...rows.get(table), ...q.updated });
             return { data: rows.get(table), error: null };
           }
+          if (table === 'qbo_invoice_exports') return { data: rows.get(table) || null, error: null };
+          if (table === 'qbo_payment_exports' && q.updated) {
+            const id = filters.find(([name]) => name === 'payment_id')?.[1];
+            paymentRows.set(id, { ...paymentRows.get(id), ...q.updated });
+            return { data: paymentRows.get(id), error: null };
+          }
           throw Error(`Unexpected single ${table}`);
         },
-        then: done => Promise.resolve(table === 'invoice_line_items'
+        then: done => {
+          if (table === 'qbo_payment_exports' && q.updated) {
+            const id = filters.find(([name]) => name === 'payment_id')?.[1];
+            paymentRows.set(id, { ...paymentRows.get(id), ...q.updated });
+          }
+          if (table === 'qbo_invoice_exports' && q.updated) rows.set(table, { ...rows.get(table), ...q.updated });
+          return Promise.resolve(table === 'payments'
+          ? { data: payments, error: null } : table === 'qbo_payment_exports'
+            ? { data: [...paymentRows.values()], error: null } : table === 'invoice_line_items'
           ? { data: [{ name: 'Work', line_total: 100, taxable: true }], error: null }
-          : { data: q.updated, error: null }).then(done),
+          : { data: q.updated, error: null }).then(done);
+        },
       };
       return q;
     },
@@ -50,6 +70,11 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
         const claimed = !rows.has('qbo_invoice_exports');
         if (claimed) rows.set('qbo_invoice_exports', { status: 'processing', request_id: args.p_request });
         return { data: [{ claimed, export_status: rows.get('qbo_invoice_exports').status }], error: null };
+      }
+      if (name === 'qbo_claim_payment_export') {
+        const claimed = !paymentRows.has(args.p_payment);
+        if (claimed) paymentRows.set(args.p_payment, { payment_id: args.p_payment, status: 'processing', request_id: args.p_request });
+        return { data: [{ claimed, export_status: paymentRows.get(args.p_payment).status }], error: null };
       }
       throw Error(`Unexpected rpc ${name}`);
     },
@@ -65,9 +90,22 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
       if (sql.includes('FROM Item')) body = { QueryResponse: { Item: [{ Id: '10', Active: true, Type: 'Service' }] } };
       if (sql.includes('FROM TaxCode')) body = { QueryResponse: { TaxCode: [{ Id: '20', Active: true, SalesTaxRateList: { TaxRateDetail: [{ TaxRateRef: { value: '30' } }] } }] } };
       if (sql.includes('FROM TaxRate')) body = { QueryResponse: { TaxRate: [{ Id: '30', RateValue: 5 }] } };
+      if (sql.includes('FROM Account')) body = { QueryResponse: { Account: [{ Id: '60', Active: true, AccountType: 'Bank' }] } };
+      if (sql.includes('FROM PaymentMethod')) body = { QueryResponse: { PaymentMethod: [{ Id: '70', Name: 'Check', Active: true }] } };
       if (sql.includes('FROM Invoice')) body = { QueryResponse: { Invoice: existingInvoice ? [{ Id: '99' }] : [] } };
+      if (/FROM Payment\s/.test(sql)) body = { QueryResponse: { Payment: matchingPayment ? [{ Id: '99', TotalAmt: payments[0]?.amount }] : [] } };
       if (sql.includes('FROM Customer')) body = { QueryResponse: { Customer: [{ Id: '40', Active: true }] } };
     } else if (u.pathname.endsWith('/invoice')) body = { Invoice: { Id: '50', DocNumber: 'INV-100', TotalAmt: remoteTotal } };
+    else if (u.pathname.endsWith('/invoice/50')) body = { Invoice: { Id: '50', CustomerRef: { value: '40' }, TotalAmt: remoteTotal, Balance: remoteBalance } };
+    else if (u.pathname.endsWith('/payment')) {
+      if (paymentFailureOn && paymentRows.size === paymentFailureOn) {
+        return new Response(JSON.stringify({ Fault: { Error: [{ Message: 'Synthetic payment failure' }] } }), { status: 500 });
+      }
+      const sent = JSON.parse(init.body);
+      remoteBalance -= sent.TotalAmt;
+      body = { Payment: { Id: String(80 + paymentRows.size), TotalAmt: sent.TotalAmt, UnappliedAmt: 0,
+        Line: sent.Line } };
+    }
     return new Response(JSON.stringify(body), { status: 200 });
   };
   const bundled = await build({ entryPoints: [`${root}supabase/functions/qbo-api/index.ts`], bundle: true, write: false,
@@ -79,14 +117,21 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, in
     } }] });
   await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].contents).toString('base64')}#${Math.random()}`);
   const invoke = async body => {
+    const amountPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const snapshot = [invoiceId, clientId, 'INV-100', '2026-10-01', '2026-11-01', invoiceStatus,
+      100, money(tax), money(100 + tax), money(amountPaid), money(100 + tax - amountPaid),
+      payments.map(p => [p.id, money(p.amount), p.payment_date, p.payment_method || 'Other'])];
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(snapshot)));
+    const signature = [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('');
     const response = await globalThis.__qboHandler(new Request('https://synthetic.supabase.co/functions/v1/qbo-api', {
-      method: 'POST', headers: { Authorization: 'Bearer signed-in', 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      method: 'POST', headers: { Authorization: 'Bearer signed-in', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ previewSignature: signature, ...body }),
     }));
     return { status: response.status, body: await response.json() };
   };
   const close = () => { globalThis.Deno = previous.Deno; globalThis.fetch = previous.fetch;
     globalThis.__qboCreate = previous.create; globalThis.__qboHandler = previous.handler; };
-  return { invoke, requests, rows, close, setRole: value => { role = value; } };
+  return { invoke, requests, rows, paymentRows, close, setRole: value => { role = value; } };
 }
 
 const payload = { action: 'export_invoice', environment: 'production', invoiceId,
@@ -152,5 +197,90 @@ test('a draft invoice cannot create a QuickBooks accounting record', async () =>
     assert.match(result.body.error, /Send the invoice first/);
     assert.equal(h.requests.length, 0);
     assert.equal(h.rows.has('qbo_invoice_exports'), false);
+  } finally { h.close(); }
+});
+
+test('a paid invoice exports its two dated payments and does not repeat them', async () => {
+  const payments = [
+    { id: '00000000-0000-4000-8000-000000000011', amount: 40, payment_date: '2026-09-09', payment_method: 'Check' },
+    { id: '00000000-0000-4000-8000-000000000012', amount: 65, payment_date: '2026-10-06', payment_method: 'Check' },
+  ];
+  const h = await fixture({ invoiceStatus: 'Paid', payments });
+  try {
+    h.rows.set('qbo_customer_links', { realm_id: '123456', qbo_customer_id: '40' });
+    const result = await h.invoke({ ...payload, depositAccountId: '60', paymentMethodIds: { Check: '70' } });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.payment_count, 2);
+    assert.equal(h.rows.get('qbo_invoice_exports').payment_sync_status, 'complete');
+    const writes = h.requests.filter(r => r.init.method === 'POST');
+    assert.deepEqual(writes.map(r => r.url.pathname), ['/v3/company/123456/invoice', '/v3/company/123456/payment', '/v3/company/123456/payment']);
+    assert.deepEqual(writes.slice(1).map(r => JSON.parse(r.init.body).TxnDate), ['2026-09-09', '2026-10-06']);
+    assert.equal(JSON.parse(writes[1].init.body).DepositToAccountRef.value, '60');
+    assert.equal(JSON.parse(writes[2].init.body).Line[0].LinkedTxn[0].TxnId, '50');
+    assert.equal((await h.invoke({ ...payload, depositAccountId: '60', paymentMethodIds: { Check: '70' } })).status, 400);
+    assert.equal(h.requests.filter(r => r.init.method === 'POST').length, 3);
+  } finally { h.close(); }
+});
+
+test('a changed invoice preview cannot create an invoice or payment', async () => {
+  const h = await fixture({ invoiceStatus: 'Paid', payments: [
+    { id: '00000000-0000-4000-8000-000000000011', amount: 105, payment_date: '2026-09-09', payment_method: 'Check' },
+  ] });
+  try {
+    assert.equal((await h.invoke({ ...payload, previewSignature: 'stale', depositAccountId: '60', paymentMethodIds: { Check: '70' } })).status, 400);
+    assert.equal(h.requests.length, 0);
+    assert.equal(h.rows.has('qbo_invoice_exports'), false);
+  } finally { h.close(); }
+});
+
+test('a matching QuickBooks payment stops payment posting for review', async () => {
+  const h = await fixture({ invoiceStatus: 'Paid', matchingPayment: true, payments: [
+    { id: '00000000-0000-4000-8000-000000000011', amount: 105, payment_date: '2026-09-09', payment_method: 'Check' },
+  ] });
+  try {
+    h.rows.set('qbo_customer_links', { realm_id: '123456', qbo_customer_id: '40' });
+    const result = await h.invoke({ ...payload, depositAccountId: '60', paymentMethodIds: { Check: '70' } });
+    assert.equal(result.status, 400);
+    assert.match(result.body.error, /QuickBooks payment/);
+    assert.equal(h.requests.filter(r => r.init.method === 'POST').length, 0);
+    assert.equal(h.rows.has('qbo_invoice_exports'), false);
+  } finally { h.close(); }
+});
+
+test('an uncertain payment failure locks that payment against automatic retry', async () => {
+  const payments = [
+    { id: '00000000-0000-4000-8000-000000000011', amount: 40, payment_date: '2026-09-09', payment_method: 'Check' },
+    { id: '00000000-0000-4000-8000-000000000012', amount: 65, payment_date: '2026-10-06', payment_method: 'Check' },
+  ];
+  const h = await fixture({ invoiceStatus: 'Paid', payments, paymentFailureOn: 2 });
+  try {
+    h.rows.set('qbo_customer_links', { realm_id: '123456', qbo_customer_id: '40' });
+    const input = { ...payload, depositAccountId: '60', paymentMethodIds: { Check: '70' } };
+    assert.equal((await h.invoke(input)).status, 400);
+    assert.equal(h.rows.get('qbo_invoice_exports').payment_sync_status, 'review_required');
+    assert.equal(h.paymentRows.get(payments[0].id).status, 'exported');
+    assert.equal(h.paymentRows.get(payments[1].id).status, 'review_required');
+    const writes = h.requests.filter(r => r.init.method === 'POST').length;
+    assert.equal((await h.invoke({ action: 'sync_payments', environment: 'production', invoiceId,
+      depositAccountId: '60', paymentMethodIds: { Check: '70' } })).status, 400);
+    assert.equal(h.requests.filter(r => r.init.method === 'POST').length, writes);
+  } finally { h.close(); }
+});
+
+test('a pending export resumes only the payment that has not been posted', async () => {
+  const payments = [
+    { id: '00000000-0000-4000-8000-000000000011', amount: 40, payment_date: '2026-09-09', payment_method: 'Check' },
+    { id: '00000000-0000-4000-8000-000000000012', amount: 65, payment_date: '2026-10-06', payment_method: 'Check' },
+  ];
+  const h = await fixture({ invoiceStatus: 'Paid', payments, initialRemoteBalance: 65 });
+  try {
+    h.rows.set('qbo_invoice_exports', { status: 'exported', payment_sync_status: 'pending', realm_id: '123456',
+      qbo_invoice_id: '50', qbo_customer_id: '40' });
+    h.paymentRows.set(payments[0].id, { payment_id: payments[0].id, status: 'exported', qbo_payment_id: '81' });
+    const result = await h.invoke({ action: 'sync_payments', environment: 'production', invoiceId,
+      depositAccountId: '60', paymentMethodIds: { Check: '70' } });
+    assert.equal(result.status, 200);
+    assert.equal(h.rows.get('qbo_invoice_exports').payment_sync_status, 'complete');
+    assert.deepEqual(h.requests.filter(r => r.init.method === 'POST').map(r => JSON.parse(r.init.body).TotalAmt), [65]);
   } finally { h.close(); }
 });
