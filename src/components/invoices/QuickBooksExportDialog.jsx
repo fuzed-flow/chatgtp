@@ -5,6 +5,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
+async function functionErrorMessage(requestError, data, fallback) {
+  if (data?.error) return data.error;
+  try {
+    const response = requestError?.context;
+    if (response && typeof response.json === 'function') {
+      const body = await response.json();
+      if (typeof body?.error === 'string') return body.error;
+    }
+  } catch { /* Keep the transport error below. */ }
+  return requestError?.message || fallback;
+}
+
 export default function QuickBooksExportDialog({ invoice, onClose }) {
   const [environment, setEnvironment] = useState('production');
   const [catalog, setCatalog] = useState(null);
@@ -16,6 +28,7 @@ export default function QuickBooksExportDialog({ invoice, onClose }) {
   const [taxCodeId, setTaxCodeId] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState('');
+  const eligible = invoice && invoice.status !== 'Draft' && !['Paid', 'Partial'].includes(invoice.status) && Number(invoice.amount_paid || 0) === 0;
 
   useEffect(() => {
     if (!invoice) return;
@@ -26,12 +39,16 @@ export default function QuickBooksExportDialog({ invoice, onClose }) {
     setConfirmed(false);
     setItemId('');
     setTaxCodeId('');
+    if (!eligible) {
+      setLoading(false);
+      return;
+    }
     const load = async () => {
       const { data, error: requestError } = await supabase.functions.invoke('qbo-api', {
         body: { action: 'invoice_catalog', environment, invoiceId: invoice.id },
       });
       if (cancelled) return;
-      if (requestError || data?.error) setError(data?.error || requestError?.message || 'QuickBooks catalog unavailable.');
+      if (requestError || data?.error) setError(await functionErrorMessage(requestError, data, 'QuickBooks catalog unavailable.'));
       else {
         setCatalog(data);
         if (data.linkedCustomerId) {
@@ -46,13 +63,13 @@ export default function QuickBooksExportDialog({ invoice, onClose }) {
     };
     load();
     return () => { cancelled = true; };
-  }, [invoice?.id, environment]);
+  }, [invoice?.id, invoice?.status, invoice?.amount_paid, environment]);
 
   const selectedTax = catalog?.taxCodes?.find(code => code.id === taxCodeId);
   const rate = selectedTax?.rates?.reduce((sum, row) => sum + Number(row.rate || 0), 0);
   const taxMatches = Number.isFinite(rate) && Math.abs(Math.round(Number(invoice?.subtotal || 0) * rate) / 100 - Number(invoice?.tax || 0)) <= 0.02;
   const exportLocked = Boolean(catalog?.export);
-  const ready = !loading && !sending && !exportLocked && !error && catalog && itemId && taxCodeId && taxMatches && confirmed &&
+  const ready = eligible && !loading && !sending && !exportLocked && !error && catalog && itemId && taxCodeId && taxMatches && confirmed &&
     (customerChoice === 'new' || Boolean(customerId));
   const exportInvoice = async () => {
     setSending(true);
@@ -62,9 +79,9 @@ export default function QuickBooksExportDialog({ invoice, onClose }) {
     });
     setSending(false);
     if (requestError || data?.error || data?.reviewRequired) {
-      const message = data?.error || (data?.reviewRequired
+      const message = data?.reviewRequired
         ? `QuickBooks created invoice ${data.qbo_invoice_id}, but the total differs. Review it in QuickBooks before taking further action.`
-        : requestError?.message || 'QuickBooks export failed.');
+        : await functionErrorMessage(requestError, data, 'QuickBooks export failed.');
       setError(message);
       toast.error(message);
       return;
@@ -86,6 +103,8 @@ export default function QuickBooksExportDialog({ invoice, onClose }) {
           </SelectContent></Select>
         </div>
         {loading && <p>Loading QuickBooks customers, products, and tax codes…</p>}
+        {invoice?.status === 'Draft' && <p className="rounded bg-amber-50 p-3 text-amber-900">This invoice is still a draft. Send it in FuzedFlow first, then return here to export it to QuickBooks.</p>}
+        {invoice?.status !== 'Draft' && !eligible && <p className="rounded bg-amber-50 p-3 text-amber-900">This invoice has a payment or is already paid. Payment sync is not available, so it cannot be exported.</p>}
         {catalog && <>
           <p className="rounded bg-slate-50 p-3">Client: {invoice?.client_name}. FuzedFlow invoice: ${Number(invoice?.subtotal || 0).toFixed(2)} before tax + ${Number(invoice?.tax || 0).toFixed(2)} tax = <strong>${Number(invoice?.total || 0).toFixed(2)}</strong>. QuickBooks currency: {catalog.currency}; country: {catalog.country || 'unknown'}.</p>
           {exportLocked ? <p className="rounded bg-amber-50 p-3 text-amber-900">Export status: {catalog.export.status}. {catalog.export.qbo_invoice_id ? `QuickBooks invoice ID: ${catalog.export.qbo_invoice_id}.` : 'Review QuickBooks before trying this invoice again.'} {catalog.export.error_message}</p> : <>

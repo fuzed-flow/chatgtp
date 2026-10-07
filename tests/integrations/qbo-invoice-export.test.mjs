@@ -8,7 +8,7 @@ const company = '00000000-0000-4000-8000-000000000001';
 const invoiceId = '00000000-0000-4000-8000-000000000002';
 const clientId = '00000000-0000-4000-8000-000000000003';
 
-async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105 } = {}) {
+async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105, invoiceStatus = 'Sent' } = {}) {
   const previous = { Deno: globalThis.Deno, fetch: globalThis.fetch, create: globalThis.__qboCreate, handler: globalThis.__qboHandler };
   const requests = [], rows = new Map();
   let role = 'admin';
@@ -26,7 +26,7 @@ async function fixture({ tax = 5, existingInvoice = false, remoteTotal = 105 } =
         single: async () => {
           if (table === 'profiles') return { data: { company_id: company, role, is_active: true }, error: null };
           if (table === 'invoices') return { data: { id: invoiceId, company_id: company, client_id: clientId,
-            status: 'Sent', invoice_number: 'INV-100', issue_date: '2026-10-01', due_date: '2026-11-01',
+            status: invoiceStatus, invoice_number: 'INV-100', issue_date: '2026-10-01', due_date: '2026-11-01',
             subtotal: 100, tax, total: 100 + tax, amount_paid: 0 }, error: null };
           if (table === 'clients') return { data: { id: clientId, name: 'Client A', email: 'client@example.com' }, error: null };
           if (table === 'companies') return { data: { settings: { currency: 'CAD' } }, error: null };
@@ -140,5 +140,17 @@ test('a created invoice with a mismatched QuickBooks total requires review and c
     assert.equal(h.rows.get('qbo_invoice_exports').status, 'review_required');
     assert.equal((await h.invoke(payload)).status, 400);
     assert.equal(h.requests.filter(r => r.init.method === 'POST').length, 1);
+  } finally { h.close(); }
+});
+
+test('a draft invoice cannot create a QuickBooks accounting record', async () => {
+  const h = await fixture({ invoiceStatus: 'Draft' });
+  try {
+    h.rows.set('qbo_customer_links', { realm_id: '123456', qbo_customer_id: '40' });
+    const result = await h.invoke(payload);
+    assert.equal(result.status, 400);
+    assert.match(result.body.error, /Send the invoice first/);
+    assert.equal(h.requests.length, 0);
+    assert.equal(h.rows.has('qbo_invoice_exports'), false);
   } finally { h.close(); }
 });
