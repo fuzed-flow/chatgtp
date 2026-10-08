@@ -50,6 +50,7 @@ test("large client-update fields offer safe AI rewriting and responsive resizing
   assert.match(field, /Collapse/);
   assert.match(field, /resize-none[^"]*sm:resize-y/);
   assert.match(field, /max-h-\[60dvh\]/);
+  assert.match(field, /className,\s*expanded && "min-h-\[45dvh\]"/);
 });
 
 test("large textareas across the app inherit the shared rewrite and expansion UX", () => {

@@ -401,8 +401,8 @@ export default function DashboardNotes({ openSubmitModal, setOpenSubmitModal }) 
       {selectedViewLog && (
         <Dialog open={!!selectedViewLog} onOpenChange={() => setSelectedViewLog(null)}>
           <DialogContent className="max-w-xl bg-slate-50 border-slate-200 shadow-xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
-            <DialogHeader>
-              <div className="flex items-start justify-between pr-6 border-b border-slate-200 pb-4">
+            <DialogHeader className="min-h-12 pr-24 text-left">
+              <div className="flex flex-col items-start gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:justify-between">
                 <div>
                   <DialogTitle className="font-black text-2xl text-slate-900 mb-1">
                     Log: {selectedViewLog.date}
@@ -490,7 +490,7 @@ export default function DashboardNotes({ openSubmitModal, setOpenSubmitModal }) 
       {/* --- UPGRADED FULLSCREEN IMAGE LIGHTBOX GALLERY --- */}
       {lightbox.isOpen && lightbox.photos.length > 0 && (
         <div 
-          className="fixed inset-0 z-[100] bg-slate-950/98 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[270] bg-slate-950/98 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
           onClick={() => setLightbox({ isOpen: false, photos: [], index: 0 })}
         >
           <button 
@@ -535,7 +535,7 @@ export default function DashboardNotes({ openSubmitModal, setOpenSubmitModal }) 
         }
       }}>
         <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto bg-slate-50" aria-describedby={undefined}>
-          <DialogHeader><DialogTitle className="font-black text-xl">{form.id ? "Edit Note/Photo" : "New Note/Photo"}</DialogTitle></DialogHeader>
+          <DialogHeader className="min-h-12 pr-24 text-left"><DialogTitle className="font-black text-xl">{form.id ? "Edit Note/Photo" : "New Note/Photo"}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             
             <div className="grid grid-cols-2 gap-3">

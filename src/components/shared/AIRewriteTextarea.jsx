@@ -117,8 +117,8 @@ const AIRewriteTextarea = forwardRef(function AIRewriteTextarea({
         onChange={change}
         className={cn(
           "max-h-[60dvh] resize-none rounded-none border-0 shadow-none focus-visible:ring-0 sm:resize-y",
-          expanded && "min-h-[45dvh]",
           className,
+          expanded && "min-h-[45dvh]",
         )}
       />
       <div className="flex min-h-11 items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-1.5 py-1">

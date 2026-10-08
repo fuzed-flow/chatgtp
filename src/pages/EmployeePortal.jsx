@@ -298,7 +298,7 @@ export default function EmployeePortal() {
           </nav>
 
           <Dialog open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <DialogContent className="bottom-0 left-0 right-0 top-auto z-[130] !flex max-h-[88dvh] min-h-0 w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-b-none rounded-t-3xl border-slate-200 bg-slate-50 p-0 shadow-2xl lg:hidden" closeButtonClassName="right-4 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white opacity-100">
+            <DialogContent className="bottom-0 left-0 right-0 top-auto !flex max-h-[88dvh] min-h-0 w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-b-none rounded-t-3xl border-slate-200 bg-slate-50 p-0 shadow-2xl lg:hidden" closeButtonClassName="right-4 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white opacity-100">
               <DialogHeader className="shrink-0 border-b border-slate-200 bg-white px-5 pb-4 pt-6 pr-16 text-left">
                 <DialogTitle className="text-xl font-black text-slate-900">Employee portal menu</DialogTitle>
                 <DialogDescription className="text-slate-600">Choose a section of your personal workspace.</DialogDescription>

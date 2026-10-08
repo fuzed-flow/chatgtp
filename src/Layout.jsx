@@ -456,7 +456,7 @@ export default function Layout({ children, currentPageName }) {
 
       {moreOpen ? <button type="button" aria-label="Close more navigation" onClick={closeSidebar} className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm lg:hidden" /> : null}
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
-        <DialogContent className="bottom-0 left-0 right-0 top-auto z-[130] !flex min-h-0 max-h-[82dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col overflow-hidden rounded-b-none rounded-t-3xl border-slate-700 bg-slate-950 p-0 text-white shadow-2xl lg:hidden" closeButtonClassName="right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-slate-600 bg-slate-800 text-white opacity-100 shadow-sm hover:border-amber-300 hover:bg-amber-400 hover:text-slate-950 focus:ring-amber-300 focus:ring-offset-slate-950">
+        <DialogContent className="bottom-0 left-0 right-0 top-auto !flex min-h-0 max-h-[82dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col overflow-hidden rounded-b-none rounded-t-3xl border-slate-700 bg-slate-950 p-0 text-white shadow-2xl lg:hidden" closeButtonClassName="right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-slate-600 bg-slate-800 text-white opacity-100 shadow-sm hover:border-amber-300 hover:bg-amber-400 hover:text-slate-950 focus:ring-amber-300 focus:ring-offset-slate-950">
           <DialogHeader className="shrink-0 border-b border-slate-800 px-5 pb-4 pt-5 pr-14 text-left">
             <DialogTitle className="text-xl font-black text-white">More</DialogTitle>
             <DialogDescription className="text-slate-400">Open another workspace area.</DialogDescription>

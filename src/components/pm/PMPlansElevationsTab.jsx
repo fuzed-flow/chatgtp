@@ -317,7 +317,7 @@ export default function PMPlansElevationsTab({ project, readOnly = false }) {
 
       {/* Lightbox Immersive Preview Screen */}
       {lightbox && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-sm" onClick={() => setLightbox(null)}>
+        <div className="fixed inset-0 z-[270] bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-sm" onClick={() => setLightbox(null)}>
           <button aria-label="Close plan preview" className="absolute top-4 right-4 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all" onClick={() => setLightbox(null)}>
             <X className="h-6 w-6" />
           </button>
