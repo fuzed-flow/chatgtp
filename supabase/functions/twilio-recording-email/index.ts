@@ -5,6 +5,14 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails";
 const DEFAULT_RECIPIENT = "fuzedflow@gmail.com";
 const MAX_WEBHOOK_BYTES = 1_100_000;
 const MAX_ATTACHMENT_BYTES = 18 * 1024 * 1024;
+const FULL_CALL_RECORDING_SOURCES = new Set([
+  "DialVerb",
+  "Conference",
+  "OutboundAPI",
+  "Trunking",
+  "StartCallRecordingAPI",
+  "StartConferenceRecordingAPI",
+]);
 
 const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, character => ({
   "&": "&amp;",
@@ -95,19 +103,34 @@ Deno.serve(async request => {
       return new Response("Invalid signature", { status: 401 });
     }
 
-    // Studio can also call this endpoint when only the recording is ready.
-    // Email only from the transcription callback so the transcript is present
-    // and the customer does not receive two copies.
-    if (!form.has("TranscriptionStatus")) return new Response("Waiting for transcription", { status: 200 });
-
     const recordingSid = form.get("RecordingSid") || "";
     const callSid = form.get("CallSid") || "";
+    const hasTranscription = form.has("TranscriptionStatus");
     const transcriptionSid = form.get("TranscriptionSid") || "";
     const transcriptionStatus = (form.get("TranscriptionStatus") || "").toLowerCase();
+    const recordingStatus = (form.get("RecordingStatus") || "").toLowerCase();
+    const recordingSource = form.get("RecordingSource") || "";
+
+    // A Record verb is the Studio voicemail flow. Wait for its transcription
+    // callback so one voicemail does not produce two emails.
+    if (!hasTranscription && (!recordingSource || recordingSource === "RecordVerb")) {
+      return new Response("Waiting for transcription", { status: 200 });
+    }
+
+    // Unknown recording sources and non-completed lifecycle events do not need
+    // retries. Twilio will send the completed event when the media is ready.
+    if (!hasTranscription && !FULL_CALL_RECORDING_SOURCES.has(recordingSource)) {
+      return new Response("Recording source ignored", { status: 200 });
+    }
+    if (!hasTranscription && ["in-progress", "absent", "failed"].includes(recordingStatus)) {
+      return new Response("Recording not ready", { status: 200 });
+    }
+
     if (!/^RE[0-9a-f]{32}$/i.test(recordingSid)
       || !/^CA[0-9a-f]{32}$/i.test(callSid)
-      || (transcriptionSid && !/^TR[0-9a-f]{32}$/i.test(transcriptionSid))
-      || !["completed", "failed"].includes(transcriptionStatus)) {
+      || (hasTranscription && transcriptionSid && !/^TR[0-9a-f]{32}$/i.test(transcriptionSid))
+      || (hasTranscription && !["completed", "failed"].includes(transcriptionStatus))
+      || (!hasTranscription && recordingStatus !== "completed")) {
       return new Response("Invalid callback", { status: 400 });
     }
 
@@ -115,10 +138,13 @@ Deno.serve(async request => {
     const calledNumber = cleanHeader(form.get("To"), "FuzedFlow");
     const transcript = String(form.get("TranscriptionText") || "").trim().slice(0, 100_000);
     const duration = String(form.get("RecordingDuration") || "").replace(/[^0-9]/g, "").slice(0, 8);
+    const channels = String(form.get("RecordingChannels") || "").replace(/[^0-9]/g, "").slice(0, 2);
     const attachment = await recordingAttachment(accountSid, authToken, recordingSid);
-    const transcriptText = transcriptionStatus === "completed" && transcript
-      ? transcript
-      : "Twilio could not create a transcript for this recording.";
+    const transcriptText = hasTranscription
+      ? (transcriptionStatus === "completed" && transcript
+        ? transcript
+        : "Twilio could not create a transcript for this recording.")
+      : "A transcript is not included with this call-recording callback. Full-call transcription requires Twilio Batch Transcription.";
     const receivedAt = localTimestamp();
     const attachmentNote = attachment
       ? "The MP3 recording is attached."
@@ -131,13 +157,17 @@ Deno.serve(async request => {
       ...(duration ? [["Duration", `${duration} seconds`]] : []),
       ["Call SID", callSid],
       ["Recording SID", recordingSid],
+      ...(!hasTranscription ? [["Recording source", recordingSource]] : []),
+      ...(!hasTranscription && channels ? [["Channels", channels]] : []),
     ];
     const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>FuzedFlow call recording</title></head><body style="margin:0;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif"><main style="max-width:640px;margin:0 auto;padding:24px"><div style="background:#0b1538;color:#fff;border-radius:16px 16px 0 0;padding:22px 24px"><h1 style="margin:0;font-size:24px">New FuzedFlow call recording</h1></div><div style="background:#fff;border:1px solid #e2e8f0;border-top:0;border-radius:0 0 16px 16px;padding:24px"><table role="presentation" style="width:100%;border-collapse:collapse">${details.map(([label, value]) => `<tr><th scope="row" style="padding:6px 12px 6px 0;text-align:left;vertical-align:top;color:#475569;font-size:14px">${escapeHtml(label)}</th><td style="padding:6px 0;font-size:14px">${escapeHtml(value)}</td></tr>`).join("")}</table><h2 style="margin:24px 0 8px;font-size:18px">Transcript</h2><div style="white-space:pre-wrap;line-height:1.6;background:#f8fafc;border-radius:12px;padding:16px">${escapeHtml(transcriptText)}</div><p style="margin:18px 0 0;color:#475569;font-size:14px">${escapeHtml(attachmentNote)}</p></div></main></body></html>`;
     const text = `New FuzedFlow call recording\n\n${details.map(([label, value]) => `${label}: ${value}`).join("\n")}\n\nTranscript:\n${transcriptText}\n\n${attachmentNote}`;
     const payload: Record<string, unknown> = {
       from: "Fuzed Flow <alerts@mail.fuzedflow.com>",
       to: emailRecipients(Deno.env.get("TWILIO_CALL_EMAIL_TO")),
-      subject: `New FuzedFlow call recording from ${caller}`,
+      subject: hasTranscription
+        ? `New FuzedFlow call recording from ${caller}`
+        : `New FuzedFlow recorded call from ${caller}`,
       html,
       text,
       ...(attachment ? { attachments: [attachment] } : {}),
@@ -147,7 +177,9 @@ Deno.serve(async request => {
       headers: {
         Authorization: `Bearer ${resendKey}`,
         "Content-Type": "application/json",
-        "Idempotency-Key": `twilio-recording/${transcriptionSid || recordingSid}`,
+        "Idempotency-Key": hasTranscription
+          ? `twilio-recording/${transcriptionSid || recordingSid}`
+          : `twilio-call-recording/${recordingSid}`,
       },
       body: JSON.stringify(payload),
     });
