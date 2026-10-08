@@ -597,3 +597,8 @@ entrypoint = "./functions/notification-dispatch/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/notification-provider-setup/index.ts"
+
+[functions.twilio-recording-email]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/twilio-recording-email/index.ts"
