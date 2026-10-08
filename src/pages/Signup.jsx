@@ -185,8 +185,8 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-6">
+    <div className="min-h-[100dvh] bg-slate-50 px-4 py-8 sm:py-10">
+      <div className="mx-auto max-w-md w-full space-y-6">
         <div className="text-center">
           <AuthBrandLogo />
           <h2 className="text-3xl font-extrabold text-slate-900">

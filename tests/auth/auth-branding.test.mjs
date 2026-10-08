@@ -16,4 +16,6 @@ test('login and signup display the shared FuzedFlow brand logo', async () => {
   assert.match(logo, /mb-4 h-24 w-24.*sm:h-28 sm:w-28/);
   assert.match(login, /<AuthBrandLogo \/>/);
   assert.match(signup, /<AuthBrandLogo \/>/);
+  assert.match(signup, /min-h-\[100dvh\] bg-slate-50 px-4 py-8 sm:py-10/);
+  assert.match(signup, /mx-auto max-w-md w-full space-y-6/);
 });
