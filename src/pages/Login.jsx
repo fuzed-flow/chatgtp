@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import AuthBrandLogo from "@/components/shared/AuthBrandLogo";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast"; 
 
@@ -104,6 +105,7 @@ export default function Login() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-6">
         <div className="text-center">
+          <AuthBrandLogo />
           <h2 className="text-3xl font-extrabold text-slate-900">Welcome back</h2>
           <p className="mt-2 text-sm text-slate-600">Sign in to your account</p>
         </div>
