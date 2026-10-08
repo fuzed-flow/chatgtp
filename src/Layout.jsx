@@ -23,8 +23,8 @@ import { FIELD_ROLES, getRouteAccess, hasModulePermission, normalizeRole } from 
 const NAV_ITEMS = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard", permissionKey: "dashboard", section: "main" },
   { name: "Leads", icon: Target, page: "LeadTracker", permissionKey: "leads", section: "sales" },
-  { name: "Sales Performance", icon: BarChart3, page: "SalesPerformance", permissionKey: "reports", section: "sales" },
   { name: "Clients", icon: Users, page: "Clients", permissionKey: "clients", section: "sales" },
+  { name: "Sales Performance", icon: BarChart3, page: "SalesPerformance", permissionKey: "reports", section: "sales" },
   { name: "Quotes", icon: FileText, page: "Quotes", permissionKey: "quotes", section: "quotes" },  
   { name: "Templates", icon: FileStack, page: "Templates", permissionKey: "templates", section: "quotes" },
   { name: "PM Dashboard", icon: FolderKanban, page: "PMDashboard", permissionKey: "projects", section: "pm" },

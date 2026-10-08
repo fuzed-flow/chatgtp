@@ -17,6 +17,13 @@ test("sales performance is available as a page and the Reports sales tab", async
   for (const behavior of ["Customize dashboard", "All lead creators", "Attributed to lead creator", "DEFAULT_DASHBOARD_LAYOUT", "hiddenPanels"]) assert.match(dashboard, new RegExp(behavior));
 });
 
+test("Clients appears before Sales Performance in the CRM menu", async () => {
+  const layout = await read("../../src/Layout.jsx");
+  const crmItems = layout.match(/const NAV_ITEMS = \[([\s\S]*?)\];/)?.[1] || "";
+
+  assert.ok(crmItems.indexOf('name: "Clients"') < crmItems.indexOf('name: "Sales Performance"'));
+});
+
 test("mobile navigation uses four primary destinations and an accessible More sheet", async () => {
   const layout = await read("../../src/Layout.jsx");
   assert.doesNotMatch(layout, /Open navigation menu|<Menu className/);
