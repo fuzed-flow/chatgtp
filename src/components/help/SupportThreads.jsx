@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Plus, Send } from 'lucide-react';
+import { Loader2, Plus, Send, Trash2 } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import ConfirmDeleteDialog from '@/components/shared/ConfirmDeleteDialog';
 
 export default function SupportThreads() {
   const { profile } = useAuth();
@@ -15,6 +16,7 @@ export default function SupportThreads() {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const qc = useQueryClient();
   const scope = ['support-tickets', profile?.company_id, profile?.id];
   const enabled = !!profile?.company_id && !!profile?.id && profile?.is_active !== false;
@@ -60,7 +62,22 @@ export default function SupportThreads() {
       setMessage(''); setSubject(''); setFeedback('Your request was saved. A reply will appear here and in your notifications.');
       setParams({ ticket: id }); qc.invalidateQueries({ queryKey: scope });
     },
-    onError: error => setFeedback(error.message || 'Could not save your request. Try again or use the email option below.'),
+    onError: error => setFeedback(error.message || 'Could not save your request. Try again or call 1 (855) 904-5509.'),
+  });
+  const remove = useMutation({
+    mutationFn: async request => {
+      const { error } = await supabase.from('support_tickets').delete()
+        .eq('id', request.id).eq('company_id', profile.company_id).eq('user_id', profile.id);
+      if (error) throw error;
+      return request.id;
+    },
+    onSuccess: removedId => {
+      setDeleteTarget(null);
+      if (ticketId === removedId) select(null);
+      setFeedback('Support request deleted.');
+      qc.invalidateQueries({ queryKey: scope });
+    },
+    onError: error => setFeedback(error.message || 'Could not delete this request. Please try again.'),
   });
   function select(id) { setParams(id ? { ticket: id } : {}); setMessage(''); setFeedback(''); }
   return <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6" aria-label="Support requests">
@@ -69,11 +86,18 @@ export default function SupportThreads() {
     <div className="grid gap-5 md:grid-cols-[minmax(160px,1fr)_minmax(0,2fr)]">
       <nav aria-label="Your support requests" className="max-h-72 space-y-2 overflow-y-auto">
         {tickets.isPending && enabled && <p role="status" className="p-3 text-sm text-slate-500">Loading requests…</p>}
-        {tickets.isError && <p role="alert" className="p-3 text-sm text-red-700">Could not load requests. Refresh or contact us by email below.</p>}
+        {tickets.isError && <p role="alert" className="p-3 text-sm text-red-700">Could not load requests. Refresh or call 1 (855) 904-5509.</p>}
         {!tickets.isPending && tickets.data?.length === 0 && <p className="p-3 text-sm text-slate-500">You have no support requests yet.</p>}
-        {tickets.data?.map(row => <button key={row.id} onClick={() => select(row.id)} aria-current={ticketId === row.id ? 'page' : undefined}
-          className={`min-h-12 w-full rounded-xl border p-3 text-left focus-visible:ring-2 focus-visible:ring-amber-500 ${ticketId === row.id ? 'border-amber-300 bg-amber-50' : 'border-slate-200 hover:bg-slate-50'}`}>
-          <span className="block break-words text-sm font-semibold text-slate-800">{row.subject}</span><span className="text-xs text-slate-500">{row.status}</span></button>)}
+        {tickets.data?.map(row => <div key={row.id} className={`flex min-h-12 items-stretch rounded-xl border ${ticketId === row.id ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+          <button onClick={() => select(row.id)} aria-current={ticketId === row.id ? 'page' : undefined}
+            className="min-w-0 flex-1 rounded-l-xl p-3 text-left focus-visible:ring-2 focus-visible:ring-amber-500">
+            <span className="block break-words text-sm font-semibold text-slate-800">{row.subject}</span><span className="text-xs text-slate-500">{row.status}</span>
+          </button>
+          <button type="button" onClick={() => setDeleteTarget(row)} aria-label={`Delete support request: ${row.subject}`}
+            className="flex min-w-12 items-center justify-center rounded-r-xl text-slate-500 hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500">
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>)}
       </nav>
       <div className="min-w-0 space-y-4">
         {ticket && <><div><h3 className="break-words font-semibold text-slate-900">{ticket.subject}</h3><p className="text-xs text-slate-500">{ticket.status}</p></div>
@@ -94,5 +118,8 @@ export default function SupportThreads() {
         </form>
       </div>
     </div>
+    <ConfirmDeleteDialog open={!!deleteTarget} onOpenChange={open => { if (!open && !remove.isPending) setDeleteTarget(null); }}
+      title="Delete support request?" description={`Delete “${deleteTarget?.subject || 'this support request'}” and its entire conversation? This cannot be undone.`}
+      onConfirm={() => deleteTarget && remove.mutate(deleteTarget)} isLoading={remove.isPending} />
   </section>;
 }
