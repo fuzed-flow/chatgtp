@@ -17,6 +17,13 @@ export async function issueQuoteShareToken(quoteId) {
   return data;
 }
 
+export async function resetQuoteApprovalCycle(quoteId) {
+  if (!quoteId) throw new Error("Save the quote before preparing a new approval cycle.");
+  const { data, error } = await supabase.rpc("reset_quote_approval_cycle", { p_quote: quoteId });
+  if (error || !data) throw error || new Error("The quote approval cycle could not be prepared.");
+  return data;
+}
+
 export async function getPublicQuoteBundle(quoteId, token) {
   if (!quoteId || !token) throw new Error("This quote link is incomplete.");
   const { data, error } = await supabase.rpc("get_public_quote_bundle", {

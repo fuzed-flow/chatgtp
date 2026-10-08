@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { MessageSquare, Send, Link as LinkIcon, Lock } from "lucide-react";
 import { toast } from "sonner";
-import { buildPublicQuoteUrl, issueQuoteShareToken } from "@/lib/quoteSharing";
+import { buildPublicQuoteUrl, issueQuoteShareToken, resetQuoteApprovalCycle } from "@/lib/quoteSharing";
 
 export default function SendQuoteTextDialog({ open, onOpenChange, quoteId, quoteName, clientName, clientPhone, onSuccess }) {
   const { settings, profile } = useAuth();
@@ -66,11 +66,12 @@ export default function SendQuoteTextDialog({ open, onOpenChange, quoteId, quote
 
     setSaving(true);
     const loadingToast = toast.loading("Sending SMS...");
-    const finalSmsPayload = `${message}\n\n${portalLink}`;
-
     try {
+      const secureToken = await issueQuoteShareToken(quoteId);
+      const activePortalLink = buildPublicQuoteUrl(window.location.origin, quoteId, secureToken);
+      setPortalLink(activePortalLink);
+      const finalSmsPayload = `${message}\n\n${activePortalLink}`;
 
-      
       // ⚡ TRIGGER SUPABASE EDGE FUNCTION
       const signature = JSON.stringify([quoteId, phone.trim(), finalSmsPayload]);
       if (sendIntent.current?.signature !== signature) sendIntent.current = { signature, requestId: crypto.randomUUID(), accepted: false };
@@ -82,8 +83,20 @@ export default function SendQuoteTextDialog({ open, onOpenChange, quoteId, quote
         sendIntent.current.accepted = true;
       }
       // Provider acceptance precedes the status change; retries never send another accepted SMS.
-      const { error: statusError } = await supabase.from("quotes").update({ status: "Sent" }).eq("id", quoteId).eq("company_id", profile.company_id).eq("status", "Draft");
-      if (statusError) throw new Error("SMS was sent, but document status could not be saved. Retry to update the status.");
+      const { data: updatedQuote, error: statusError } = await supabase
+        .from("quotes")
+        .update({ status: "Sent" })
+        .eq("id", quoteId)
+        .eq("company_id", profile.company_id)
+        .in("status", ["Draft", "Sent", "Viewed", "Pending", "Approved", "Declined", "Rejected"])
+        .select("id")
+        .maybeSingle();
+      if (statusError || !updatedQuote?.id) throw new Error("SMS was sent, but the quote status changed before it could be reopened. Retry to finish without sending another text.");
+      try {
+        await resetQuoteApprovalCycle(quoteId);
+      } catch {
+        throw new Error("SMS was sent, but its new approval cycle could not be prepared. Retry to finish without sending another text.");
+      }
       sendIntent.current = null;
 
       toast.success(`Quote successfully texted to ${phone}!`, { id: loadingToast });

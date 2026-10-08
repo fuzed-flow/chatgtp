@@ -5,17 +5,8 @@ import { supabase } from "@/api/supabaseClient";
 import { Button } from "@/components/ui/button";
 import QuotePresentation, { calculateQuoteTotals } from "@/components/quotes/QuotePresentation";
 import { generateQuotePDF } from "@/components/pdf/PDFGenerator";
+import { initialQuoteSelections } from "@/lib/quoteSelections";
 import { toast } from "sonner";
-
-function initialSelections(quote, phases, items) {
-  if (quote?.client_selected_items_json) {
-    try { return JSON.parse(quote.client_selected_items_json); } catch { /* Use defaults. */ }
-  }
-  const result = {};
-  for (const phase of phases || []) if (phase.is_optional) result[phase.id] = phase.default_selected === true;
-  for (const item of items || []) if (item.is_optional) result[item.id] = item.default_selected === true;
-  return result;
-}
 
 async function loadQuotePreview(quoteId) {
   const { data: quote, error: quoteError } = await supabase.from("quotes").select("*").eq("id", quoteId).single();
@@ -73,7 +64,7 @@ export default function QuoteView() {
   useEffect(() => {
     if (!data?.quote?.id || initializedQuote.current === data.quote.id) return;
     initializedQuote.current = data.quote.id;
-    setSelections(initialSelections(data.quote, data.phases, data.items));
+    setSelections(initialQuoteSelections(data.quote, data.phases, data.items));
   }, [data]);
 
   if (!quoteId) return <PreviewError message="Choose a saved quote to preview." />;

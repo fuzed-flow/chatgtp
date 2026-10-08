@@ -847,6 +847,18 @@ export default function QuoteBuilder() {
         is_archived: Boolean(latestForm.is_archived)
       };
 
+      if (finalStatus === "Sent") {
+        Object.assign(quoteData, {
+          client_selected_items: {},
+          client_selected_items_json: null,
+          client_signature: null,
+          signed_at: null,
+          signed_by: null,
+          decline_reason: null,
+          viewed_at: null,
+        });
+      }
+
       let savedQuoteId = quoteId;
 
       if (!quoteId || forceSaveAsTemplate) {

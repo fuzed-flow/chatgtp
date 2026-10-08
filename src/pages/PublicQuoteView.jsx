@@ -10,20 +10,11 @@ import QuotePresentation, { calculateQuoteTotals, documentDate, readableBrandTex
 import { generateQuotePDF } from "@/components/pdf/PDFGenerator";
 import { formatCurrencyForCompany } from "@/components/utils/formatCurrency";
 import { getPublicQuoteBundle, publicQuoteErrorMessage, readPublicQuoteLink, respondToPublicQuote, trackPublicQuoteView } from "@/lib/quoteSharing";
+import { initialQuoteSelections } from "@/lib/quoteSelections";
 import { notifyDocumentActivity } from "@/lib/documentActivity";
 import { toast } from "sonner";
 
 const CLOSED_STATUSES = new Set(["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending"]);
-
-function initialSelections(quote, phases, items) {
-  if (quote?.client_selected_items_json) {
-    try { return JSON.parse(quote.client_selected_items_json); } catch { /* Use defaults. */ }
-  }
-  const result = {};
-  for (const phase of phases || []) if (phase.is_optional) result[phase.id] = phase.default_selected === true;
-  for (const item of items || []) if (item.is_optional) result[item.id] = item.default_selected === true;
-  return result;
-}
 
 export default function PublicQuoteView() {
   const { quoteId, token } = readPublicQuoteLink(window.location);
@@ -62,7 +53,7 @@ export default function PublicQuoteView() {
   useEffect(() => {
     if (!quote?.id || initializedQuote.current === quote.id) return;
     initializedQuote.current = quote.id;
-    setSelections(initialSelections(quote, phases, items));
+    setSelections(initialQuoteSelections(quote, phases, items));
   }, [quote, phases, items]);
 
   useEffect(() => {

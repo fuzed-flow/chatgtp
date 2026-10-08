@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
+import { initialQuoteSelections } from "../../src/lib/quoteSelections.js";
 
 const migration = await readFile(new URL("../../supabase/migrations/20261005211504_secure_public_quote_workflow.sql", import.meta.url), "utf8");
 const recipientMigration = await readFile(new URL("../../supabase/migrations/20261005233121_public_quote_recipient_identity.sql", import.meta.url), "utf8");
+const resendMigration = await readFile(new URL("../../supabase/migrations/20261008163723_reset_quote_approval_on_resend.sql", import.meta.url), "utf8");
 const publicView = await readFile(new URL("../../src/pages/PublicQuoteView.jsx", import.meta.url), "utf8");
 const staffView = await readFile(new URL("../../src/pages/QuoteView.jsx", import.meta.url), "utf8");
 const presentation = await readFile(new URL("../../src/components/quotes/QuotePresentation.jsx", import.meta.url), "utf8");
@@ -115,6 +117,7 @@ async function database() {
   await db.exec(schema);
   await db.exec(migration);
   await db.exec(recipientMigration);
+  await db.exec(resendMigration);
   await db.query("insert into companies(id,name,settings) values($1,'Company A',$3),($2,'Company B',$4)", [
     COMPANY_A, COMPANY_B,
     JSON.stringify({ tax_rate: 5, enable_secondary_tax: false, currency: "CAD", pdf: { brand_color: "#f59e0b" }, private_billing_key: "do-not-expose" }),
@@ -218,6 +221,70 @@ test("approval is atomic, server-calculated, and cannot be repeated", async () =
   } finally {
     await db.close();
   }
+});
+
+test("resending a completed quote clears its prior response cycle", async () => {
+  const db = await database();
+  try {
+    const token = await issueToken(db, USER_A, QUOTE_A);
+    await db.query(
+      "select respond_to_public_quote($1,$2,'approve',$3,'Alex Client','alex@example.com',true,null)",
+      [QUOTE_A, token, JSON.stringify({ [OPTIONAL_ITEM_A]: true })],
+    );
+    await db.query("update quotes set status='Sent' where id=$1", [QUOTE_A]);
+
+    const resentToken = (await db.query(
+      "select reset_quote_approval_cycle($1) token",
+      [QUOTE_A],
+    )).rows[0].token;
+    assert.equal(resentToken, token);
+
+    const approval = (await db.query(
+      "select approval_status,viewed_at,signed_at,signer_name,signer_email,client_ip from quote_approvals where quote_id=$1",
+      [QUOTE_A],
+    )).rows[0];
+    assert.deepEqual(approval, {
+      approval_status: "Sent",
+      viewed_at: null,
+      signed_at: null,
+      signer_name: null,
+      signer_email: null,
+      client_ip: null,
+    });
+
+    const reopenedQuote = (await db.query(
+      "select client_selected_items,client_selected_items_json,client_signature,signed_at,signed_by from quotes where id=$1",
+      [QUOTE_A],
+    )).rows[0];
+    assert.deepEqual(reopenedQuote, {
+      client_selected_items: {},
+      client_selected_items_json: null,
+      client_signature: null,
+      signed_at: null,
+      signed_by: null,
+    });
+
+    const result = (await db.query(
+      "select respond_to_public_quote($1,$2,'approve',$3,'Alex Client','alex@example.com',true,null) result",
+      [QUOTE_A, resentToken, JSON.stringify({ [OPTIONAL_ITEM_A]: false })],
+    )).rows[0].result;
+    assert.equal(result.status, "Approved");
+  } finally {
+    await db.close();
+  }
+});
+
+test("selection initialization drops removed and non-optional IDs", () => {
+  const removedId = "30000000-0000-4000-8000-000000000001";
+  const selections = initialQuoteSelections(
+    { client_selected_items_json: JSON.stringify({ [removedId]: true, [ITEM_A]: true, [OPTIONAL_ITEM_A]: false }) },
+    [{ id: PHASE_A, is_optional: false, default_selected: false }],
+    [
+      { id: ITEM_A, is_optional: false, default_selected: false },
+      { id: OPTIONAL_ITEM_A, is_optional: true, default_selected: true },
+    ],
+  );
+  assert.deepEqual(selections, { [OPTIONAL_ITEM_A]: false });
 });
 
 test("expired approvals are blocked and change requests are persisted", async () => {

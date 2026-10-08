@@ -191,7 +191,7 @@ async function emailView(dialog, options = {}) {
   };
   fixture.rpc = async (name, args) => {
     fixture.rpcCalls.push({name, args: plain(args)});
-    if (name === 'issue_quote_share_token') return {data: QUOTE_TOKEN, error: null};
+    if (name === 'issue_quote_share_token' || name === 'reset_quote_approval_cycle') return {data: QUOTE_TOKEN, error: null};
     if (name === 'issue_invoice_share_token') return {data: INVOICE_TOKEN, error: null};
     return {data: null, error: {message: 'Unexpected synthetic RPC: ' + name}};
   };
@@ -416,7 +416,9 @@ for (const type of Object.keys(types)) {
       if (type === 'quote') {
         assert.ok(body.html_body.includes('token=' + QUOTE_TOKEN));
         assert.ok(body.html_body.includes('quote_token=' + QUOTE_TOKEN));
-        assert.deepEqual(view.fixture.rpcCalls, [{name: 'issue_quote_share_token', args: {p_quote: DOCUMENT}}]);
+        assert.deepEqual(view.fixture.rpcCalls, [
+          {name: 'issue_quote_share_token', args: {p_quote: DOCUMENT}},
+        ]);
       } else if (type === 'invoice') {
         const sentDom = new JSDOM(body.html_body);
         const invoiceLink = sentDom.window.document.querySelector('a');
@@ -429,6 +431,12 @@ for (const type of Object.keys(types)) {
       assert.equal(Object.hasOwn(body, 'copy_to'), false, 'The browser cannot choose an arbitrary copy recipient.');
       view.reply(0);
       await view.wait(() => view.fixture.successes === 1 && !view.document.querySelector('[role="dialog"]'));
+      if (type === 'quote') {
+        assert.deepEqual(view.fixture.rpcCalls, [
+          {name: 'issue_quote_share_token', args: {p_quote: DOCUMENT}},
+          {name: 'reset_quote_approval_cycle', args: {p_quote: DOCUMENT}},
+        ]);
+      }
       assert.equal(view.fixture.writes.length, 1);
       assert.equal(view.fixture.writes[0].table, types[type].table);
       assert.deepEqual(view.fixture.writes[0].payload, {status: 'Sent'});

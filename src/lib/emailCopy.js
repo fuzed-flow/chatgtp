@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
+import { resetQuoteApprovalCycle } from "@/lib/quoteSharing";
 import { toast } from "sonner";
 
 const DOCUMENTS = {
@@ -154,6 +155,13 @@ export function useDocumentEmailSend({
         }
         const { error } = await statusWrite;
         if (error) throw new Error("The client email was sent, but the document status could not be saved. Retry to finish safely.");
+        if (intent.payload.document_type === "quote") {
+          try {
+            await resetQuoteApprovalCycle(intent.payload.document_id);
+          } catch {
+            throw new Error("The client email was sent, but its new approval cycle could not be prepared. Retry to finish safely without emailing the client again.");
+          }
+        }
         intent.statusSaved = true;
         for (const key of document.detailKeys) queryClient.invalidateQueries({ queryKey: [key, intent.payload.document_id] });
         for (const key of document.listKeys) queryClient.invalidateQueries({ queryKey: [key] });
