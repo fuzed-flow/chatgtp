@@ -320,7 +320,7 @@ export default function AIHelpWidget() {
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[120] bg-slate-950/40" />
+        <Dialog.Overlay className="fixed inset-0 z-[250] bg-slate-950/40" />
         <Dialog.Content
           onCloseAutoFocus={(event) => {
             if (!returnFocusTargetRef.current) return;
@@ -328,7 +328,7 @@ export default function AIHelpWidget() {
             restoreFocusToDialogTrigger();
           }}
           style={viewport ? { "--help-viewport-height": `${viewport.height}px`, "--help-keyboard-inset": `${viewport.inset}px` } : undefined}
-          className="fixed left-3 right-3 bottom-[calc(var(--help-keyboard-inset,0px)+env(safe-area-inset-bottom)+0.75rem)] z-[121] flex h-[min(34rem,calc(var(--help-viewport-height,100dvh)-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem))] min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl focus:outline-none sm:left-auto sm:right-6 sm:bottom-6 sm:w-[400px] sm:h-[min(36rem,calc(var(--help-viewport-height,100dvh)-3rem))]">
+          className="fixed left-3 right-3 bottom-[calc(var(--help-keyboard-inset,0px)+env(safe-area-inset-bottom)+0.75rem)] z-[260] flex h-[min(34rem,calc(var(--help-viewport-height,100dvh)-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem))] min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl focus:outline-none sm:left-auto sm:right-6 sm:bottom-6 sm:w-[400px] sm:h-[min(36rem,calc(var(--help-viewport-height,100dvh)-3rem))]">
             <div className="bg-slate-900 text-white px-3 py-2 flex justify-between items-center gap-2 shrink-0">
               <div className="flex min-w-0 items-center gap-2">
                 <Bot className="h-5 w-5 text-amber-400" />

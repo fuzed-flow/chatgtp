@@ -238,7 +238,7 @@ export default function ClientProjectPhotos({ projectId, onClose }) {
       {/* FULLSCREEN TOUCH-ENABLED LIGHTBOX */}
       {lightbox.isOpen && (
         <div 
-          className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-md flex items-center justify-center w-full h-[100dvh] overflow-hidden select-none"
+          className="fixed inset-0 z-[270] bg-slate-950/95 backdrop-blur-md flex items-center justify-center w-full h-[100dvh] overflow-hidden select-none"
           onClick={closeLightbox}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
