@@ -64,7 +64,7 @@ for (const kind of ['contact', 'demo']) {
     assert.equal(notification.to, 'fuzedflow@gmail.com');
     assert.equal(notification.reply_to, visitor);
     assert.equal(notification.from, 'Fuzed Flow <alerts@mail.fuzedflow.com>');
-    assert.equal(notification.subject, 'Storefront ' + kind + ' request');
+    assert.equal(notification.subject, kind === 'demo' ? 'Fuzed Flow Storefront - Book Demo Request' : 'Fuzed Flow Storefront - Contact');
     assert.match(notification.html, /&lt;script&gt;unsafe&lt;\/script&gt;/);
     assert.equal(observed.updates[0].values.notification_status, 'sent');
     assert.doesNotMatch(await response.text(), /@/);

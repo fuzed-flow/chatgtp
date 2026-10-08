@@ -6,7 +6,7 @@ Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors});
  if(req.method!=='POST')return respond({error:'Method not allowed'},405);
  const origin=req.headers.get('Origin');
- if(origin&&!['https://www.fuzedflow.com','https://fuzedflow.com','http://localhost:3000','http://localhost:4173','http://localhost:5173'].includes(origin)&&!/^https:\/\/fuzed-flow-[a-z0-9-]+-fuzed-flow\.vercel\.app$/.test(origin))return respond({error:'Origin not allowed'},403);
+ if(origin&&!['https://www.fuzedflow.com','https://fuzedflow.com','https://app.fuzedflow.com','http://localhost:3000','http://localhost:4173','http://localhost:5173'].includes(origin)&&!/^https:\/\/fuzed-flow-[a-z0-9-]+-fuzed-flow\.vercel\.app$/.test(origin))return respond({error:'Origin not allowed'},403);
  try{
   if(Number(req.headers.get('Content-Length')||0)>15000)return respond({error:'Request too large'},413);
   const text=await req.text();if(text.length>15000)return respond({error:'Request too large'},413);
@@ -23,7 +23,8 @@ Deno.serve(async req=>{
   if(error)return respond({error:'Please try again later or call 1(855) 904-5509.'},429);
   const key=Deno.env.get('RESEND_API_KEY');
   if(key){
-   const email=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({from:'Fuzed Flow <alerts@mail.fuzedflow.com>',to:'fuzedflow@gmail.com',reply_to:fields.email,subject:`Storefront ${fields.kind} request`,html:'<h2>New Fuzed Flow enquiry</h2>'+Object.entries(fields).map(([label,value])=>`<p><strong>${escapeHtml(label)}</strong>: ${escapeHtml(value)}</p>`).join('')})});
+   const subject=fields.kind==='demo'?'Fuzed Flow Storefront - Book Demo Request':'Fuzed Flow Storefront - Contact';
+   const email=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({from:'Fuzed Flow <alerts@mail.fuzedflow.com>',to:'fuzedflow@gmail.com',reply_to:fields.email,subject,html:'<h2>New Fuzed Flow enquiry</h2>'+Object.entries(fields).map(([label,value])=>`<p><strong>${escapeHtml(label)}</strong>: ${escapeHtml(value)}</p>`).join('')})});
    await db.from('storefront_enquiries').update({notification_status:email.ok?'sent':'failed'}).eq('id',id);
    if(!email.ok)console.error(JSON.stringify({level:'error',route:'storefront-enquiry',message:'Notification delivery failed',status:email.status}));
   }
