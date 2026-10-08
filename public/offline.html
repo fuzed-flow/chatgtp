@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0B1538" />
+    <title>FuzedFlow — Offline</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: #f8fafc; color: #0f172a; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      main { width: min(100%, 440px); padding: 32px; text-align: center; border: 1px solid #e2e8f0; border-radius: 24px; background: white; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12); }
+      img { width: 88px; height: 88px; border-radius: 22px; }
+      h1 { margin: 24px 0 8px; font-size: 28px; }
+      p { margin: 0; color: #475569; line-height: 1.6; }
+      button { min-height: 48px; margin-top: 24px; padding: 0 24px; border: 0; border-radius: 14px; background: #f59e0b; color: #0f172a; font: inherit; font-weight: 800; cursor: pointer; }
+      button:focus-visible { outline: 3px solid #0B1538; outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/app-icon-192.png" alt="FuzedFlow" />
+      <h1>You’re offline</h1>
+      <p>FuzedFlow needs an internet connection to securely load your workspace. Reconnect, then try again.</p>
+      <button type="button" onclick="window.location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

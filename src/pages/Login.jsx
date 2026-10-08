@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import AuthBrandLogo from "@/components/shared/AuthBrandLogo";
-import { Mail, Lock, Loader2 } from "lucide-react";
+import InstallAppDialog, { useInstallApp } from "@/components/shared/InstallAppDialog";
+import { Mail, Lock, Loader2, Download } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast"; 
 
 
@@ -18,6 +19,8 @@ export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [installHelpOpen, setInstallHelpOpen] = useState(false);
+  const { status: installStatus, platform, install } = useInstallApp();
 
   // Add this hook right here:
   useEffect(() => {
@@ -101,6 +104,11 @@ export default function Login() {
     }
   };
 
+  const handleInstall = async () => {
+    const result = await install();
+    if (result.outcome === 'unavailable') setInstallHelpOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-6">
@@ -155,7 +163,14 @@ export default function Login() {
         <p className="text-center text-sm text-slate-600">
           Don't have an account? <Link to="/signup" className="font-bold text-amber-600 hover:text-amber-500">Sign up</Link>
         </p>
+        {installStatus !== 'installed' ? (
+          <button type="button" onClick={handleInstall} className="mx-auto flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-slate-600 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
+            <Download className="h-4 w-4 text-amber-600" aria-hidden="true" />
+            Install FuzedFlow on this device
+          </button>
+        ) : null}
       </div>
+      <InstallAppDialog open={installHelpOpen} onOpenChange={setInstallHelpOpen} platform={platform} />
     </div>
   );
 }
