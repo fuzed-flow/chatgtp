@@ -113,10 +113,54 @@ for (const [name, overrides, options] of [
 
 test('recording-only callback waits and does not send a transcript-less duplicate', async () => {
   const view = fixture();
-  const response = await view.handler(request({ TranscriptionStatus: undefined, TranscriptionSid: undefined, TranscriptionText: undefined }));
+  const response = await view.handler(request({
+    TranscriptionStatus: undefined,
+    TranscriptionSid: undefined,
+    TranscriptionText: undefined,
+    RecordingStatus: 'completed',
+    RecordingSource: 'RecordVerb',
+  }));
   assert.equal(response.status, 200);
   assert.equal(view.fetches.length, 0);
 });
+
+test('completed full-call recording callback emails the authenticated MP3 once', async () => {
+  const view = fixture();
+  const response = await view.handler(request({
+    TranscriptionStatus: undefined,
+    TranscriptionSid: undefined,
+    TranscriptionText: undefined,
+    RecordingStatus: 'completed',
+    RecordingSource: 'StartCallRecordingAPI',
+    RecordingChannels: '2',
+  }));
+  assert.equal(response.status, 200);
+  assert.equal(view.fetches.length, 2);
+  const email = view.fetches[1];
+  const payload = JSON.parse(email.init.body);
+  assert.deepEqual(payload.to, ['fuzedflow@gmail.com']);
+  assert.equal(payload.subject, 'New FuzedFlow recorded call from +14035550123');
+  assert.match(payload.text, /Full-call transcription requires Twilio Batch Transcription/);
+  assert.match(payload.text, /Recording source: StartCallRecordingAPI/);
+  assert.match(payload.text, /Channels: 2/);
+  assert.equal(payload.attachments[0].filename, `fuzedflow-call-${RECORDING}.mp3`);
+  assert.equal(email.init.headers['Idempotency-Key'], `twilio-call-recording/${RECORDING}`);
+});
+
+for (const status of ['in-progress', 'absent', 'failed']) {
+  test(`full-call ${status} callback does not email`, async () => {
+    const view = fixture();
+    const response = await view.handler(request({
+      TranscriptionStatus: undefined,
+      TranscriptionSid: undefined,
+      TranscriptionText: undefined,
+      RecordingStatus: status,
+      RecordingSource: 'StartCallRecordingAPI',
+    }));
+    assert.equal(response.status, 200);
+    assert.equal(view.fetches.length, 0);
+  });
+}
 
 test('failed transcription still emails the available recording to the default inbox', async () => {
   const view = fixture();
