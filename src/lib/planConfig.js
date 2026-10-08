@@ -24,6 +24,7 @@ export const PLAN_LIMITS = {
 
 // Helper function to check access easily
 export const checkAccess = (planId, feature) => {
-  const plan = PLAN_LIMITS[planId || 'starter'];
-  return plan ? plan[feature] : false;
+  const normalizedPlanId = String(planId || '').trim().toLowerCase();
+  const plan = PLAN_LIMITS[normalizedPlanId];
+  return Boolean(plan?.[feature]);
 };

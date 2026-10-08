@@ -74,7 +74,7 @@ const getProjectName = (p) => {
 };
 
 export default function Tasks() {
-  const { profile } = useAuth();
+  const { profile, company } = useAuth();
   const companyId = profile?.company_id;
   const qc = useQueryClient();
   const { search: notificationSearch } = useLocation();
@@ -106,7 +106,6 @@ export default function Tasks() {
   });
 
   // --- QUERIES ---
-  const { data: companyData } = useQuery({ queryKey: ["company", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("companies").select("name").eq("id", companyId).single()).data || { name: "Company" }});
   const { data: rawProjects = [] } = useQuery({ queryKey: ["projects", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("projects").select("id, name, project_number, client_id").eq("company_id", companyId)).data || [] });
   const { data: rawClients = [] } = useQuery({ queryKey: ["clients", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("clients").select("id, name, first_name, surname, primary_contact_name").eq("company_id", companyId)).data || [] });
   const { data: rawLeads = [] } = useQuery({ queryKey: ["leads", companyId], enabled: !!companyId, queryFn: async () => (await supabase.from("leads").select("id, contact_name").eq("company_id", companyId)).data || [] });
@@ -289,7 +288,7 @@ export default function Tasks() {
       <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-end">
         <div>
           <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <ListChecks className="h-6 w-6 md:h-7 md:w-7 text-amber-500" /> {companyData?.name || "Company"} Action Items
+            <ListChecks className="h-6 w-6 md:h-7 md:w-7 text-amber-500" /> {company?.name || "Company"} Action Items
           </h1>
           <p className="text-xs md:text-sm font-bold text-slate-500 mt-1 uppercase tracking-wider">{filteredTasks.length} matching tasks across all projects</p>
         </div>
