@@ -15,6 +15,7 @@ test('the web app manifest supports iPhone, Android, and Windows installation', 
   assert.ok(manifest.icons.some(icon => icon.sizes === '512x512' && icon.purpose === 'any'));
   assert.ok(manifest.icons.some(icon => icon.sizes === '512x512' && icon.purpose === 'maskable'));
   assert.ok(manifest.icons.every(icon => icon.src.startsWith('/')));
+  assert.ok(manifest.icons.every(icon => icon.src.includes('fuzedflow-app-icon')));
 });
 
 test('the app registers one shared service worker without caching authenticated pages', async () => {
@@ -37,7 +38,7 @@ test('install actions and Apple app metadata are visible to users', async () => 
   ]);
 
   assert.match(html, /apple-mobile-web-app-capable/);
-  assert.match(html, /apple-touch-icon\.png/);
+  assert.match(html, /fuzedflow-apple-touch-icon\.png/);
   assert.match(login, /Install FuzedFlow on this device/);
   assert.match(help, /Install FuzedFlow app/);
 });

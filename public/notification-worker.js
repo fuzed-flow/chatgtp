@@ -1,7 +1,7 @@
 /* Install support and push delivery. Authenticated application pages are never cached. */
-const APP_CACHE = 'fuzedflow-app-shell-v1';
+const APP_CACHE = 'fuzedflow-app-shell-v2';
 const OFFLINE_URL = '/offline.html';
-const PUBLIC_APP_ASSETS = [OFFLINE_URL, '/app-icon-192.png', '/app-icon-512.png', '/app-icon-maskable-512.png'];
+const PUBLIC_APP_ASSETS = [OFFLINE_URL, '/fuzedflow-app-icon-192.png', '/fuzedflow-app-icon-512.png', '/fuzedflow-app-icon-maskable-512.png'];
 
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(APP_CACHE);
@@ -42,7 +42,7 @@ self.addEventListener('push', event => event.waitUntil((async () => {
   if (await remember(payload.id)) return;
   await self.registration.showNotification(payload.title || 'Fuzed Flow', {
     body: payload.body || 'You have a new Fuzed Flow update.', tag: payload.id || 'fuzedflow-update',
-    icon: '/app-icon-192.png', badge: '/notification-icon.svg',
+    icon: '/fuzedflow-app-icon-192.png', badge: '/notification-icon.svg',
     data: { url: validUrl(payload.url), id: payload.id },
   });
   await remember(payload.id, true);
