@@ -91,6 +91,21 @@ for (const [plan,prices] of Object.entries(SUBSCRIPTION_PRICES)) for (const cycl
 test('Invalid subscription price never reaches authentication or Stripe',async()=>{
   const view=fixture();assert.equal((await view.handler(request({price_id:'price_foreign'}))).status,400);assert.equal(view.calls.length,0);assert.equal(view.stripeCalls.length,0);
 });
+test('FUZED25 applies directly to an annual checkout and never enables unrestricted annual codes',async()=>{
+  const view=fixture();const response=await view.handler(request({price_id:SUBSCRIPTION_PRICES.professional.annual,promotion_code:' fuzed25 '}));
+  assert.equal(response.status,200);assert.equal(view.stripeCalls.length,1);
+  const payload=view.stripeCalls[0];assert.equal(payload.allow_promotion_codes,false);
+  assert.deepEqual(payload.discounts,[{coupon:'q7ZuyPnp'}]);
+  assert.equal(payload.subscription_data.metadata.promotion_code,'FUZED25');
+  assert.equal(payload.metadata.promotion_code,'FUZED25');
+});
+for (const [label,input] of [
+  ['a monthly plan',{price_id:SUBSCRIPTION_PRICES.professional.monthly,promotion_code:'FUZED25'}],
+  ['an unknown code',{price_id:SUBSCRIPTION_PRICES.professional.annual,promotion_code:'NOTVALID'}],
+]) test(`Promotion validation rejects ${label} before authentication or Stripe`,async()=>{
+  const view=fixture();assert.equal((await view.handler(request(input))).status,400);
+  assert.equal(view.calls.length,0);assert.equal(view.stripeCalls.length,0);
+});
 test('Subscription CORS preflight succeeds without auth or Stripe',async()=>{
   const view=fixture();const response=await view.handler(new Request('https://synthetic.supabase.invalid/functions/v1/create-checkout',{method:'OPTIONS'}));
   assert.equal(response.status,200);assert.equal(response.headers.get('Access-Control-Allow-Origin'),'*');assert.equal(view.calls.length,0);assert.equal(view.stripeCalls.length,0);

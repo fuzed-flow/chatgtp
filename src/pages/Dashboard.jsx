@@ -55,9 +55,15 @@ export default function Dashboard() {
       const isCanceled = urlParams.get('canceled');
       const urlError = urlParams.get('error'); 
       const planFromUrl = urlParams.get('plan');
+      const promotionFromUrl = urlParams.get('promo');
 
       if (planFromUrl) {
         localStorage.setItem('pending_stripe_checkout', planFromUrl);
+        if (promotionFromUrl) {
+          localStorage.setItem('pending_stripe_promotion_code', promotionFromUrl.trim().toUpperCase().slice(0, 32));
+        } else {
+          localStorage.removeItem('pending_stripe_promotion_code');
+        }
         window.history.replaceState({}, document.title, window.location.pathname);
       }
 
@@ -68,6 +74,7 @@ export default function Dashboard() {
 
       if (isSuccess || isCanceled) {
         localStorage.removeItem('pending_stripe_checkout');
+        localStorage.removeItem('pending_stripe_promotion_code');
         setIsRedirectingToStripe(false);
         if (isSuccess) {
            setIsPollingActivation(true); 
@@ -77,6 +84,7 @@ export default function Dashboard() {
 
       const isGoogleSignupAttempt = localStorage.getItem('google_signup_attempt');
       const pendingPriceId = getUsdPriceId(localStorage.getItem('pending_stripe_checkout'));
+      const pendingPromotionCode = localStorage.getItem('pending_stripe_promotion_code');
 
       if (isGoogleSignupAttempt) {
         const { data: { session } } = await supabase.auth.getSession();
@@ -100,13 +108,15 @@ export default function Dashboard() {
             body: { 
               price_id: pendingPriceId, 
               plan_id: internalPlanId,
-              company_id: companyId 
+              company_id: companyId,
+              promotion_code: pendingPromotionCode || undefined,
             }
           });
 
           if (error) throw error;
           
           localStorage.removeItem('pending_stripe_checkout');
+          localStorage.removeItem('pending_stripe_promotion_code');
           
           if (data?.url && isMounted) {
             window.location.href = data.url;
@@ -115,9 +125,11 @@ export default function Dashboard() {
           console.error("Failed to generate checkout:", error);
           setIsRedirectingToStripe(false);
           localStorage.removeItem('pending_stripe_checkout'); 
+          localStorage.removeItem('pending_stripe_promotion_code');
           toast.error("Failed to connect to billing. Please contact support.");
         }
       } else if (!pendingPriceId) {
+        localStorage.removeItem('pending_stripe_promotion_code');
         setIsRedirectingToStripe(false);
       }
     };

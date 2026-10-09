@@ -1,4 +1,4 @@
-import { getPlanIdFromPrice, getUsdPriceId, SUBSCRIPTION_PRICES } from "@/lib/subscriptionPlans";
+import { getBillingCycleFromPrice, getPlanIdFromPrice, getUsdPriceId, SUBSCRIPTION_PRICES } from "@/lib/subscriptionPlans";
 import React, { useState, useEffect } from "react"; 
 import { supabase } from "@/api/supabaseClient"; 
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import AuthBrandLogo from "@/components/shared/AuthBrandLogo";
-import { Building2, User, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
+import { BadgePercent, Building2, User, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 
@@ -22,6 +22,7 @@ export default function SignUp() {
   const isInvitedUser = !!invitedEmail;
   
   const priceId = getUsdPriceId(searchParams.get("plan")) || SUBSCRIPTION_PRICES.starter.monthly;
+  const isAnnualPlan = getBillingCycleFromPrice(priceId) === "annual";
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -35,7 +36,17 @@ export default function SignUp() {
     email: invitedEmail || "",
     password: "",
     confirmPassword: "", 
+    promotionCode: (searchParams.get("promo") || "").trim().toUpperCase().slice(0, 32),
   });
+
+  const savePendingPromotion = () => {
+    const promotionCode = formData.promotionCode.trim().toUpperCase();
+    if (isAnnualPlan && promotionCode) {
+      localStorage.setItem('pending_stripe_promotion_code', promotionCode);
+    } else {
+      localStorage.removeItem('pending_stripe_promotion_code');
+    }
+  };
 
  useEffect(() => {
     const handleSuccessfulLogin = () => {
@@ -45,6 +56,7 @@ export default function SignUp() {
       
       if (currentUrlPlan && !isInvitedUser) {
         localStorage.setItem('pending_stripe_checkout', getUsdPriceId(currentUrlPlan) || priceId);
+        savePendingPromotion();
       }
       
       navigate("/dashboard"); 
@@ -72,11 +84,16 @@ export default function SignUp() {
       setAuthError("Passwords do not match. Please try again.");
       return;
     }
+    if (isAnnualPlan && formData.promotionCode.trim() && formData.promotionCode.trim().toUpperCase() !== "FUZED25") {
+      setAuthError("That promotion code is not valid.");
+      return;
+    }
 
     setLoading(true);
 
     if (priceId && !isInvitedUser) {
       localStorage.setItem('pending_stripe_checkout', priceId);
+      savePendingPromotion();
     }
 
     try {
@@ -141,6 +158,7 @@ export default function SignUp() {
     
     if (priceId && !isInvitedUser) {
       localStorage.setItem('pending_stripe_checkout', priceId);
+      savePendingPromotion();
     }
 
     if (isInvitedUser) {
@@ -243,6 +261,28 @@ export default function SignUp() {
                 <Input id="email" type="email" required className="pl-10" placeholder="john@example.com" value={formData.email} disabled={googleLoading || loading || isInvitedUser} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
               </div>
             </div>
+
+            {!isInvitedUser && isAnnualPlan && (
+              <div>
+                <Label htmlFor="promotionCode" className="font-bold text-slate-700">Promotion code <span className="font-normal text-slate-400">(optional)</span></Label>
+                <div className="mt-1 relative">
+                  <BadgePercent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="promotionCode"
+                    type="text"
+                    maxLength={32}
+                    autoCapitalize="characters"
+                    autoComplete="off"
+                    className="pl-10 uppercase"
+                    placeholder="Enter promotion code"
+                    value={formData.promotionCode}
+                    disabled={googleLoading || loading}
+                    onChange={(e) => setFormData({ ...formData, promotionCode: e.target.value.toUpperCase() })}
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-slate-500">Annual-plan promotions are verified securely at checkout.</p>
+              </div>
+            )}
 
             <div>
               <Label htmlFor="password" className="font-bold text-slate-700">Password</Label>

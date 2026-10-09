@@ -55,6 +55,7 @@ export default function Login() {
       if (error) throw error;
       
       localStorage.removeItem('pending_stripe_checkout');
+      localStorage.removeItem('pending_stripe_promotion_code');
       localStorage.removeItem('google_signup_attempt');
       
       toast({ title: "Welcome back!" });
@@ -85,6 +86,7 @@ export default function Login() {
     setGoogleLoading(true);
     try {
       localStorage.removeItem('pending_stripe_checkout');
+      localStorage.removeItem('pending_stripe_promotion_code');
       localStorage.removeItem('google_signup_attempt');
 
       const { data, error } = await supabase.auth.signInWithOAuth({

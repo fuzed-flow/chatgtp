@@ -139,6 +139,39 @@ test('checkout rejects an unknown price before creating a session', async () => 
   assert.equal(checkoutCalls.length, 0);
 });
 
+test('checkout applies FUZED25 once through the annual-only server gate', async () => {
+  const { handler, checkoutCalls } = await loadHandler('../../supabase/functions/create-checkout/index.ts');
+  const response = await handler(new Request('https://example.com/create-checkout', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      price_id: SUBSCRIPTION_PRICES.business.annual,
+      company_id: 'company-test',
+      promotion_code: 'fuzed25',
+    }),
+  }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(JSON.parse(JSON.stringify(checkoutCalls[0].discounts)), [{ coupon: 'q7ZuyPnp' }]);
+  assert.equal(checkoutCalls[0].allow_promotion_codes, false);
+  assert.equal(checkoutCalls[0].metadata.promotion_code, 'FUZED25');
+  assert.equal(checkoutCalls[0].subscription_data.metadata.promotion_code, 'FUZED25');
+});
+
+test('checkout blocks FUZED25 from monthly plans before creating a session', async () => {
+  const { handler, checkoutCalls } = await loadHandler('../../supabase/functions/create-checkout/index.ts');
+  const response = await handler(new Request('https://example.com/create-checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      price_id: SUBSCRIPTION_PRICES.starter.monthly,
+      company_id: 'company-test',
+      promotion_code: 'FUZED25',
+    }),
+  }));
+  assert.equal(response.status, 400);
+  assert.equal(checkoutCalls.length, 0);
+});
+
 test('subscription updates retain entitlements for all CAD and USD price variants', async () => {
   const { handler, companyUpdates } = await loadHandler('../../supabase/functions/stripe-webhook/index.ts');
   const includedUsers = { starter: 1, professional: 3, business: 10 };
