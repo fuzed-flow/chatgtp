@@ -95,7 +95,7 @@ test('FUZED25 applies directly to an annual checkout and never enables unrestric
   const view=fixture();const response=await view.handler(request({price_id:SUBSCRIPTION_PRICES.professional.annual,promotion_code:' fuzed25 '}));
   assert.equal(response.status,200);assert.equal(view.stripeCalls.length,1);
   const payload=view.stripeCalls[0];assert.equal(payload.allow_promotion_codes,false);
-  assert.deepEqual(payload.discounts,[{coupon:'q7ZuyPnp'}]);
+  assert.deepEqual(payload.discounts,[{coupon:'1tJn26tf'}]);
   assert.equal(payload.subscription_data.metadata.promotion_code,'FUZED25');
   assert.equal(payload.metadata.promotion_code,'FUZED25');
 });

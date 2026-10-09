@@ -151,7 +151,7 @@ test('checkout applies FUZED25 once through the annual-only server gate', async 
     }),
   }));
   assert.equal(response.status, 200);
-  assert.deepEqual(JSON.parse(JSON.stringify(checkoutCalls[0].discounts)), [{ coupon: 'q7ZuyPnp' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(checkoutCalls[0].discounts)), [{ coupon: '1tJn26tf' }]);
   assert.equal(checkoutCalls[0].allow_promotion_codes, false);
   assert.equal(checkoutCalls[0].metadata.promotion_code, 'FUZED25');
   assert.equal(checkoutCalls[0].subscription_data.metadata.promotion_code, 'FUZED25');

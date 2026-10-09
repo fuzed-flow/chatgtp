@@ -15,7 +15,7 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
 });
 
 const ANNUAL_COUPON_CODE = 'FUZED25';
-const ANNUAL_COUPON_ID = 'q7ZuyPnp';
+const ANNUAL_COUPON_ID = '1tJn26tf';
 
 serve(async (req) => {
   // 👇 2. Intercept the browser's preflight check
