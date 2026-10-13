@@ -328,4 +328,7 @@ test("public, staff, and portal UIs share the safe presentation path", () => {
   assert.match(presentation, /min-h-11 min-w-11/);
   assert.match(pdfGenerator, /safelyAddImage\(doc, quote\.hero_image_url/);
   assert.match(pdfGenerator, /getCompanyCurrency\(organization\)/);
+  assert.match(pdfGenerator, /writePaginatedSection\('Terms & Conditions', finalTerms\)/);
+  assert.match(pdfGenerator, /\$\{title\} \(continued\)/);
+  assert.doesNotMatch(publicView, /sticky bottom-0/);
 });

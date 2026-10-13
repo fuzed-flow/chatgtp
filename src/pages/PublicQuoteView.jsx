@@ -128,7 +128,7 @@ export default function PublicQuoteView() {
   if (bundleQuery.isError || !quote) return <QuoteUnavailable title="Quote unavailable" message="This secure link is invalid, expired, or has been replaced. Ask your contractor for a new link." />;
 
   const actions = (
-    <div className="sticky bottom-0 z-20 -mx-3 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-8px_25px_rgba(15,23,42,0.12)] backdrop-blur sm:static sm:mx-0 sm:rounded-xl sm:border sm:shadow-sm">
+    <div className="-mx-3 border-t border-slate-200 bg-white p-3 shadow-sm sm:mx-0 sm:rounded-xl sm:border">
       {expired && !closed ? <div role="alert" className="mb-3 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-900"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />This quote expired on {documentDate(quote.expiry_date, "MMMM d, yyyy")}. Contact the contractor for an updated quote.</div> : null}
       {quote.status === "Pending" ? <p role="status" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-950">Changes requested — the team is reviewing your request.</p> : null}
       <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-center">

@@ -130,6 +130,45 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
     }
   };
 
+  const writePaginatedSection = (title, text) => {
+    if (!text) return;
+
+    const bodyFontSize = 8;
+    const lineHeight = 4;
+    const lineHeightFactor = 1.4;
+    const lines = doc.splitTextToSize(String(text), pageWidth - margin * 2);
+    let lineIndex = 0;
+    let continuation = false;
+
+    while (lineIndex < lines.length) {
+      checkPageBreak(16);
+
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(...colors.primary);
+      doc.text(continuation ? `${title} (continued)` : title, margin, yPos);
+      yPos += 6;
+
+      doc.setFontSize(bodyFontSize);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(...colors.text);
+
+      const availableLines = Math.max(1, Math.floor((bottomLimit - yPos) / lineHeight));
+      const pageLines = lines.slice(lineIndex, lineIndex + availableLines);
+      doc.text(pageLines, margin, yPos, { lineHeightFactor });
+      yPos += pageLines.length * lineHeight;
+      lineIndex += pageLines.length;
+
+      if (lineIndex < lines.length) {
+        doc.addPage();
+        yPos = margin + 10;
+        continuation = true;
+      }
+    }
+
+    yPos += 6;
+  };
+
   // --- HEADER SECTION ---
   doc.setFontSize(24);
   doc.setTextColor(...colors.primary);
@@ -532,36 +571,8 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
     addLine();
     yPos += 4;
 
-    if (finalClientMessage) {
-      checkPageBreak(25);
-      doc.setFontSize(9);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(...colors.primary);
-      doc.text('Message from the Team', margin, yPos);
-      yPos += 6;
-      
-      doc.setFontSize(8);
-      doc.setFont(undefined, 'normal');
-      doc.setTextColor(...colors.text);
-      const msgLines = doc.splitTextToSize(finalClientMessage, pageWidth - margin * 2);
-      doc.text(msgLines, margin, yPos);
-      yPos += msgLines.length * 4 + 6;
-    }
-
-    if (finalTerms) {
-      checkPageBreak(25);
-      doc.setFontSize(9);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(...colors.primary);
-      doc.text('Terms & Conditions', margin, yPos);
-      yPos += 6;
-      
-      doc.setFontSize(8);
-      doc.setFont(undefined, 'normal');
-      doc.setTextColor(...colors.text);
-      const termLines = doc.splitTextToSize(finalTerms, pageWidth - margin * 2);
-      doc.text(termLines, margin, yPos);
-    }
+    writePaginatedSection('Message from the Team', finalClientMessage);
+    writePaginatedSection('Terms & Conditions', finalTerms);
   }
 
   // --- FINAL FOOTER PASS ---
