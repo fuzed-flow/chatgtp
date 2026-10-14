@@ -133,6 +133,14 @@ test('Public invoice checkout validates the hashed share token and ignores a bro
   const shareQuery=view.queries.find(query=>query.table==='invoice_share_links');
   assert.equal(shareQuery.filters.find(([key])=>key==='token_hash')[1].length,64);assert.notEqual(shareQuery.filters.find(([key])=>key==='token_hash')[1],INVOICE_TOKEN);
 });
+test('Repeating the same invoice checkout reuses identical Stripe parameters',async()=>{
+  const view=fixture('createDepositCheckout');
+  assert.equal((await view.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN}))).status,200);
+  assert.equal((await view.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN}))).status,200);
+  const calls=view.stripeCalls.filter(call=>call.method==='checkout.sessions.create');
+  assert.equal(calls.length,2);assert.deepEqual(calls[1].args,calls[0].args);
+  assert.match(calls[0].args[1].idempotencyKey,/^fuzedflow_checkout:[a-f0-9]{64}$/);
+});
 test('Invoice checkout never trusts a foreign or invalid client email for receipts',async()=>{
   for(const clients of [
     [{id:'00000000-0000-4000-8000-000000000014',company_id:OTHER,email:'foreign@example.com'}],
@@ -147,12 +155,29 @@ test('Invoice checkout never trusts a foreign or invalid client email for receip
 });
 test('Invoice scheduled checkout pays only next unpaid saved company installment',async()=>{
   const view=fixture('createDepositCheckout',{rows:{invoices:[{id:INVOICE,company_id:COMPANY,status:'Partially Paid',total:1000,amount_paid:100,has_payment_schedule:true}],invoice_payment_schedules:[
-    {invoice_id:INVOICE,company_id:COMPANY,amount:100,amount_paid:100,sort_order:1},
-    {invoice_id:INVOICE,company_id:COMPANY,amount:250,amount_paid:50,sort_order:2},
-    {invoice_id:INVOICE,company_id:OTHER,amount:1,amount_paid:0,sort_order:0},
+    {id:'00000000-0000-4000-8000-000000000031',invoice_id:INVOICE,company_id:COMPANY,amount:100,amount_paid:100,sort_order:1},
+    {id:'00000000-0000-4000-8000-000000000032',invoice_id:INVOICE,company_id:COMPANY,amount:250,amount_paid:50,sort_order:2},
+    {id:'00000000-0000-4000-8000-000000000033',invoice_id:INVOICE,company_id:OTHER,amount:1,amount_paid:0,sort_order:0},
   ]}});
-  assert.equal((await view.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN,amount:1}))).status,200);assert.equal(view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0].line_items[0].price_data.unit_amount,20000);
+  assert.equal((await view.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN,amount:1}))).status,200);
+  const payload=view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0];
+  assert.equal(payload.line_items[0].price_data.unit_amount,20000);assert.equal(payload.metadata.schedule_item_id,'00000000-0000-4000-8000-000000000032');
   assert.deepEqual(view.queries.find(query=>query.table==='invoice_payment_schedules').filters,[['invoice_id',INVOICE],['company_id',COMPANY]]);
+});
+test('Equal-value invoice milestones receive different Stripe checkout keys',async()=>{
+  const first='00000000-0000-4000-8000-000000000031';const second='00000000-0000-4000-8000-000000000032';
+  const invoice={id:INVOICE,company_id:COMPANY,status:'Partially Paid',total:200,amount_paid:0,has_payment_schedule:true};
+  const rows=id=>({invoices:[invoice],invoice_payment_schedules:[
+    {id:first,invoice_id:INVOICE,company_id:COMPANY,amount:100,amount_paid:id===first ? 0 : 100,sort_order:1},
+    {id:second,invoice_id:INVOICE,company_id:COMPANY,amount:100,amount_paid:0,sort_order:2},
+  ]});
+  const one=fixture('createDepositCheckout',{rows:rows(first)});const two=fixture('createDepositCheckout',{rows:rows(second)});
+  assert.equal((await one.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN}))).status,200);
+  assert.equal((await two.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN}))).status,200);
+  const firstCall=one.stripeCalls.find(call=>call.method==='checkout.sessions.create').args;
+  const secondCall=two.stripeCalls.find(call=>call.method==='checkout.sessions.create').args;
+  assert.equal(firstCall[0].metadata.schedule_item_id,first);assert.equal(secondCall[0].metadata.schedule_item_id,second);
+  assert.notEqual(firstCall[1].idempotencyKey,secondCall[1].idempotencyKey);
 });
 for(const status of ['Partial','Partially Paid']) test('Invoice '+status+' remains eligible for its saved outstanding balance',async()=>{
   const view=fixture('createDepositCheckout',{rows:{invoices:[{id:INVOICE,company_id:COMPANY,status,total:500,amount_paid:125,has_payment_schedule:false}]}});

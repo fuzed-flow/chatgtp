@@ -93,12 +93,16 @@ Deno.serve(async (req) => {
     }
 
     let amount = checkoutAmount(document, kind, undefined);
+    let scheduleItemId: string | null = null;
     if (kind === 'invoice' && document.has_payment_schedule) {
-      const { data: schedule, error: scheduleError } = await db.from('invoice_payment_schedules').select('amount,amount_type,percentage,amount_paid,sort_order').eq('invoice_id', id).eq('company_id', document.company_id).order('sort_order');
+      const { data: schedule, error: scheduleError } = await db.from('invoice_payment_schedules').select('id,amount,amount_type,percentage,amount_paid,sort_order').eq('invoice_id', id).eq('company_id', document.company_id).order('sort_order');
       if (scheduleError) throw new Error('Payment schedule unavailable.');
       const due = row => (row.amount_type === 'percentage' ? Number(document.total) * Number(row.percentage || 0) / 100 : Number(row.amount || 0)) - Number(row.amount_paid || 0);
       const next = (schedule || []).find(row => due(row) > 0);
-      if (next) amount = Math.min(amount, due(next));
+      if (next) {
+        amount = Math.min(amount, due(next));
+        scheduleItemId = next.id;
+      }
     }
     const { data: company, error: companyError } = await db.from("companies").select("stripe_account_id,settings").eq("id", document.company_id).single();
     if (companyError || !company?.stripe_account_id) throw new Error("Online payments are not connected for this company.");
@@ -114,8 +118,7 @@ Deno.serve(async (req) => {
     const success = new URL(docUrl); success.searchParams.set("payment", "success");
     const cancel = new URL(docUrl); cancel.searchParams.set("payment", "cancelled");
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2026-08-26.dahlia", httpClient: Stripe.createFetchHttpClient() });
-    const suffix = [...crypto.getRandomValues(new Uint8Array(8))].map(n => String.fromCharCode(97 + n % 26)).join("");
-    const metadata = { company_id: document.company_id, [`${kind}_id`]: id, currency_factor: String(factor) };
+    const metadata = { company_id: document.company_id, [`${kind}_id`]: id, currency_factor: String(factor), ...(scheduleItemId ? { schedule_item_id: scheduleItemId } : {}) };
     let receiptEmail: string | null = null;
     if (kind === "invoice" && document.client_id) {
       const { data: client, error: clientError } = await db.from("clients")
@@ -127,15 +130,22 @@ Deno.serve(async (req) => {
       const savedEmail = String(client?.email || "").trim();
       if (emailPattern.test(savedEmail)) receiptEmail = savedEmail;
     }
+    const successUrl = accessMode === "public" ? success.toString() : checkoutReturnUrl(body.success_url, success.toString(), appUrl);
+    const cancelUrl = accessMode === "public" ? cancel.toString() : checkoutReturnUrl(body.cancel_url, cancel.toString(), appUrl);
+    const checkoutWindow = Math.floor(Date.now() / 600000);
+    const checkoutFingerprint = await sha256(JSON.stringify({
+      kind, id, scheduleItemId, currency, unitAmount, metadata, receiptEmail,
+      successUrl, cancelUrl, checkoutWindow,
+    }));
     const session = await stripe.checkout.sessions.create({
-      mode: "payment", integration_identifier: `fuzedflow_document_${suffix}`,
+      mode: "payment", integration_identifier: `fuzedflow_document_${checkoutFingerprint.slice(0, 20)}`,
       line_items: [{ price_data: { currency, product_data: { name: `${kind === "quote" ? "Quote deposit" : "Invoice"} #${document[`${kind}_number`] || id}` }, unit_amount: unitAmount }, quantity: 1 }],
       metadata,
       ...(receiptEmail ? { customer_email: receiptEmail } : {}),
       payment_intent_data: { metadata, ...(receiptEmail ? { receipt_email: receiptEmail } : {}) },
-      success_url: accessMode === "public" ? success.toString() : checkoutReturnUrl(body.success_url, success.toString(), appUrl),
-      cancel_url: accessMode === "public" ? cancel.toString() : checkoutReturnUrl(body.cancel_url, cancel.toString(), appUrl),
-    }, { stripeAccount: company.stripe_account_id, idempotencyKey: `${kind}:${id}:${currency}:${unitAmount}:${Math.floor(Date.now() / 600000)}` });
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+    }, { stripeAccount: company.stripe_account_id, idempotencyKey: `fuzedflow_checkout:${checkoutFingerprint}` });
     return Response.json({ url: session.url, checkout_url: session.url, sessionId: session.id }, { headers: cors });
   } catch (error) {
     console.error("Document checkout failed", error instanceof Error ? error.message : "Unknown error");
