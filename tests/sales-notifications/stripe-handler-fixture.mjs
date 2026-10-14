@@ -38,7 +38,8 @@ function fixture(name,options={}) {
   let handler;
   const rows={companies:[{id:COMPANY,stripe_account_id:ACCOUNT,stripe_customer_id:CUSTOMER,settings:{currency:'CAD'},subscription_cancel_at:null,plan_id:'professional'}],
     profiles:[{id:USER,company_id:COMPANY,is_active:true,role:'admin',permissions:null}],
-    invoices:[{id:INVOICE,company_id:COMPANY,status:'Sent',total:1000,amount_paid:100,invoice_number:'INV-SYNTHETIC',has_payment_schedule:false}],
+    clients:[{id:'00000000-0000-4000-8000-000000000014',company_id:COMPANY,email:'client@example.com'}],
+    invoices:[{id:INVOICE,company_id:COMPANY,client_id:'00000000-0000-4000-8000-000000000014',status:'Sent',total:1000,amount_paid:100,invoice_number:'INV-SYNTHETIC',has_payment_schedule:false}],
     invoice_share_links:[{id:'00000000-0000-4000-8000-000000000021',invoice_id:INVOICE,company_id:COMPANY,token_hash:createHash('sha256').update(INVOICE_TOKEN).digest('hex'),status:'Active',revoked_at:null,expires_at:null}],
     quote_approvals:[{id:'00000000-0000-4000-8000-000000000022',quote_id:QUOTE,company_id:COMPANY,approval_token:QUOTE_TOKEN,approval_status:'Approved'}],
     quotes:[{id:QUOTE,company_id:COMPANY,status:'Approved',total:1000,deposit_amount:250,quote_number:'Q-SYNTHETIC'}],invoice_payment_schedules:[],...plain(options.rows || {})};

@@ -127,10 +127,23 @@ test('Public quote checkout validates its approval token and uses the saved depo
 test('Public invoice checkout validates the hashed share token and ignores a browser amount',async()=>{
   const view=fixture('createDepositCheckout');assert.equal((await view.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN,amount:1}))).status,200);
   const payload=view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0];assert.equal(payload.line_items[0].price_data.unit_amount,90000);assert.equal(payload.metadata.invoice_id,INVOICE);
+  assert.equal(payload.customer_email,'client@example.com');assert.equal(payload.payment_intent_data.receipt_email,'client@example.com');
   assert.equal(payload.success_url,`https://app.fuzedflow.com/PublicInvoiceView?id=${INVOICE}&token=${INVOICE_TOKEN}&payment=success`);
   assert.doesNotMatch(JSON.stringify(payload.metadata),new RegExp(INVOICE_TOKEN));
   const shareQuery=view.queries.find(query=>query.table==='invoice_share_links');
   assert.equal(shareQuery.filters.find(([key])=>key==='token_hash')[1].length,64);assert.notEqual(shareQuery.filters.find(([key])=>key==='token_hash')[1],INVOICE_TOKEN);
+});
+test('Invoice checkout never trusts a foreign or invalid client email for receipts',async()=>{
+  for(const clients of [
+    [{id:'00000000-0000-4000-8000-000000000014',company_id:OTHER,email:'foreign@example.com'}],
+    [{id:'00000000-0000-4000-8000-000000000014',company_id:COMPANY,email:'not-an-email'}],
+  ]){
+    const view=fixture('createDepositCheckout',{rows:{clients}});
+    assert.equal((await view.handler(depositRequest({invoice_id:INVOICE,token:INVOICE_TOKEN}))).status,200);
+    const payload=view.stripeCalls.find(call=>call.method==='checkout.sessions.create').args[0];
+    assert.equal(payload.customer_email,undefined);assert.equal(payload.payment_intent_data.receipt_email,undefined);
+    assert.deepEqual(view.queries.find(query=>query.table==='clients').filters,[['id','00000000-0000-4000-8000-000000000014'],['company_id',COMPANY]]);
+  }
 });
 test('Invoice scheduled checkout pays only next unpaid saved company installment',async()=>{
   const view=fixture('createDepositCheckout',{rows:{invoices:[{id:INVOICE,company_id:COMPANY,status:'Partially Paid',total:1000,amount_paid:100,has_payment_schedule:true}],invoice_payment_schedules:[
