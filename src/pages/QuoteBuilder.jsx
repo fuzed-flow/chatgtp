@@ -27,6 +27,7 @@ import UnsavedChangesGuard from "@/components/shared/UnsavedChangesGuard";
 import { issueQuoteShareToken } from "@/lib/quoteSharing";
 import { normalizePhaseOrder } from "@/lib/phaseOrdering";
 import { MAX_PROJECT_PHOTOS, PROJECT_PHOTO_LIMIT_HINT, validateProjectPhotoUpload } from "@/lib/projectPhotoLimits";
+import { convertQuoteToInvoice } from "@/lib/quoteInvoiceConversion";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -792,8 +793,19 @@ export default function QuoteBuilder() {
     let finalStatus = form.status;
 
     try {
+      const savedPhasesForHydration = [];
+      const storedSelections = (() => {
+        if (existingQuote?.client_selected_items && typeof existingQuote.client_selected_items === "object") {
+          return existingQuote.client_selected_items;
+        }
+        if (!existingQuote?.client_selected_items_json) return {};
+        try { return JSON.parse(existingQuote.client_selected_items_json); } catch { return {}; }
+      })();
+      const remappedSelections = {};
+      let matchedSelectionCount = 0;
       const latestForm = { ...form, title: activeTitle, overall_scope: localOverallScope, client_message: localClientMessage, terms: localTerms, notes: localNotes };
       finalStatus = newStatus !== null ? newStatus : latestForm.status;
+      const shouldRemapSelections = finalStatus !== "Sent";
       
       let quoteNumber = latestForm.quote_number;
       let shouldIncrementCounter = false;
@@ -911,6 +923,13 @@ export default function QuoteBuilder() {
         }]).select().single();
         if (phaseError) throw new Error(`Phase Table: ${phaseError.message}`);
 
+        if (shouldRemapSelections && Object.prototype.hasOwnProperty.call(storedSelections, phase.id)) {
+          remappedSelections[insertedPhase.id] = Boolean(storedSelections[phase.id]);
+          matchedSelectionCount += 1;
+        }
+
+        let insertedItems = [];
+
         if (phase.items?.length > 0) {
           const itemsToInsert = phase.items.map((item, idx) => ({
             company_id: companyId, quote_id: savedQuoteId, phase_id: insertedPhase.id, name: item.name || "Unnamed Item",
@@ -921,9 +940,24 @@ export default function QuoteBuilder() {
             photo_url: item.photo_url || null, is_optional: Boolean(item.is_optional), default_selected: Boolean(item.default_selected),
             is_material: Boolean(item.is_material), supplier: item.supplier || null, display_order: idx 
           }));
-          const { error: itemsError } = await supabase.from("quote_line_items").insert(itemsToInsert);
+          const { data: savedItems, error: itemsError } = await supabase.from("quote_line_items").insert(itemsToInsert).select("*");
           if (itemsError) throw new Error(`Line Items Table: ${itemsError.message}`);
+          insertedItems = savedItems || [];
+
+          phase.items.forEach((item, idx) => {
+            const savedItem = insertedItems.find(candidate => candidate.display_order === idx);
+            if (shouldRemapSelections && savedItem && Object.prototype.hasOwnProperty.call(storedSelections, item.id)) {
+              remappedSelections[savedItem.id] = Boolean(storedSelections[item.id]);
+              matchedSelectionCount += 1;
+            }
+          });
         }
+
+        savedPhasesForHydration.push({
+          ...phase,
+          ...insertedPhase,
+          items: insertedItems,
+        });
       }
 
       if (latestForm.has_payment_schedule && paymentScheduleItems.length > 0) {
@@ -934,6 +968,16 @@ export default function QuoteBuilder() {
         const { error: scheduleError } = await supabase.from("quote_payment_schedules").insert(schedulesToInsert);
         if (scheduleError) throw new Error(`Payment Schedule Table: ${scheduleError.message}`);
       }
+
+      if (matchedSelectionCount > 0) {
+        const { error: selectionRemapError } = await supabase.from("quotes").update({
+          client_selected_items: remappedSelections,
+          client_selected_items_json: JSON.stringify(remappedSelections),
+        }).eq("id", savedQuoteId).eq("company_id", companyId);
+        if (selectionRemapError) throw new Error(`Client Selections Sync: ${selectionRemapError.message}`);
+      }
+
+      if (savedPhasesForHydration.length > 0) hydratePhases(savedPhasesForHydration);
 
       await queryClient.invalidateQueries({ queryKey: ["company", companyId] }); 
       await queryClient.invalidateQueries({ queryKey: ["quotes"] });
@@ -1106,53 +1150,7 @@ export default function QuoteBuilder() {
 
   const convertToInvoice = async (projectId = null, activeQuoteId) => {
     if (!activeQuoteId || !companyId) throw new Error("Missing quote or company data");
-    const invoiceNumber = `${company?.invoice_number_prefix || "INV-"}${company?.next_invoice_number || Date.now().toString().slice(-4)}`;
-    const cleanClientId = (form.client_id && typeof form.client_id === 'string' && form.client_id.length > 10) ? form.client_id : null;
-
-    const { data: invoiceRef, error: invoiceError } = await supabase.from("invoices").insert([{
-      company_id: companyId, client_id: cleanClientId, project_id: projectId, quote_id: activeQuoteId, invoice_number: invoiceNumber,
-      status: "Draft", issue_date: new Date().toISOString().split("T")[0],
-      subtotal: safeNum(effectiveSubtotal), tax: safeNum(grandTax), total: safeNum(grandTotal), balance_due: safeNum(grandTotal),
-      deposit_amount: safeNum(form.deposit_amount), has_payment_schedule: Boolean(form.has_payment_schedule)
-    }]).select().single();
-    if (invoiceError) throw invoiceError;
-
-    await supabase.from("companies").update({ next_invoice_number: safeNum(company?.next_invoice_number || 1001) + 1 }).eq("id", companyId);
-
-    const invoicePhasesMap = {};
-    const activePhases = phases.filter(isPhaseActive);
-    for (const [phaseIndex, phase] of activePhases.entries()) {
-      const { data: newPhase } = await supabase.from("invoice_phases").insert([{
-        company_id: companyId, invoice_id: invoiceRef.id, phase_name: phase.phase_name, scope_of_work: phase.scope_of_work || "", sort_order: phaseIndex,
-      }]).select().single();
-      if (newPhase) invoicePhasesMap[phase.id] = newPhase.id;
-    }
-
-    const itemsToInsert = [];
-    for (const phase of phases) {
-      if (!isPhaseActive(phase) || !invoicePhasesMap[phase.id]) continue;
-      if (phase.items && phase.items.length > 0) {
-        for (const item of phase.items) {
-           if (!isItemActive(item)) continue;
-           itemsToInsert.push({
-              company_id: companyId, invoice_id: invoiceRef.id, phase_id: invoicePhasesMap[phase.id], name: item.name,
-              description: item.description || "", quantity: safeNum(item.quantity) || 1, unit: item.unit || "ea",
-              unit_price: safeNum(item.unit_price) || 0, taxable: Boolean(item.taxable), line_total: safeNum(item.quantity) * safeNum(item.unit_price),
-           });
-        }
-      }
-    }
-    if (itemsToInsert.length > 0) await supabase.from("invoice_line_items").insert(itemsToInsert);
-
-    if (form.has_payment_schedule && paymentScheduleItems.length > 0) {
-      const schedulesToInsert = paymentScheduleItems.map((schedItem, idx) => ({
-        company_id: companyId, invoice_id: invoiceRef.id, payment_name: schedItem.payment_name,
-        amount: schedItem.amount_type === "percentage" ? (grandTotal * safeNum(schedItem.percentage) / 100) : safeNum(schedItem.amount),
-        due_event: schedItem.due_event || "", due_date: new Date().toISOString().split("T")[0], amount_paid: 0, status: "Pending", sort_order: schedItem.sort_order || idx,
-      }));
-      await supabase.from("invoice_payment_schedules").insert(schedulesToInsert);
-    }
-    return invoiceRef;
+    return convertQuoteToInvoice({ quoteId: activeQuoteId, projectId });
   };
 
   const handleConvertQuoteAction = async (type) => {

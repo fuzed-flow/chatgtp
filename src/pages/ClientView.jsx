@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { toast } from "sonner";
 import { generateQuotePDF } from "../components/pdf/PDFGenerator";
+import { convertQuoteToInvoice } from "@/lib/quoteInvoiceConversion";
 
 const GST_RATE = 0.05;
 
@@ -61,7 +62,7 @@ export default function QuoteView() {
     enabled: !!quote?.client_id,
   });
 
-  const { data: phases = [] } = useQuery({
+  const { data: phases = [], isFetched: phasesFetched, isFetching: phasesFetching } = useQuery({
     queryKey: ["quote-phases", quoteId],
     queryFn: async () => {
       const { data, error } = await supabase.from("quote_phases").select("*").eq("quote_id", quoteId).order("sort_order", { ascending: true });
@@ -71,7 +72,7 @@ export default function QuoteView() {
     enabled: !!quoteId,
   });
 
-  const { data: items = [] } = useQuery({
+  const { data: items = [], isFetched: itemsFetched, isFetching: itemsFetching } = useQuery({
     queryKey: ["quote-items", quoteId],
     queryFn: async () => {
       const { data, error } = await supabase.from("quote_line_items").select("*").eq("quote_id", quoteId).order("display_order", { ascending: true });
@@ -81,7 +82,7 @@ export default function QuoteView() {
     enabled: !!quoteId,
   });
 
-  const { data: scheduleItems = [] } = useQuery({
+  const { data: scheduleItems = [], isFetched: scheduleFetched, isFetching: scheduleFetching } = useQuery({
     queryKey: ["quote-schedule-items", quoteId],
     queryFn: async () => {
       const { data, error } = await supabase.from("quote_payment_schedules").select("*").eq("quote_id", quoteId).order("sort_order", { ascending: true });
@@ -175,81 +176,22 @@ export default function QuoteView() {
 
   const convertToInvoice = async (projectId = null) => {
     if (!quote || !company) return;
-    const invoiceNumber = `${company.invoice_number_prefix || "INV-"}${company.next_invoice_number || Date.now().toString().slice(-4)}`;
-    
-    const { data: invoiceRef, error: invoiceError } = await supabase.from("invoices").insert([{
-      company_id: quote.company_id,
-      client_id: quote.client_id,
-      project_id: projectId,
-      quote_id: quote.id,
-      invoice_number: invoiceNumber,
-      status: "Draft",
-      issue_date: new Date().toISOString().split("T")[0],
-      subtotal: safeNum(dynamicSubtotal),
-      tax: safeNum(dynamicTax),
-      total: safeNum(dynamicTotal),
-      balance_due: safeNum(dynamicTotal),
-      deposit_amount: safeNum(quote.deposit_amount),
-      has_payment_schedule: Boolean(quote.has_payment_schedule)
-    }]).select().single();
-
-    if (invoiceError) throw invoiceError;
-
-    await supabase.from("companies").update({ 
-      next_invoice_number: safeNum(company.next_invoice_number) + 1 
-    }).eq("id", company.id);
-
-    const invoicePhasesMap = {};
-    for (const phase of phases) {
-      if (!isPhaseIncluded(phase)) continue; // Don't copy dropped phases to invoice
-      const { data: newPhase } = await supabase.from("invoice_phases").insert([{
-        company_id: quote.company_id,
-        invoice_id: invoiceRef.id,
-        phase_name: phase.phase_name,
-        scope_of_work: phase.scope_of_work || "",
-        sort_order: phase.sort_order || 0,
-      }]).select().single();
-      if (newPhase) invoicePhasesMap[phase.id] = newPhase.id;
-    }
-
-    const finalItems = items.filter(item => isItemIncluded(item) && invoicePhasesMap[item.phase_id]);
-    if (finalItems.length > 0) {
-      const itemsToInsert = finalItems.map((item) => ({
-        company_id: quote.company_id,
-        invoice_id: invoiceRef.id,
-        phase_id: invoicePhasesMap[item.phase_id] || null,
-        name: item.name,
-        description: item.description || "",
-        quantity: safeNum(item.quantity) || 1,
-        unit: item.unit || "ea",
-        unit_price: safeNum(item.unit_price) || 0,
-        taxable: Boolean(item.taxable),
-        line_total: safeNum(item.quantity) * safeNum(item.unit_price),
-      }));
-      await supabase.from("invoice_line_items").insert(itemsToInsert);
-    }
-
-    if (quote.has_payment_schedule && scheduleItems.length > 0) {
-      const schedulesToInsert = scheduleItems.map((schedItem, idx) => ({
-        company_id: quote.company_id,
-        invoice_id: invoiceRef.id,
-        payment_name: schedItem.payment_name,
-        // Schedule values scale naturally with dynamic calculated total
-        amount: schedItem.amount_type === "percentage" ? (dynamicTotal * safeNum(schedItem.percentage) / 100) : safeNum(schedItem.amount),
-        due_event: schedItem.due_event || "",
-        due_date: new Date().toISOString().split("T")[0],
-        amount_paid: 0,
-        status: "Pending",
-        sort_order: schedItem.sort_order || idx,
-      }));
-      await supabase.from("invoice_payment_schedules").insert(schedulesToInsert);
-    }
-
-    await supabase.from("quotes").update({ status: "Approved" }).eq("id", quote.id);
-    return invoiceRef;
+    return convertQuoteToInvoice({
+      quoteId: quote.id,
+      projectId,
+      selections: localSelections,
+      totals: { subtotal: dynamicSubtotal, tax: dynamicTax, total: dynamicTotal },
+    });
   };
 
   const handleConvert = async (type) => {
+    const sourceStillLoading = !phasesFetched || !itemsFetched || phasesFetching || itemsFetching ||
+      (quote?.has_payment_schedule && (!scheduleFetched || scheduleFetching));
+    if (sourceStillLoading || phases.length === 0 || items.length === 0) {
+      toast.error("Please wait for the complete quote to load before converting it.");
+      return;
+    }
+
     setConverting(true);
     try {
       if (type === "project") {
