@@ -12,6 +12,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { toast } from "sonner";
 import { generateQuotePDF } from "../components/pdf/PDFGenerator";
 import { convertQuoteToInvoice } from "@/lib/quoteInvoiceConversion";
+import { ensureQuoteClient } from "@/lib/leadClientConversion";
 
 const GST_RATE = 0.05;
 
@@ -149,19 +150,20 @@ export default function QuoteView() {
   });
 
   const convertToProject = async () => {
-    if (!quote || !client || !company) return;
+    if (!quote || !company) throw new Error("Missing quote or company data.");
+    const { client_id: clientId } = await ensureQuoteClient(quote.id);
     const projectNumber = `${company.project_number_prefix || "PRJ-"}${company.next_project_number || Date.now().toString().slice(-4)}`;
     
     const { data: projectRef, error: projectError } = await supabase.from("projects").insert([{
       company_id: quote.company_id,
-      client_id: quote.client_id,
+      client_id: clientId,
       quote_id: quote.id,
       name: quote.title,
       project_number: projectNumber,
       status: "Planning",
       start_date: new Date().toISOString().split("T")[0],
       budget: safeNum(dynamicTotal), // Save custom total calculated on screen
-      site_address: client.site_address || ""
+      site_address: quote.site_address || client?.site_address || ""
     }]).select().single();
     
     if (projectError) throw projectError;
@@ -210,7 +212,7 @@ export default function QuoteView() {
       }
     } catch (error) {
       console.error("Conversion error:", error);
-      toast.error("Failed to convert quote. Please try again.");
+      toast.error(error.message || "Failed to convert quote. Please try again.");
     } finally {
       setConverting(false);
       setConvertDialogOpen(false);

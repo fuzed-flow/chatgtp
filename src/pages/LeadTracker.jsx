@@ -17,6 +17,7 @@ import LeadFormDialog from "../components/leads/LeadFormDialog";
 import DownloadButton from "../components/shared/DownloadButton";
 import Papa from "papaparse";
 import { toast } from "sonner";
+import { convertLeadToClient } from "@/lib/leadClientConversion";
 
 const ALL_PIPELINE_STAGES = ["New", "Contacted", "Booked Visit", "Quoted", "Negotiation", "Won", "Lost"];
 const KANBAN_STAGES = ["New", "Contacted", "Booked Visit", "Quoted", "Negotiation"];
@@ -124,38 +125,7 @@ export default function LeadTracker() {
 
   const convertClientMutation = useMutation({
     mutationFn: async (lead) => {
-      // Basic split if user didn't pre-fill first/last name
-      const nameParts = (lead.contact_name || "").split(" ");
-      const firstName = nameParts[0] || "";
-      const surname = nameParts.slice(1).join(" ") || "";
-
-      // 1. Insert into clients table
-      const { data: newClient, error: clientErr } = await supabase
-        .from("clients")
-        .insert([{
-          company_id: companyId,
-          name: lead.contact_name,
-          first_name: firstName,
-          surname: surname,
-          email: lead.contact_email,
-          phone: lead.contact_phone,
-          site_address: lead.site_address,
-          notes: lead.description || lead.notes,
-          type: "Residential"
-        }])
-        .select()
-        .single();
-      
-      if (clientErr) throw clientErr;
-
-      // 2. Update Lead Stage to Won and map client_id
-      const { error: leadErr } = await supabase
-        .from("leads")
-        .update({ pipeline_stage: "Won", client_id: newClient.id })
-        .eq("id", lead.id);
-
-      if (leadErr) throw leadErr;
-      return newClient;
+      return convertLeadToClient(lead.id);
     },
     onSuccess: (newClient) => {
       queryClient.invalidateQueries({ queryKey: ["leads", companyId] });
