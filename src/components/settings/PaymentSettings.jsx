@@ -5,7 +5,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Save, CreditCard, Building, ExternalLink, ShieldCheck, Loader2 } from 'lucide-react';
@@ -17,6 +16,7 @@ export default function PaymentSettings() {
   // --- FORM STATES ---
   const [stripeStatus, setStripeStatus] = useState('unconnected'); 
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isOpeningDashboard, setIsOpeningDashboard] = useState(false);
   
   // Fees & Terms
   const [defaultTerms, setDefaultTerms] = useState('Due on Receipt');
@@ -97,6 +97,40 @@ export default function PaymentSettings() {
     }
   };
 
+  const handleOpenStripeDashboard = async () => {
+    setIsOpeningDashboard(true);
+    toast.loading("Opening your secure Stripe Dashboard...", { id: 'stripe-dashboard' });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active authentication session found.");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/connect-stripe-account`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ action: 'dashboard' })
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to open the Stripe Dashboard.");
+      if (!result.url) throw new Error("Stripe Dashboard URL was not returned.");
+
+      toast.dismiss('stripe-dashboard');
+      window.location.assign(result.url);
+    } catch (err) {
+      console.error(err);
+      toast.dismiss('stripe-dashboard');
+      toast.error(err.message || "An unexpected error occurred.");
+      setIsOpeningDashboard(false);
+    }
+  };
+
   console.log("Stripe ID React sees:", company?.stripe_account_id);
   
   return (
@@ -127,10 +161,15 @@ export default function PaymentSettings() {
                 </div>
                 <Button 
                   variant="outline" 
-                  onClick={() => window.open('https://dashboard.stripe.com', '_blank')}
+                  onClick={handleOpenStripeDashboard}
+                  disabled={isOpeningDashboard}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 >
-                  View Stripe Dashboard <ExternalLink className="h-4 w-4 ml-2" />
+                  {isOpeningDashboard ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Opening...</>
+                  ) : (
+                    <>View Stripe Dashboard <ExternalLink className="h-4 w-4 ml-2" /></>
+                  )}
                 </Button>
               </div>
             ) : (
