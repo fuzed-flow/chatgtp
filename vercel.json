@@ -1,6 +1,17 @@
 {
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "fuzedflow.com"
+        }
+      ],
+      "destination": "https://www.fuzedflow.com/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         {
