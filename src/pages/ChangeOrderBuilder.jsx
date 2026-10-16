@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; 
 import { useAuth } from "@/lib/AuthContext"; 
@@ -27,6 +27,11 @@ import { validateProjectPhotoUpload } from "@/lib/projectPhotoLimits";
 const safeNum = (val) => {
   const num = Number(val);
   return isNaN(num) ? 0 : num;
+};
+
+const getProjectClient = (project) => {
+  const client = project?.clients;
+  return Array.isArray(client) ? client[0] : client;
 };
 
 export default function ChangeOrderBuilder() {
@@ -68,10 +73,6 @@ export default function ChangeOrderBuilder() {
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [emailDialog, setEmailDialog] = useState(false);
-  const [projectClientEmail, setProjectClientEmail] = useState("");
-  const [projectClientName, setProjectClientName] = useState("");
-  const [projectClientPhone, setProjectClientPhone] = useState("");
-  
   // ⚡ New Menu States
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [sendMethod, setSendMethod] = useState("email");
@@ -95,9 +96,24 @@ export default function ChangeOrderBuilder() {
   });
   
   const { data: projects = [] } = useQuery({ 
-    queryKey: ["projects", companyId], enabled: !!companyId,
-    queryFn: async () => { const { data } = await supabase.from("projects").select("id, name, project_number, client_id").eq("company_id", companyId); return data || []; } 
+    queryKey: ["change-order-projects", companyId], enabled: !!companyId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("projects")
+        .select("id, name, project_number, client_id, clients(id, name, email, phone)")
+        .eq("company_id", companyId);
+      return data || [];
+    }
   });
+
+  const selectedProject = useMemo(
+    () => projects.find(project => project.id === form.project_id),
+    [projects, form.project_id]
+  );
+  const selectedClient = getProjectClient(selectedProject);
+  const projectClientName = selectedClient?.name || "";
+  const projectClientEmail = selectedClient?.email || "";
+  const projectClientPhone = selectedClient?.phone || "";
   
   const { data: products = [] } = useQuery({ 
     queryKey: ["products", companyId], enabled: !!companyId,
@@ -130,22 +146,6 @@ export default function ChangeOrderBuilder() {
       return data || [];
     },
   });
-
-  useEffect(() => {
-    const fetchClientInfo = async () => {
-      if (!form.project_id) return;
-      const project = projects.find(p => p.id === form.project_id);
-      if (!project || !project.client_id) return;
-      
-      const { data } = await supabase.from("clients").select("name, email").eq("id", project.client_id).single();
-      if (data) {
-        setProjectClientName(data.name);
-        setProjectClientEmail(data.email);
-        setProjectClientPhone(data.phone || "");
-      }
-    };
-    fetchClientInfo();
-  }, [form.project_id, projects]);
 
   useEffect(() => {
     if (existingCO && hasLoadedDocument.current !== coId) {
@@ -832,9 +832,29 @@ export default function ChangeOrderBuilder() {
             <div>
               <Label className="text-slate-900 font-medium">Linked Project *</Label>
               <Select value={form.project_id} onValueChange={(v) => setForm({...form, project_id: v})} disabled={!!coId}>
-                <SelectTrigger className="bg-white"><SelectValue placeholder="Select active project..." /></SelectTrigger>
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Select active project...">
+                    {selectedProject ? `${selectedProject.project_number} - ${selectedProject.name}` : undefined}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
-                  {projects.map(p => <SelectItem key={p.id} value={p.id} className="font-medium">{p.project_number} - {p.name}</SelectItem>)}
+                  {projects.map(project => {
+                    const projectLabel = `${project.project_number} - ${project.name}`;
+                    const clientName = getProjectClient(project)?.name || "No client assigned";
+                    return (
+                      <SelectItem
+                        key={project.id}
+                        value={project.id}
+                        textValue={`${projectLabel} ${clientName}`}
+                        className="py-2"
+                      >
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate font-medium text-slate-900">{projectLabel}</span>
+                          <span className="truncate text-xs font-normal text-slate-500">{clientName}</span>
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
