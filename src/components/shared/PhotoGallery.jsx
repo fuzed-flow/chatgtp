@@ -1,12 +1,38 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Image as ImageIcon, Trash2, Upload, Loader2, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Image as ImageIcon, Trash2, Upload, Loader2, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 // ⚡ PERFORMANCE FIX: Individual Image Component with progressive loading
-const GalleryImage = ({ photo, onClick, onDelete }) => {
+const INITIAL_PHOTO_COUNT = 5;
+const PRELOAD_PHOTO_COUNT = 15;
+
+export function galleryThumbnailUrl(url, size = 480) {
+  try {
+    const parsed = new URL(url);
+    const marker = "/storage/v1/object/public/";
+    if (!parsed.pathname.includes(marker) && !parsed.pathname.includes("/storage/v1/render/image/public/")) return url;
+    parsed.pathname = parsed.pathname.replace(marker, "/storage/v1/render/image/public/");
+    parsed.searchParams.set("width", String(size));
+    parsed.searchParams.set("height", String(size));
+    parsed.searchParams.set("resize", "cover");
+    parsed.searchParams.set("quality", "72");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+const GalleryImage = ({ photo, onClick, onDelete, eager = false }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const thumbnailUrl = useMemo(() => galleryThumbnailUrl(photo.url), [photo.url]);
+  const [source, setSource] = useState(thumbnailUrl);
+
+  useEffect(() => {
+    setIsLoaded(false);
+    setSource(thumbnailUrl);
+  }, [thumbnailUrl]);
 
   return (
     <div className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50 relative group shadow-sm">
@@ -19,10 +45,16 @@ const GalleryImage = ({ photo, onClick, onDelete }) => {
       
       {/* Actual Image - Downloads in background, fades in when ready */}
       <img
-        src={photo.url}
+        src={source}
         alt={photo.name || "Gallery image"}
-        loading="lazy" // Tells browser not to load off-screen images
+        loading={eager ? "eager" : "lazy"}
+        fetchPriority={eager ? "high" : "auto"}
+        decoding="async"
         onLoad={() => setIsLoaded(true)}
+        onError={() => {
+          if (source !== photo.url) setSource(photo.url);
+          else setIsLoaded(true);
+        }}
         onClick={onClick}
         className={`h-full w-full object-cover cursor-zoom-in group-hover:scale-110 transition-all duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
       />
@@ -49,6 +81,38 @@ export default function PhotoGallery({
 }) {
   const fileInputRef = useRef(null);
   const [viewingIndex, setViewingIndex] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_PHOTO_COUNT);
+
+  useEffect(() => {
+    setVisibleCount(current => Math.min(Math.max(current, INITIAL_PHOTO_COUNT), Math.max(photos.length, INITIAL_PHOTO_COUNT)));
+  }, [photos.length]);
+
+  useEffect(() => {
+    const preload = () => photos.slice(0, PRELOAD_PHOTO_COUNT).forEach(photo => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = galleryThumbnailUrl(photo.url);
+    });
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(preload, { timeout: 1500 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const handle = window.setTimeout(preload, 250);
+    return () => window.clearTimeout(handle);
+  }, [photos]);
+
+  useEffect(() => {
+    if (viewingIndex === null || photos.length < 2) return;
+    const previous = photos[(viewingIndex - 1 + photos.length) % photos.length];
+    const next = photos[(viewingIndex + 1) % photos.length];
+    [previous, next].forEach(photo => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = photo.url;
+    });
+  }, [photos, viewingIndex]);
+
+  const visiblePhotos = photos.slice(0, visibleCount);
 
   return (
     <>
@@ -57,7 +121,7 @@ export default function PhotoGallery({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
           <div>
             <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <ImageIcon className="h-5 w-5 text-slate-400" /> {title}
+              <ImageIcon className="h-5 w-5 text-slate-400" /> {title} ({photos.length})
             </h3>
             <p className="text-xs text-slate-500 font-medium">{subtitle}</p>
           </div>
@@ -88,12 +152,13 @@ export default function PhotoGallery({
         
         {/* Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 min-h-[100px]">
-           {photos.map((photo, i) => (
+           {visiblePhotos.map((photo, i) => (
              <GalleryImage 
                key={photo.id || i} 
                photo={photo} 
                onClick={() => setViewingIndex(i)} 
                onDelete={onDelete} 
+               eager={i < INITIAL_PHOTO_COUNT}
              />
            ))}
            {photos.length === 0 && !isUploading && (
@@ -103,6 +168,26 @@ export default function PhotoGallery({
              </div>
            )}
         </div>
+
+        {photos.length > INITIAL_PHOTO_COUNT && (
+          <div className="mt-4 flex flex-wrap justify-center gap-2 border-t border-slate-100 pt-4">
+            {visibleCount < Math.min(PRELOAD_PHOTO_COUNT, photos.length) && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setVisibleCount(Math.min(PRELOAD_PHOTO_COUNT, photos.length))}>
+                <ChevronDown className="mr-1 h-4 w-4" /> See {Math.min(10, photos.length - visibleCount)} more
+              </Button>
+            )}
+            {visibleCount >= Math.min(PRELOAD_PHOTO_COUNT, photos.length) && visibleCount < photos.length && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setVisibleCount(photos.length)}>
+                <ChevronDown className="mr-1 h-4 w-4" /> See all ({photos.length})
+              </Button>
+            )}
+            {visibleCount > INITIAL_PHOTO_COUNT && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setVisibleCount(INITIAL_PHOTO_COUNT)}>
+                <ChevronUp className="mr-1 h-4 w-4" /> Show less
+              </Button>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Internal Full-Screen Lightbox */}
@@ -126,7 +211,7 @@ export default function PhotoGallery({
              )}
 
              {viewingIndex !== null && photos[viewingIndex] && (
-               <img src={photos[viewingIndex].url} className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" alt={`Full screen view`} />
+               <img src={photos[viewingIndex].url} loading="eager" decoding="async" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" alt={photos[viewingIndex].name || "Full screen view"} />
              )}
           </div>
         </DialogContent>

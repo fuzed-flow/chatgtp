@@ -249,7 +249,9 @@ serve(async (req) => {
         id: resendData.id, company_id: companyId, client_id: deliveryContext?.clientId || (copy ? copy.clientId : (client_id || null)),
         lead_id: deliveryContext?.leadId || null, provider: "resend", provider_message_id: resendData.id,
         type: "Email", direction: "outbound", subject, message: html_body,
-        status: "sent", sent_by: userId,
+        status: "sent", sent_by: userId, delivery_kind: deliveryContext?.kind || null,
+        related_type: deliveryContext?.related || null, related_id: deliveryContext?.id || null,
+        related_label: deliveryContext?.label || null,
       }, { onConflict: "id", ignoreDuplicates: true });
       if (error) console.warn("Email accepted; communication history could not be recorded.");
     } catch {

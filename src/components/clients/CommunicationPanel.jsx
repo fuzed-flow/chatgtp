@@ -54,6 +54,7 @@ export default function CommunicationPanel({ clientId, leadId, clientEmail, clie
         .select("*")
         .eq(partyColumn, partyId)
         .eq("company_id", companyId)
+        .or("delivery_kind.is.null,delivery_kind.eq.communication")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;

@@ -55,7 +55,7 @@ serve(async req => {
     } catch { console.warn('SMS acceptance tracking requires review.'); }
     try { await registerDelivery(db, context, 'twilio', result.sid, actor, phone, from); } catch { console.warn('SMS delivery tracking requires review.'); }
     try {
-      const logged = await db.from('client_communications').upsert({ company_id: companyId, client_id: context.clientId, lead_id: context.leadId, type: 'SMS', direction: 'Outbound', subject: 'Text message sent', message, status: 'Sent', sent_by: actor, provider: 'twilio', provider_message_id: result.sid }, { onConflict: 'provider,provider_message_id', ignoreDuplicates: true });
+      const logged = await db.from('client_communications').upsert({ company_id: companyId, client_id: context.clientId, lead_id: context.leadId, type: 'SMS', direction: 'Outbound', subject: 'Text message sent', message, status: 'Sent', sent_by: actor, provider: 'twilio', provider_message_id: result.sid, delivery_kind: context.kind, related_type: context.related, related_id: context.id, related_label: context.label }, { onConflict: 'provider,provider_message_id', ignoreDuplicates: true });
       if (logged.error) console.warn('SMS history tracking requires review.');
     } catch { console.warn('SMS history tracking requires review.'); }
     return json({ success: true, message_sid: result.sid });

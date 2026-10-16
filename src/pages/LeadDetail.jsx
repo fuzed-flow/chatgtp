@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import StatusBadge from "../components/shared/StatusBadge";
-import NotesFeed from "../components/shared/NotesFeed";
+import CrmNotesFeed from "../components/shared/CrmNotesFeed";
 import { format, parseISO, isValid } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,7 @@ import CreateTaskDialog from "../components/tasks/CreateTaskDialog";
 import PhotoGallery from "../components/shared/PhotoGallery";
 import DocumentManager from "../components/shared/DocumentManager";
 import CommunicationPanel from "../components/clients/CommunicationPanel";
+import ClientActivityPanel from "../components/clients/ClientActivityPanel";
 import ConfirmDeleteDialog from "../components/shared/ConfirmDeleteDialog";
 import { useTaskVendors } from "@/hooks/useTaskVendors";
 import { convertLeadToClient } from "@/lib/leadClientConversion";
@@ -622,11 +623,12 @@ export default function LeadDetail() {
 
       {/* LOWER SECTIONS */}
       <div className="space-y-6">
+        <ClientActivityPanel leadId={lead.id} />
         <CommunicationPanel leadId={lead.id} clientEmail={lead.contact_email} clientPhone={lead.contact_phone} clientName={lead.contact_name} />
         
         {/* NOTES SECTION */}
         <Card className="p-0 sm:p-2 shadow-sm border-slate-200/80 bg-white overflow-hidden rounded-xl [&_.py-12]:py-4 [&_.py-16]:py-4 [&_svg]:max-h-8 [&_svg]:max-w-8">
-          <NotesFeed relatedType="Lead" relatedId={lead?.id} clientId={lead?.client_id} />
+          <CrmNotesFeed relatedType="Lead" relatedId={lead?.id} />
         </Card>
 
         {/* TASKS / REQUESTS SECTION */}

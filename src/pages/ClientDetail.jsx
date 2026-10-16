@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import StatusBadge from "../components/shared/StatusBadge";
-import NotesFeed from "../components/shared/NotesFeed";
+import CrmNotesFeed from "../components/shared/CrmNotesFeed";
 import { format, parseISO, isValid } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,8 @@ import CreateTaskDialog from "../components/tasks/CreateTaskDialog";
 import PhotoGallery from "../components/shared/PhotoGallery";
 import DocumentManager from "../components/shared/DocumentManager";
 import { useTaskVendors } from "@/hooks/useTaskVendors";
+import CommunicationPanel from "../components/clients/CommunicationPanel";
+import ClientActivityPanel from "../components/clients/ClientActivityPanel";
 
 // --- CONSTANTS & HELPERS ---
 const STATUSES = ["To Do", "Doing", "Blocked", "Done", "Pending", "Active", "Under Review", "Completed"];
@@ -558,10 +560,12 @@ export default function ClientDetail() {
 
       {/* LOWER SECTIONS */}
       <div className="space-y-6">
+        <ClientActivityPanel clientId={client.id} />
+        <CommunicationPanel clientId={client.id} clientEmail={client.email} clientPhone={client.phone} clientName={client.name} />
         
         {/* NOTES SECTION */}
         <Card className="p-0 sm:p-2 shadow-sm border-slate-200/80 bg-white overflow-hidden rounded-xl [&_.py-12]:py-4 [&_.py-16]:py-4 [&_svg]:max-h-8 [&_svg]:max-w-8">
-          <NotesFeed relatedType="Client" relatedId={client.id} clientId={client.id} />
+          <CrmNotesFeed relatedType="Client" relatedId={client.id} />
         </Card>
 
         {/* TASKS / REQUESTS SECTION */}
