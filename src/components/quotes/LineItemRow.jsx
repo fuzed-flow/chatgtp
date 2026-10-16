@@ -207,7 +207,7 @@ export default function LineItemRow({
 
           <button type="button" aria-expanded={false} aria-controls={detailsId} onClick={() => setIsCollapsed(false)} className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-between gap-4 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-bold text-slate-900">{item.name || "Unnamed Item"}</span>
+              <span className="block truncate text-xs font-bold text-slate-900 sm:text-sm">{item.name || "Unnamed Item"}</span>
               <span className={`block truncate text-xs text-slate-500 ${localDesc ? "" : "italic"}`}>{localDesc || "No description"}</span>
             </span>
             <span className="flex shrink-0 items-center gap-4 text-right">
@@ -231,8 +231,8 @@ export default function LineItemRow({
               <GripVertical className="h-4 w-4 text-slate-400" />
             </div>
             
-            {/* The wrapper class reduces input text size on mobile only */}
-            <div className="flex-1 min-w-0 [&_input]:text-sm sm:[&_input]:text-base">
+            {/* Keep long line-item names compact on both mobile and desktop. */}
+            <div className="flex-1 min-w-0 [&_input]:text-xs sm:[&_input]:text-sm">
               <ProductSearchOrCreate
                 value={item.name}
                 initialData={{
