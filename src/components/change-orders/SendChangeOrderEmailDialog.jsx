@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { createPageUrl } from "../../utils";
 import { generateQuotePDF } from "../pdf/PDFGenerator";
 import { useDocumentEmailSend } from "@/lib/emailCopy";
+import { buildPublicChangeOrderUrl, issueChangeOrderShareToken } from "@/lib/changeOrderSharing";
 
 export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeOrderId, coName, clientName, clientEmail, onSuccess }) {
   const { profile, settings } = useAuth();
@@ -25,6 +26,7 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
   
   const [coData, setCoData] = useState(null);
   const [companyData, setCompanyData] = useState(null);
+  const [shareToken, setShareToken] = useState("");
   const [readyDocumentId, setReadyDocumentId] = useState(null);
   const setupLoading = readyDocumentId !== changeOrderId;
   const {
@@ -59,6 +61,7 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
     setAttachPdf(true);
     setCompanyData(null);
     setCoData(null);
+    setShareToken("");
 
     const fetchSetupData = async () => {
       // 1. Deep fetch: Grab the Change Order AND reach through to the Project to get the Client ID
@@ -144,6 +147,9 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
         .replace(/{{company_name}}/g, cpyName);
 
       setSignature(personalizedSig.trim());
+      const token = await issueChangeOrderShareToken(changeOrderId);
+      if (!isMounted) return;
+      setShareToken(token);
       setReadyDocumentId(changeOrderId);
     };
 
@@ -168,11 +174,11 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
 
       const customMessageHtml = (message || "").replace(/\n/g, '<br>');
       const sigHtml = (signature || "").replace(/\n/g, '<br>');
-      const portalUrl = `${window.location.origin}${createPageUrl(`PublicChangeOrderView?id=${changeOrderId}`)}`;
+      const portalUrl = buildPublicChangeOrderUrl(changeOrderId, shareToken);
       
       // ⚡ 2. SECURELY ATTACH CLIENT ID TO PORTAL LINK
       const baseClientPortalUrl = clientId 
-        ? `${window.location.origin}${createPageUrl(`ClientPortal?id=${clientId}`)}` 
+        ? `${window.location.origin}${createPageUrl(`ClientPortal?id=${clientId}&co_token=${encodeURIComponent(shareToken)}`)}`
         : `${window.location.origin}${createPageUrl('ClientPortal')}`;
       
       const brandColor = companyData?.settings?.pdf?.brand_color || "#f59e0b";
@@ -263,7 +269,8 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
   };
 
   const copyToClipboard = () => {
-    const link = `${window.location.origin}${createPageUrl(`PublicChangeOrderView?id=${changeOrderId}`)}`;
+    if (!shareToken) return;
+    const link = buildPublicChangeOrderUrl(changeOrderId, shareToken);
     navigator.clipboard.writeText(link);
     toast.success("Client portal link copied!");
   };
@@ -338,6 +345,139 @@ export default function SendChangeOrderEmailDialog({ open, onOpenChange, changeO
                 {saving ? (copyPending ? "Sending copy..." : "Sending...") : <><Send className="h-4 w-4 mr-2" /> {copyPending ? "Retry copy" : hasRetry ? "Retry send" : "Send Email"}</>}
               </Button>
             </div>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+import React, { useState, useEffect, useRef } from "react";
+import { supabase } from "@/api/supabaseClient";
+import { useAuth } from "@/lib/AuthContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import { MessageSquare, Send, Link as LinkIcon, Lock } from "lucide-react";
+import { toast } from "sonner";
+import { buildPublicChangeOrderUrl, issueChangeOrderShareToken } from "@/lib/changeOrderSharing";
+
+export default function SendChangeOrderTextDialog({ open, onOpenChange, changeOrderId, coName, clientName, clientPhone, onSuccess }) {
+  const { settings, profile } = useAuth();
+  
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [portalLink, setPortalLink] = useState("");
+  const [saving, setSaving] = useState(false);
+  const sendIntent = useRef(null);
+  const [coData, setCoData] = useState(null);
+
+  useEffect(() => {
+    if (open && changeOrderId) {
+      // ⚡ DEEP FETCH TO GET CLIENT ID FROM ATTACHED PROJECT
+      supabase.from("change_orders").select("change_order_number, title, projects(client_id)").eq("id", changeOrderId).single()
+        .then(({ data }) => setCoData(data));
+    }
+  }, [open, changeOrderId]);
+
+  useEffect(() => {
+    if (open && changeOrderId && coData) {
+      setPhone(clientPhone || "");
+      setPortalLink("");
+      let active = true;
+      issueChangeOrderShareToken(changeOrderId)
+        .then(token => { if (active) setPortalLink(buildPublicChangeOrderUrl(changeOrderId, token)); })
+        .catch(() => { if (active) toast.error("Could not create the secure client link."); });
+
+      const cName = clientName ? clientName.split(' ')[0] : 'there';
+      const cNum = coData?.change_order_number || "Draft";
+
+      const defaultTemplate = "Hi {{client_name}}, Change Order {{co_number}} has been requested for your project. Tap the link to authorize the adjustment:";
+      const rawTemplate = settings?.templates?.co_sms || defaultTemplate;
+
+      const personalizedMessage = rawTemplate
+        .replace(/{{client_name}}/g, cName)
+        .replace(/{{co_number}}/g, cNum);
+      
+      setMessage(personalizedMessage.trim());
+      return () => { active = false; };
+    }
+  }, [open, changeOrderId, coData, clientName, clientPhone, settings]);
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!phone.trim()) { toast.error("Phone number is required"); return; }
+    if (!portalLink) { toast.error("The secure client link is still loading."); return; }
+
+    setSaving(true);
+    const loadingToast = toast.loading("Sending SMS...");
+    const finalSmsPayload = `${message}\n\n${portalLink}`;
+
+    try {
+      const signature = JSON.stringify([changeOrderId, phone.trim(), finalSmsPayload]);
+      if (sendIntent.current?.signature !== signature) sendIntent.current = { signature, requestId: crypto.randomUUID(), accepted: false };
+      if (!sendIntent.current.accepted) {
+        const { data, error: fnError } = await supabase.functions.invoke('send-sms', {
+          body: { phone_number: phone.trim(), message_body: finalSmsPayload, document_type: "change_order", document_id: changeOrderId, request_id: sendIntent.current.requestId }
+        });
+        if (fnError || data?.success !== true) throw new Error(data?.error || fnError?.message || "SMS acceptance could not be confirmed");
+        sendIntent.current.accepted = true;
+      }
+      // Provider acceptance precedes the status change; retries never send another accepted SMS.
+      const { error: statusError } = await supabase.from("change_orders").update({
+        status: "Sent", sent_at: new Date().toISOString(), automation_stage: 0, next_follow_up_date: null,
+      }).eq("id", changeOrderId).eq("company_id", profile.company_id).eq("status", "Draft");
+      if (statusError) throw new Error("SMS was sent, but document status could not be saved. Retry to update the status.");
+      sendIntent.current = null;
+
+      toast.success(`Change Order texted to ${phone}!`, { id: loadingToast });
+      onSuccess?.();
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(`Failed to send text: ${error.message}`, { id: loadingToast });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[95vw] sm:max-w-lg bg-slate-50 p-0 overflow-hidden flex flex-col max-h-[90vh]">
+        <DialogHeader className="px-6 py-4 bg-white border-b border-slate-200 shrink-0">
+          <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-amber-500" /> Text Change Order (SMS)
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSend} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            <Card className="p-5 border-slate-200 shadow-sm space-y-4 bg-white">
+              <div className="w-full">
+                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Mobile Phone Number *</Label>
+                <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 123-4567" className="font-medium text-slate-900 w-full" autoFocus />
+              </div>
+
+              <div className="space-y-2 w-full">
+                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Text Message</Label>
+                <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50 focus-within:ring-2 focus-within:ring-amber-500 transition-all flex flex-col w-full">
+                  <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className="resize-none font-medium text-sm leading-relaxed border-0 shadow-none focus-visible:ring-0 rounded-none bg-white w-full" />
+                  <div className="px-3 py-2.5 bg-slate-100 border-t border-slate-200 flex items-center gap-2 w-full overflow-hidden">
+                    <LinkIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span className="text-xs text-slate-500 font-medium truncate flex-1 min-w-0 select-all">{portalLink}</span>
+                    <Lock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div className="flex justify-end gap-3 p-4 bg-white border-t border-slate-200 shrink-0">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+            <Button type="submit" disabled={saving || !portalLink} className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6">
+              {saving ? "Sending..." : <><Send className="h-4 w-4 mr-2" /> Send Text</>}
+            </Button>
           </div>
         </form>
       </DialogContent>
