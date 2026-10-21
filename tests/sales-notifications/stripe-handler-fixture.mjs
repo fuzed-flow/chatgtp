@@ -36,7 +36,7 @@ class FixedDate extends Date {constructor(...args){super(...(args.length ? args 
 function fixture(name,options={}) {
   const queries=[],rpcs=[],stripeCalls=[],errors=[];
   let handler;
-  const rows={companies:[{id:COMPANY,stripe_account_id:ACCOUNT,stripe_customer_id:CUSTOMER,settings:{currency:'CAD'},subscription_cancel_at:null,plan_id:'professional'}],
+  const rows={companies:[{id:COMPANY,name:'Synthetic Trades',stripe_account_id:ACCOUNT,stripe_customer_id:CUSTOMER,settings:{currency:'CAD'},subscription_cancel_at:null,subscription_status:'Active',max_users:3,plan_id:'professional'}],
     profiles:[{id:USER,company_id:COMPANY,is_active:true,role:'admin',permissions:null}],
     clients:[{id:'00000000-0000-4000-8000-000000000014',company_id:COMPANY,email:'client@example.com'}],
     invoices:[{id:INVOICE,company_id:COMPANY,client_id:'00000000-0000-4000-8000-000000000014',status:'Sent',total:1000,amount_paid:100,invoice_number:'INV-SYNTHETIC',has_payment_schedule:false}],
@@ -61,7 +61,7 @@ function fixture(name,options={}) {
     if(options.rpcResults && Object.hasOwn(options.rpcResults,name)) return options.rpcResults[name];
     if(name==='notification_provider_server_config') return {data:options.vault || {},error:null};
     if(name==='stripe_payment_context') return {data:options.savedContext || null,error:null};
-    assert.ok(['record_stripe_payment','record_sales_event'].includes(name),'Unexpected RPC '+name);
+    assert.ok(['record_stripe_payment','record_sales_event','enqueue_subscription_owner_email'].includes(name),'Unexpected RPC '+name);
     return {data:true,error:null};
   }};
   const sdk=async (method,args,result)=>{stripeCalls.push({method,args:plain(args)});if(options.stripeError===method)throw new Error('synthetic provider failure');return plain(result);};
@@ -89,7 +89,7 @@ function fixture(name,options={}) {
   return {handler,queries,rpcs,stripeCalls,rows,errors,get writes(){return [...rpcs.filter(call=>['record_stripe_payment','record_sales_event'].includes(call.name)),...queries.filter(query=>query.operation==='update')];}};
 }
 function checkout(overrides={}) {return {object:'checkout.session',id:'cs_synthetic',mode:'payment',payment_status:'paid',payment_intent:'pi_synthetic',amount_total:12345,created:NOW/1000,metadata:{company_id:COMPANY,invoice_id:INVOICE},...overrides};}
-function event(type='checkout.session.completed',object=checkout(),account=ACCOUNT){return {id:'evt_synthetic',type,...(account ? {account} : {}),data:{object}};}
+function event(type='checkout.session.completed',object=checkout(),account=ACCOUNT,previousAttributes=null){return {id:'evt_synthetic',type,livemode:true,...(account ? {account} : {}),data:{object,...(previousAttributes ? {previous_attributes:previousAttributes} : {})}};}
 function request(value,signature='synthetic-signature') {return new Request('https://synthetic.supabase.invalid/functions/v1/stripe-webhook',{method:'POST',headers:{'Content-Type':'application/json',...(signature ? {'Stripe-Signature':signature} : {})},body:JSON.stringify(value)});}
 function depositRequest(input={quote_id:QUOTE,token:QUOTE_TOKEN},authorization=null) {return new Request('https://synthetic.supabase.invalid/functions/v1/createDepositCheckout',{method:'POST',headers:{'Content-Type':'application/json',...(authorization ? {Authorization:`Bearer ${authorization}`} : {})},body:JSON.stringify(input)});}
 function subscription(overrides={}) {return {id:'sub_synthetic',customer:CUSTOMER,status:'active',items:{data:[{price:{id:SUBSCRIPTION_PRICES.professional.monthly},quantity:1}]},current_period_end:NOW/1000+86400,metadata:{company_id:COMPANY},...overrides};}

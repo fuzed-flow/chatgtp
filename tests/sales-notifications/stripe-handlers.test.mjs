@@ -86,10 +86,38 @@ test('Subscription metadata cannot rebind a company to an unrelated saved custom
 });
 test('Scheduled cancellation and deletion persist dates, free access and separate notifications',async()=>{
   const view=fixture('stripe-webhook',{verificationSecret:'synthetic-platform-secret'});
-  assert.equal((await view.handler(request(event('customer.subscription.updated',subscription({cancel_at_period_end:true}),null)))).status,200);
+  assert.equal((await view.handler(request(event('customer.subscription.updated',subscription({cancel_at_period_end:true}),null,{cancel_at_period_end:false})))).status,200);
   assert.equal(updates(view)[0].payload.subscription_cancel_at,new Date(NOW+86400000).toISOString());assert.equal(sales(view)[0].args.p_event,'subscription_cancellation_scheduled');
+  const scheduled=view.rpcs.find(call=>call.name==='enqueue_subscription_owner_email');
+  assert.equal(scheduled.args.p_event,'platform_subscription_cancellation_scheduled');assert.equal(scheduled.args.p_company,COMPANY);assert.equal(scheduled.args.p_stripe_event_id,'evt_synthetic');
+  assert.match(scheduled.args.p_subject,/cancellation scheduled/i);assert.match(scheduled.args.p_body,/Synthetic Trades/);
   assert.equal((await view.handler(request(event('customer.subscription.deleted',subscription({status:'canceled'}),null)))).status,200);
   const last=updates(view).at(-1);assert.equal(last.payload.plan_id,'free');assert.equal(last.payload.max_users,1);assert.equal(last.payload.subscription_status,'Canceled');assert.equal(sales(view).at(-1).args.p_event,'subscription_cancelled');
+  assert.equal(view.rpcs.filter(call=>call.name==='enqueue_subscription_owner_email').at(-1).args.p_event,'platform_subscription_cancelled');
+});
+test('Subscription creation queues one owner tracking email with plan and users',async()=>{
+  const view=fixture('stripe-webhook',{verificationSecret:'synthetic-platform-secret'});
+  assert.equal((await view.handler(request(event('customer.subscription.created',subscription(),null)))).status,200);
+  const queued=view.rpcs.find(call=>call.name==='enqueue_subscription_owner_email');
+  assert.equal(queued.args.p_event,'platform_subscription_created');assert.match(queued.args.p_subject,/New FuzedFlow subscription/);
+  assert.match(queued.args.p_body,/Plan: Professional/);assert.match(queued.args.p_body,/User allowance: 3/);
+});
+test('Material plan and seat updates queue one owner email while renewal-only updates stay quiet',async()=>{
+  const previousItem={price:{id:SUBSCRIPTION_PRICES.professional.monthly},quantity:1};
+  const view=fixture('stripe-webhook',{verificationSecret:'synthetic-platform-secret'});
+  const changed=subscription({items:{data:[{price:{id:SUBSCRIPTION_PRICES.business.annual},quantity:4}]}});
+  assert.equal((await view.handler(request(event('customer.subscription.updated',changed,null,{items:{data:[previousItem]}})))).status,200);
+  const queued=view.rpcs.find(call=>call.name==='enqueue_subscription_owner_email');
+  assert.equal(queued.args.p_event,'platform_subscription_updated');assert.match(queued.args.p_body,/Professional Monthly.*Business Annual/);assert.match(queued.args.p_body,/User allowance: 3.*13/);
+  const quiet=fixture('stripe-webhook',{verificationSecret:'synthetic-platform-secret'});
+  assert.equal((await quiet.handler(request(event('customer.subscription.updated',subscription(),null,{current_period_end:NOW/1000})))).status,200);
+  assert.equal(quiet.rpcs.some(call=>call.name==='enqueue_subscription_owner_email'),false);
+});
+test('Removing a scheduled cancellation queues a distinct owner email',async()=>{
+  const view=fixture('stripe-webhook',{verificationSecret:'synthetic-platform-secret',rows:{companies:[{id:COMPANY,name:'Synthetic Trades',stripe_account_id:ACCOUNT,stripe_customer_id:CUSTOMER,settings:{currency:'CAD'},subscription_cancel_at:new Date(NOW+86400000).toISOString(),subscription_status:'Active',max_users:3,plan_id:'professional'}]}});
+  assert.equal((await view.handler(request(event('customer.subscription.updated',subscription({cancel_at_period_end:false}),null,{cancel_at_period_end:true})))).status,200);
+  const queued=view.rpcs.find(call=>call.name==='enqueue_subscription_owner_email');
+  assert.equal(queued.args.p_event,'platform_subscription_cancellation_removed');assert.match(queued.args.p_subject,/cancellation removed/i);
 });
 test('Failed subscription invoice persists Past Due and a payment failure event',async()=>{
   const view=fixture('stripe-webhook',{verificationSecret:'synthetic-platform-secret'});

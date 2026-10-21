@@ -1,5 +1,5 @@
 // Notification events retain current USD/CAD prices, purchased seats and connected-account isolation.
-import { getPlanIdFromPrice, getUserLimitFromQuantity, getUsdPriceId } from "../_shared/subscriptionPlans.js";
+import { getBillingCycleFromPrice, getPlanIdFromPrice, getUserLimitFromQuantity, getUsdPriceId } from "../_shared/subscriptionPlans.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
 import Stripe from "npm:stripe@22.6.0";
 import { providerServerConfig, salesUuid } from "../_shared/salesNotifications.js";
@@ -12,6 +12,103 @@ const identifier = value => typeof value === 'string' ? value : value?.id || nul
 const epoch = value => Number(value) > 0 ? new Date(Number(value) * 1000).toISOString() : null;
 const required = async operation => { const result = await operation; if (result.error) throw new Error('Saved billing data could not be updated.'); return result.data; };
 const record = async (db, company, event, related, id, reference, message) => required(db.rpc('record_sales_event', { p_company: company, p_event: event, p_related: related, p_id: id, p_reference: reference, p_message: message, p_actor: null }));
+const label = value => String(value || '').replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase());
+const dateLabel = value => value ? new Intl.DateTimeFormat('en-CA', { dateStyle: 'medium', timeZone: 'America/Regina' }).format(new Date(value)) : 'Not set';
+
+function subscriptionDetails(subscription, deleted = false) {
+  const item = subscription.items?.data?.[0];
+  const priceId = item?.price?.id;
+  const plan = deleted ? 'free' : getPlanIdFromPrice(priceId);
+  const active = ['active', 'trialing'].includes(subscription.status);
+  return {
+    item, priceId, plan,
+    billingCycle: getBillingCycleFromPrice(priceId),
+    maxUsers: deleted ? 1 : getUserLimitFromQuantity(plan, item?.quantity || 1),
+    status: deleted ? 'Canceled' : active ? 'Active' : 'Past Due',
+    stripeStatus: subscription.status || 'unknown',
+    cancellation: epoch(subscription.cancel_at || (subscription.cancel_at_period_end ? subscription.current_period_end || item?.current_period_end : null)),
+    renewal: epoch(subscription.current_period_end || item?.current_period_end),
+  };
+}
+
+function previousItem(event) {
+  const value = event.data?.previous_attributes?.items;
+  return value?.data?.[0] || null;
+}
+
+function subscriptionOwnerEmail(event, company, subscription) {
+  const deleted = event.type === 'customer.subscription.deleted';
+  const details = subscriptionDetails(subscription, false);
+  const environment = event.livemode === false ? '[TEST] ' : '';
+  const companyName = String(company.name || 'Unnamed company').replace(/[\r\n]+/g, ' ').slice(0, 160);
+  const common = [
+    `Company: ${companyName}`,
+    `Plan: ${label(details.plan)}`,
+    `Billing: ${label(details.billingCycle || 'unknown')}`,
+    `User allowance: ${details.maxUsers}`,
+    `Stripe status: ${label(details.stripeStatus)}`,
+    `Subscription: ${identifier(subscription) || 'Unknown'}`,
+    `Customer: ${identifier(subscription.customer) || 'Unknown'}`,
+  ];
+
+  if (event.type === 'customer.subscription.created') return {
+    event: 'platform_subscription_created',
+    subject: `${environment}New FuzedFlow subscription — ${companyName}`,
+    body: [...common, `Renewal date: ${dateLabel(details.renewal)}`].join('\n'),
+  };
+  if (deleted) return {
+    event: 'platform_subscription_cancelled',
+    subject: `${environment}FuzedFlow subscription ended — ${companyName}`,
+    body: [...common, `Ended: ${dateLabel(epoch(subscription.ended_at || subscription.canceled_at) || new Date().toISOString())}`].join('\n'),
+  };
+  if (event.type !== 'customer.subscription.updated') return null;
+
+  const previous = event.data?.previous_attributes || {};
+  const materialKeys = ['status','items','cancel_at','cancel_at_period_end','trial_end','pause_collection','collection_method'];
+  if (!materialKeys.some(key => Object.prototype.hasOwnProperty.call(previous, key))) return null;
+  const changes = [];
+  const oldItem = previousItem(event);
+  const oldPrice = oldItem?.price?.id || identifier(oldItem?.price);
+  if (oldPrice && oldPrice !== details.priceId) {
+    changes.push(`Plan/billing: ${label(getPlanIdFromPrice(oldPrice))} ${label(getBillingCycleFromPrice(oldPrice) || '')} → ${label(details.plan)} ${label(details.billingCycle || '')}`.trim());
+  } else if (company.plan_id && company.plan_id !== details.plan) changes.push(`Plan: ${label(company.plan_id)} → ${label(details.plan)}`);
+  const oldQuantity = Number(oldItem?.quantity);
+  if (Number.isFinite(oldQuantity) && oldQuantity !== Number(details.item?.quantity || 1)) {
+    changes.push(`Purchased quantity: ${oldQuantity} → ${Number(details.item?.quantity || 1)}`);
+  }
+  if (Number.isFinite(Number(company.max_users)) && Number(company.max_users) !== details.maxUsers) changes.push(`User allowance: ${company.max_users} → ${details.maxUsers}`);
+  const oldStatus = previous.status || company.subscription_status;
+  if (oldStatus && String(oldStatus).toLowerCase() !== String(details.stripeStatus).toLowerCase() && String(oldStatus).toLowerCase() !== String(details.status).toLowerCase()) {
+    changes.push(`Status: ${label(oldStatus)} → ${label(details.stripeStatus)}`);
+  }
+  const oldCancellation = company.subscription_cancel_at || null;
+  if (!oldCancellation && details.cancellation) changes.push(`Cancellation scheduled for ${dateLabel(details.cancellation)}`);
+  else if (oldCancellation && !details.cancellation) changes.push(`Scheduled cancellation removed (was ${dateLabel(oldCancellation)})`);
+  else if (oldCancellation && details.cancellation && oldCancellation !== details.cancellation) changes.push(`Cancellation date: ${dateLabel(oldCancellation)} → ${dateLabel(details.cancellation)}`);
+  if (Object.prototype.hasOwnProperty.call(previous, 'trial_end')) changes.push(`Trial end: ${dateLabel(epoch(previous.trial_end))} → ${dateLabel(epoch(subscription.trial_end))}`);
+  if (Object.prototype.hasOwnProperty.call(previous, 'collection_method') && previous.collection_method !== subscription.collection_method) changes.push(`Billing method: ${label(previous.collection_method)} → ${label(subscription.collection_method)}`);
+  if (!changes.length) changes.push(`Stripe updated: ${materialKeys.filter(key => Object.prototype.hasOwnProperty.call(previous, key)).map(label).join(', ')}`);
+
+  const cancellationScheduled = !oldCancellation && details.cancellation;
+  const cancellationRemoved = oldCancellation && !details.cancellation;
+  return {
+    event: cancellationScheduled ? 'platform_subscription_cancellation_scheduled' : cancellationRemoved ? 'platform_subscription_cancellation_removed' : 'platform_subscription_updated',
+    subject: `${environment}${cancellationScheduled ? 'Subscription cancellation scheduled' : cancellationRemoved ? 'Subscription cancellation removed' : 'FuzedFlow subscription updated'} — ${companyName}`,
+    body: [...common, '', 'Changes:', ...changes.map(change => `• ${change}`), `Renewal date: ${dateLabel(details.renewal)}`].join('\n'),
+  };
+}
+
+async function queueSubscriptionOwnerEmail(db, event, company, subscription) {
+  const email = subscriptionOwnerEmail(event, company, subscription);
+  if (!email) return;
+  await required(db.rpc('enqueue_subscription_owner_email', {
+    p_company: company.id,
+    p_stripe_event_id: event.id,
+    p_event: email.event,
+    p_subject: email.subject,
+    p_body: email.body,
+  }));
+}
 
 async function subscriptionCompany(db, customer, metadata = {}) {
   if (!customer) return null;
@@ -94,7 +191,12 @@ Deno.serve(async req => {
       }
     } else if (event.type.startsWith('customer.subscription.') && !account) {
       const company = await subscriptionCompany(db, identifier(object.customer), object.metadata);
-      if (company) await updateSubscription(db, company, object, event.type === 'customer.subscription.deleted', reference);
+      if (company) {
+        await updateSubscription(db, company, object, event.type === 'customer.subscription.deleted', reference);
+        if (['customer.subscription.created','customer.subscription.updated','customer.subscription.deleted'].includes(event.type)) {
+          await queueSubscriptionOwnerEmail(db, event, company, object);
+        }
+      }
     } else if (['invoice.paid', 'invoice.payment_failed', 'invoice.upcoming'].includes(event.type) && !account) {
       const company = await subscriptionCompany(db, identifier(object.customer));
       if (company) {
@@ -132,13 +234,10 @@ Deno.serve(async req => {
 });
 
 async function updateSubscription(db, company, subscription, deleted, reference) {
-  const item = subscription.items?.data?.[0];
+  const details = subscriptionDetails(subscription, deleted);
+  const item = details.item;
   if (!deleted && !getUsdPriceId(item?.price?.id)) throw new Error('Unrecognized subscription price');
-  const plan = deleted ? 'free' : getPlanIdFromPrice(item?.price?.id);
-  const active = ['active', 'trialing'].includes(subscription.status);
-  const cancellation = epoch(subscription.cancel_at || (subscription.cancel_at_period_end ? subscription.current_period_end || item?.current_period_end : null));
-  const renewal = epoch(subscription.current_period_end || item?.current_period_end);
-  await required(db.from('companies').update({ plan_id: plan, subscription_status: deleted ? 'Canceled' : active ? 'Active' : 'Past Due', max_users: deleted ? 1 : getUserLimitFromQuantity(plan, item?.quantity || 1), subscription_renews_at: renewal, subscription_cancel_at: cancellation }).eq('id', company.id).eq('stripe_customer_id', identifier(subscription.customer)));
+  await required(db.from('companies').update({ plan_id: details.plan, subscription_status: details.status, max_users: details.maxUsers, subscription_renews_at: details.renewal, subscription_cancel_at: details.cancellation }).eq('id', company.id).eq('stripe_customer_id', identifier(subscription.customer)));
   if (deleted) await record(db, company.id, 'subscription_cancelled', 'Company', company.id, reference, 'Subscription cancelled. Open billing to review access and restart options.');
-  else if (cancellation && cancellation !== company.subscription_cancel_at) await record(db, company.id, 'subscription_cancellation_scheduled', 'Company', company.id, reference, 'Subscription cancellation is scheduled. Open billing to review the cancellation date.');
+  else if (details.cancellation && details.cancellation !== company.subscription_cancel_at) await record(db, company.id, 'subscription_cancellation_scheduled', 'Company', company.id, reference, 'Subscription cancellation is scheduled. Open billing to review the cancellation date.');
 }
