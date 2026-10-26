@@ -1,28 +1,63 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Image as ImageIcon, Trash2, Upload, Loader2, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { cachedGalleryImage, canPreloadGalleryImages, galleryThumbnailUrl, galleryViewerUrl, preloadGalleryImage } from "@/lib/galleryImages";
+
+export { galleryThumbnailUrl } from "@/lib/galleryImages";
 
 // ⚡ PERFORMANCE FIX: Individual Image Component with progressive loading
 const INITIAL_PHOTO_COUNT = 5;
 const PRELOAD_PHOTO_COUNT = 15;
 
-export function galleryThumbnailUrl(url, size = 480) {
-  try {
-    const parsed = new URL(url);
-    const marker = "/storage/v1/object/public/";
-    if (!parsed.pathname.includes(marker) && !parsed.pathname.includes("/storage/v1/render/image/public/")) return url;
-    parsed.pathname = parsed.pathname.replace(marker, "/storage/v1/render/image/public/");
-    parsed.searchParams.set("width", String(size));
-    parsed.searchParams.set("height", String(size));
-    parsed.searchParams.set("resize", "cover");
-    parsed.searchParams.set("quality", "72");
-    return parsed.toString();
-  } catch {
-    return url;
-  }
-}
+const GalleryViewer = ({ photo, onReady }) => {
+  const viewerUrl = galleryViewerUrl(photo.url);
+  const [image, setImage] = useState(() => cachedGalleryImage(viewerUrl));
+  const [previewUrl, setPreviewUrl] = useState(() => galleryThumbnailUrl(photo.url));
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      let loaded = await preloadGalleryImage(viewerUrl, "high");
+      if (cancelled) return;
+      // Only the selected image may fall back to the original if resizing fails.
+      if (!loaded && viewerUrl !== photo.url) loaded = await preloadGalleryImage(photo.url, "high");
+      if (cancelled) return;
+      if (loaded) {
+        setImage(loaded);
+        onReady(photo.url);
+      } else {
+        setFailed(true);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [viewerUrl, photo.url, onReady]);
+
+  return (
+    <div className="relative flex min-h-[240px] w-full items-center justify-center" aria-busy={!image && !failed} data-gallery-viewer>
+      <img
+        src={image?.src || previewUrl}
+        width={image?.naturalWidth}
+        height={image?.naturalHeight}
+        loading="eager"
+        decoding="async"
+        alt={photo.name || "Full screen view"}
+        onError={() => {
+          if (!image && previewUrl !== photo.url) setPreviewUrl(photo.url);
+        }}
+        className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+      />
+      {!image && (
+        <div className="absolute bottom-4 rounded-lg bg-black/70 px-3 py-2 text-sm text-white" role={failed ? "alert" : "status"}>
+          {failed ? "Unable to load this photo. Try opening the original." : <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading photo…</span>}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const GalleryImage = ({ photo, onClick, onDelete, eager = false }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -82,35 +117,50 @@ export default function PhotoGallery({
   const fileInputRef = useRef(null);
   const [viewingIndex, setViewingIndex] = useState(null);
   const [visibleCount, setVisibleCount] = useState(INITIAL_PHOTO_COUNT);
+  const [readyPhotoUrl, setReadyPhotoUrl] = useState(null);
+  // Parent pages build photo objects on each render; keep preload work stable.
+  const photoUrlKey = JSON.stringify(photos.map(photo => photo.url));
+  const photoUrls = useMemo(() => JSON.parse(photoUrlKey), [photoUrlKey]);
+  const activePhoto = viewingIndex === null ? null : photos[viewingIndex];
+  const handlePhotoReady = useCallback(url => setReadyPhotoUrl(url), []);
 
   useEffect(() => {
     setVisibleCount(current => Math.min(Math.max(current, INITIAL_PHOTO_COUNT), Math.max(photos.length, INITIAL_PHOTO_COUNT)));
   }, [photos.length]);
 
   useEffect(() => {
-    const preload = () => photos.slice(0, PRELOAD_PHOTO_COUNT).forEach(photo => {
-      const image = new Image();
-      image.decoding = "async";
-      image.src = galleryThumbnailUrl(photo.url);
-    });
+    if (viewingIndex !== null || !canPreloadGalleryImages()) return;
+    let cancelled = false;
+    const preload = async () => {
+      const thumbnails = photoUrls.slice(0, PRELOAD_PHOTO_COUNT).map(url => galleryThumbnailUrl(url));
+      const viewers = photoUrls.slice(0, INITIAL_PHOTO_COUNT).map(url => galleryViewerUrl(url)).filter((url, index) => url !== photoUrls[index]);
+      for (const url of [...thumbnails, ...viewers]) {
+        if (cancelled) break;
+        await preloadGalleryImage(url);
+      }
+    };
     if (typeof window.requestIdleCallback === "function") {
       const handle = window.requestIdleCallback(preload, { timeout: 1500 });
-      return () => window.cancelIdleCallback(handle);
+      return () => { cancelled = true; window.cancelIdleCallback(handle); };
     }
     const handle = window.setTimeout(preload, 250);
-    return () => window.clearTimeout(handle);
-  }, [photos]);
+    return () => { cancelled = true; window.clearTimeout(handle); };
+  }, [photoUrls, viewingIndex]);
 
   useEffect(() => {
-    if (viewingIndex === null || photos.length < 2) return;
-    const previous = photos[(viewingIndex - 1 + photos.length) % photos.length];
-    const next = photos[(viewingIndex + 1) % photos.length];
-    [previous, next].forEach(photo => {
-      const image = new Image();
-      image.decoding = "async";
-      image.src = photo.url;
-    });
-  }, [photos, viewingIndex]);
+    if (viewingIndex === null || readyPhotoUrl !== photoUrls[viewingIndex] || photoUrls.length < 2 || !canPreloadGalleryImages()) return;
+    let cancelled = false;
+    const preloadNeighbours = async () => {
+      const neighbours = new Set([photoUrls[(viewingIndex + 1) % photoUrls.length], photoUrls[(viewingIndex - 1 + photoUrls.length) % photoUrls.length]]);
+      for (const original of neighbours) {
+        if (cancelled) break;
+        const url = galleryViewerUrl(original);
+        if (url !== original) await preloadGalleryImage(url);
+      }
+    };
+    void preloadNeighbours();
+    return () => { cancelled = true; };
+  }, [photoUrls, viewingIndex, readyPhotoUrl]);
 
   const visiblePhotos = photos.slice(0, visibleCount);
 
@@ -156,7 +206,7 @@ export default function PhotoGallery({
              <GalleryImage 
                key={photo.id || i} 
                photo={photo} 
-               onClick={() => setViewingIndex(i)} 
+               onClick={() => { setReadyPhotoUrl(null); setViewingIndex(i); }}
                onDelete={onDelete} 
                eager={i < INITIAL_PHOTO_COUNT}
              />
@@ -195,23 +245,26 @@ export default function PhotoGallery({
         <DialogContent className="max-w-5xl w-[95vw] p-1 bg-transparent border-none shadow-none" aria-describedby={undefined}>
           <DialogTitle className="sr-only">View Photo</DialogTitle>
           <div className="relative flex items-center justify-center group">
-             <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-white bg-black/50 hover:bg-black/80 rounded-full z-50 backdrop-blur-sm" onClick={() => setViewingIndex(null)}>
+             {activePhoto && (
+               <a href={activePhoto.url} target="_blank" rel="noopener noreferrer" className="absolute top-2 left-2 z-50 rounded-lg bg-black/60 px-3 py-2 text-sm font-medium text-white hover:bg-black/80">Open original</a>
+             )}
+             <Button aria-label="Close photo" variant="ghost" size="icon" className="absolute top-2 right-2 text-white bg-black/50 hover:bg-black/80 rounded-full z-50 backdrop-blur-sm" onClick={() => setViewingIndex(null)}>
                <X className="h-5 w-5"/>
              </Button>
              
              {photos.length > 1 && (
                <>
-                 <Button variant="ghost" size="icon" className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 rounded-full z-50 backdrop-blur-sm h-10 w-10 sm:h-12 sm:w-12 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setViewingIndex(prev => prev > 0 ? prev - 1 : photos.length - 1); }}>
+                 <Button aria-label="Previous photo" variant="ghost" size="icon" className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 rounded-full z-50 backdrop-blur-sm h-10 w-10 sm:h-12 sm:w-12 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setReadyPhotoUrl(null); setViewingIndex(prev => prev > 0 ? prev - 1 : photos.length - 1); }}>
                    <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8" />
                  </Button>
-                 <Button variant="ghost" size="icon" className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 rounded-full z-50 backdrop-blur-sm h-10 w-10 sm:h-12 sm:w-12 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setViewingIndex(prev => prev < photos.length - 1 ? prev + 1 : 0); }}>
+                 <Button aria-label="Next photo" variant="ghost" size="icon" className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 rounded-full z-50 backdrop-blur-sm h-10 w-10 sm:h-12 sm:w-12 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); setReadyPhotoUrl(null); setViewingIndex(prev => prev < photos.length - 1 ? prev + 1 : 0); }}>
                    <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8" />
                  </Button>
                </>
              )}
 
-             {viewingIndex !== null && photos[viewingIndex] && (
-               <img src={photos[viewingIndex].url} loading="eager" decoding="async" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" alt={photos[viewingIndex].name || "Full screen view"} />
+             {activePhoto && (
+               <GalleryViewer key={activePhoto.url} photo={activePhoto} onReady={handlePhotoReady} />
              )}
           </div>
         </DialogContent>
