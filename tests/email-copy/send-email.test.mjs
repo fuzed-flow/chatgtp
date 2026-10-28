@@ -10,7 +10,8 @@ import {transform} from 'esbuild';
 // and provider adapters. The fixture cannot make any network requests.
 const source = await fs.readFile(fileURLToPath(new URL('../../supabase/functions/send-email/index.ts', import.meta.url)), 'utf8');
 const shared = await fs.readFile(fileURLToPath(new URL('../../supabase/functions/_shared/salesNotifications.js', import.meta.url)), 'utf8');
-const javascript = (await transform(shared.replace(/^export /gm, '') + '\n' + source.replace(/^import .*\n/gm, ''), {loader: 'ts', format: 'iife'})).code;
+const sender = await fs.readFile(fileURLToPath(new URL('../../supabase/functions/_shared/companyEmailSender.js', import.meta.url)), 'utf8');
+const javascript = (await transform(sender.replace(/^export /gm, '') + '\n' + shared.replace(/^export /gm, '') + '\n' + source.replace(/^import .*\n/gm, ''), {loader: 'ts', format: 'iife'})).code;
 const uuid = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
 const COMPANY = uuid(1);
 const OTHER_COMPANY = uuid(2);
@@ -189,6 +190,47 @@ function edgeFixture(options = {}) {
 function assertScopedKey(key, phase, company = COMPANY, request = REQUEST) {
   assert.equal(key, `fuzedflow/${company}/${request}/${phase}`, 'Provider keys distinguish the authenticated company, send request, and original/copy phase.');
 }
+
+test('all ordinary company sends resolve the saved sender and ignore request-supplied identity', async t => {
+  for (const [companyId, name] of [[COMPANY, 'LB Projects'], [OTHER_COMPANY, 'Omega Reno & Contracting Inc']]) {
+    await t.test(name, async () => {
+      const fixture = edgeFixture({
+        profile: {id: USER, company_id: companyId, is_active: true},
+        company: {id: companyId, name, settings: {email: COMPANY_EMAIL}},
+      });
+      const {response} = await fixture.request(requestBody({
+        send_copy_to_company: false, client_id: undefined, document_type: undefined, document_id: undefined,
+        company_id: companyId === COMPANY ? OTHER_COMPANY : COMPANY,
+        company_name: 'Spoofed Company', from: 'Spoofed <sender@example.invalid>', sender_name: 'Spoofed Sender',
+      }));
+      assert.equal(response.status, 200);
+      assert.equal(fixture.observed.delivered[0].payload.from, `"${name}" <alerts@mail.fuzedflow.com>`);
+      assert.deepEqual(fixture.observed.delivered[0].payload.reply_to, ['reply@example.invalid']);
+      const lookup = fixture.observed.queries.find(query => query.table === 'companies');
+      assert.ok(lookup.filters.some(filter => filter.field === 'id' && filter.value === companyId));
+    });
+  }
+});
+
+test('automated reminders and original/company copies carry the saved company sender into delivery tracking', async () => {
+  const fixture = edgeFixture();
+  const {response} = await fixture.request(requestBody(), {authorization: `Bearer ${SERVICE_KEY}`});
+  assert.equal(response.status, 200);
+  assert.equal(fixture.observed.delivered.length, 2);
+  for (const email of fixture.observed.delivered) assert.equal(email.payload.from, '"LBProjects" <alerts@mail.fuzedflow.com>');
+  for (const call of fixture.observed.rpcs.filter(call => call.name === 'register_outbound_delivery')) {
+    assert.equal(call.payload.p_sender, '"LBProjects" <alerts@mail.fuzedflow.com>');
+  }
+});
+
+test('ordinary sends cannot fall back to another identity if company lookup or name is unavailable', async () => {
+  for (const options of [{company: null}, {company: {id: COMPANY, name: ' '}}, {databaseErrors: {companies: 'Unavailable'}}]) {
+    const fixture = edgeFixture(options);
+    const {response} = await fixture.request(requestBody({send_copy_to_company: false}));
+    assert.equal(response.status, 400);
+    assert.equal(fixture.observed.providerAttempts.length, 0);
+  }
+});
 
 test('CORS preflight performs no authentication, database reads, or email send', async () => {
   const fixture = edgeFixture();
@@ -638,3 +680,4 @@ test('verified tracking preserves the company inbox on both the primary and exac
   assert.equal(copy.payload.html, original.payload.html);
   assert.deepEqual(copy.payload.attachments, original.payload.attachments);
 });
+

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { savedDeliveryContext, recordSalesOutcome, deliveryFailureEvent, registerDelivery, trackedReplyAddress, providerServerConfig } from "../_shared/salesNotifications.js";
+import { resolveCompanyEmailSender } from "../_shared/companyEmailSender.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -182,6 +183,7 @@ serve(async (req) => {
       userId = user.id;
     }
 
+    const senderIdentity = await resolveCompanyEmailSender(supabase, companyId);
     if (body.request_id !== undefined && !uuidPattern.test(body.request_id || "")) {
       throw new Error("The send request identifier is invalid.");
     }
@@ -196,7 +198,7 @@ serve(async (req) => {
     if (!resendApiKey) throw new Error("Email service configuration is unavailable.");
 
     const emailPayload: any = {
-      from: "FuzedFlow <alerts@mail.fuzedflow.com>",
+      from: senderIdentity.from,
       to: to_email,
       subject: subject,
       html: html_body,
@@ -204,8 +206,7 @@ serve(async (req) => {
     };
     let companyReplyTo: string | null = null;
     if (deliveryContext) {
-      const companyReply = await salesDb.from('companies').select('settings').eq('id', companyId).single();
-      if (!companyReply.error && validCompanyEmail(companyReply.data?.settings?.email)) companyReplyTo = companyReply.data.settings.email.trim();
+      if (validCompanyEmail(senderIdentity.company.settings?.email)) companyReplyTo = senderIdentity.company.settings.email.trim();
       if (!reply_to && companyReplyTo) emailPayload.reply_to = companyReplyTo;
     }
     if (body.track_replies === true) {
@@ -291,3 +292,4 @@ serve(async (req) => {
     );
   }
 });
+

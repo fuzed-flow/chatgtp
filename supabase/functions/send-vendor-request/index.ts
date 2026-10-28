@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import JSZip from "https://esm.sh/jszip@3.10.1"
 import { encodeBase64 } from "https://deno.land/std@0.208.0/encoding/base64.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { resolveCompanyEmailSender } from '../_shared/companyEmailSender.js';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const MAX_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB limit
@@ -46,6 +47,7 @@ serve(async (req) => {
     copyOnly = copy_only === true;
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (request_id != null && (typeof request_id !== 'string' || !uuid.test(request_id))) throw new Error('Invalid send request');
+    const senderIdentity = await resolveCompanyEmailSender(db, profile.company_id);
     let requestRecord: any = null;
     if (vendor_request_id != null) {
       if (typeof vendor_request_id !== 'string' || !uuid.test(vendor_request_id)) throw new Error('Invalid vendor request');
@@ -64,8 +66,8 @@ serve(async (req) => {
     let copyCompanyName = '';
     if (send_copy_to_company === true) {
       if (!requestRecord || !request_id) throw new Error('A saved vendor request is required for a company copy');
-      const { data: company, error } = await db.from('companies').select('name,settings').eq('id', profile.company_id).single();
-      if (error || !company || !validCompanyEmail(company.settings?.email)) throw new Error('Add a valid company email in Settings to receive a copy');
+      const company = senderIdentity.company;
+      if (!validCompanyEmail(company.settings?.email)) throw new Error('Add a valid company email in Settings to receive a copy');
       copyRecipient = company.settings.email.trim();
       copyCompanyName = String(company.name || '').replace(/[\r\n]+/g, ' ').trim();
       if (!copyCompanyName) throw new Error('Save your company name before requesting a copy');
@@ -188,7 +190,7 @@ serve(async (req) => {
 
     // 3. Send via Resend
     const emailPayload = {
-        from: 'FuzedFlow <alerts@mail.fuzedflow.com>', 
+        from: senderIdentity.from,
         reply_to: replyToArray.length > 0 ? replyToArray : undefined, // ⚡ Added Dynamic Reply-To 
         to: toArray,
         cc: ccArray,
@@ -315,3 +317,4 @@ serve(async (req) => {
     })
   }
 })
+

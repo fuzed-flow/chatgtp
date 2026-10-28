@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 
 const C='00000000-0000-4000-8000-000000000001', USER='00000000-0000-4000-8000-000000000002', REQUEST='00000000-0000-4000-8000-000000000003', SEND='00000000-0000-4000-8000-000000000004', PROVIDER='00000000-0000-4000-8000-000000000005', COPY_PROVIDER='00000000-0000-4000-8000-000000000006';
 const storage='https://synthetic.supabase.co/storage/v1/object/public/vendor/'+C+'/scope.pdf';
@@ -16,7 +17,7 @@ async function harness(options={}) {
     from:table=>{
       const filters=[]; const chain={select:()=>chain,eq:(name,value)=>{filters.push([name,value]);return chain;},single:async()=>{
         queries.push({table,filters});
-        return {data:table==='profiles'?{company_id:C,role:options.role||'admin',is_active:options.active!==false,permissions:options.permissions||[]}:table==='companies'?{name:'Synthetic company',settings:{email:options.companyEmail===undefined?'office@example.invalid':options.companyEmail}}:options.unowned?null:{id:REQUEST,company_id:C,project_id:null,attachments:[storage],status:options.status||'Draft',title:'Synthetic scope request'},error:options.unowned&&table==='vendor_requests'?{message:'Not found'}:null};
+        return {data:table==='profiles'?{company_id:C,role:options.role||'admin',is_active:options.active!==false,permissions:options.permissions||[]}:table==='companies'?(options.missingCompany?null:{name:options.companyName===undefined?'Synthetic company':options.companyName,settings:{email:options.companyEmail===undefined?'office@example.invalid':options.companyEmail}}):options.unowned?null:{id:REQUEST,company_id:C,project_id:null,attachments:[storage],status:options.status||'Draft',title:'Synthetic scope request'},error:options.unowned&&table==='vendor_requests'||options.companyError&&table==='companies'?{message:'Not found'}:null};
       }};return chain;
     },
     rpc:async(name,args)=>{rpcs.push({name,args,service:key==='synthetic-service'});return{data:1,error:options.trackingFailure?{message:'Unavailable'}:null};},
@@ -29,7 +30,7 @@ async function harness(options={}) {
     return new Response(JSON.stringify(failed?{message:'Synthetic provider failure'}:{id:isCopy?COPY_PROVIDER:PROVIDER}),{status:failed?422:200,headers:{'content-type':'application/json'}});
   };
   const source=await readFile(new URL('../../supabase/functions/send-vendor-request/index.ts',import.meta.url),'utf8');
-  const output=await build({stdin:{contents:source,loader:'ts'},bundle:true,write:false,platform:'node',format:'esm',plugins:[{name:'synthetic-edge-imports',setup(b){
+  const output=await build({stdin:{contents:source,loader:'ts',resolveDir:fileURLToPath(new URL('../../supabase/functions/send-vendor-request/',import.meta.url))},bundle:true,write:false,platform:'node',format:'esm',plugins:[{name:'synthetic-edge-imports',setup(b){
     b.onResolve({filter:/^https:/},args=>({path:args.path,namespace:'edge-mock'}));
     b.onLoad({filter:/.*/,namespace:'edge-mock'},args=>({contents:args.path.includes('supabase-js')?'export const createClient=(...args)=>globalThis.__vendorTestCreateClient(...args);':args.path.includes('jszip')?'export default class JSZip { file(){} async generateAsync(){return new Uint8Array([1]);} }':args.path.includes('base64')?'export const encodeBase64=value=>Buffer.from(value).toString("base64");':'export const serve=handler=>{globalThis.__vendorTestHandler=handler;};',loader:'js'}));
   }}]});
@@ -51,6 +52,38 @@ test('vendor requests retain CC/BCC formatting and use scoped idempotency plus v
     assert.equal(email.init.headers['Idempotency-Key'],`fuzedflow/${C}/${SEND}/vendor-request`);
     assert.ok(h.rpcs.some(r=>r.name==='register_outbound_delivery'&&r.service&&r.args.p_related==='Trade'&&r.args.p_id===REQUEST&&r.args.p_actor===USER));
   }finally{h.close();}
+});
+
+test('vendor sender and its copy use the authenticated company rather than supplied company branding',async()=>{
+  const h=await harness({companyName:'Omega Reno & Contracting Inc'});try{
+    const result=await h.invoke({company_id:'foreign-company',company_name:'Spoofed Company',from:'Spoofed <other@example.invalid>',send_copy_to_company:true,sender_email:'sender@example.invalid',company_email:'office@example.invalid'});
+    assert.equal(result.status,200);
+    const emails=h.calls.filter(c=>c.url==='https://api.resend.com/emails').map(c=>JSON.parse(c.init.body));
+    assert.equal(emails.length,2);
+    for(const email of emails){
+      assert.equal(email.from,'"Omega Reno & Contracting Inc" <alerts@mail.fuzedflow.com>');
+      assert.deepEqual(email.reply_to,['sender@example.invalid','office@example.invalid']);
+    }
+    assert.ok(h.queries.some(q=>q.table==='companies'&&q.filters.some(([key,value])=>key==='id'&&value===C)));
+    for(const call of h.rpcs.filter(r=>r.name==='register_outbound_delivery'))assert.equal(call.args.p_sender,'alerts@mail.fuzedflow.com');
+  }finally{h.close();}
+});
+
+test('vendor sends without saved-request metadata still use the saved company sender',async()=>{
+  const h=await harness({companyName:'LB Projects'});try{
+    assert.equal((await h.invoke({vendor_request_id:undefined,company_name:'Ignored Company'})).status,200);
+    const email=h.calls.find(c=>c.url==='https://api.resend.com/emails');
+    assert.equal(JSON.parse(email.init.body).from,'"LB Projects" <alerts@mail.fuzedflow.com>');
+  }finally{h.close();}
+});
+
+test('vendor sends stop before the provider if saved company identity is unavailable',async()=>{
+  for(const options of [{missingCompany:true},{companyName:' '},{companyError:true}]){
+    const h=await harness(options);try{
+      assert.equal((await h.invoke()).status,400);
+      assert.equal(h.calls.length,0);
+    }finally{h.close();}
+  }
 });
 
 test('requested vendor copy uses the saved company address and exact original HTML and attachments',async()=>{
@@ -112,3 +145,4 @@ test('unavailable attachments stop the send and delivery tracking failure does n
   let h=await harness({attachmentFailure:true});try{assert.equal((await h.invoke({attachments:[{filename:'scope.pdf',path:storage}]})).status,400);assert.ok(!h.calls.some(c=>c.url==='https://api.resend.com/emails'));}finally{h.close();}
   h=await harness({trackingFailure:true});try{assert.equal((await h.invoke()).status,200);assert.ok(!h.rpcs.some(r=>r.name==='record_sales_event'));}finally{h.close();}
 });
+
