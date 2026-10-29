@@ -1,3 +1,4 @@
+import { prepareProductImage } from "@/lib/productImages";
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/api/supabaseClient"; 
 import { useAuth } from "@/lib/AuthContext";
@@ -187,6 +188,7 @@ export default function Templates() {
 
   const handleRowPhoto = async (_, itemIdx, file) => {
     try {
+      file = await prepareProductImage(file);
       const fileName = `${companyId}/templates/${Date.now()}_${file.name}`;
       const { error } = await supabase.storage.from('quotes').upload(fileName, file);
       if (error) throw error;

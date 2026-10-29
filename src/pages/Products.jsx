@@ -1,4 +1,8 @@
-import React, { useState, useRef } from "react";
+import ProductImage from "@/components/shared/ProductImage";
+import FinishColour from "@/components/shared/FinishColour";
+import { prepareProductImage } from "@/lib/productImages";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -15,7 +19,8 @@ import { formatCurrencyUSD } from "../components/utils/formatCurrency";
 import { Button } from "@/components/ui/button";
 
 const UNITS = ["ea", "ft", "sqft", "hr", "lft", "m", "sqm", "bag", "box", "roll"];
-const PRIORITY_IMAGE_COUNT = 10;
+const PRIORITY_IMAGE_COUNT = 4;
+const PAGE_SIZE = 30;
 
 const parseCSV = (text) => {
   const result = [];
@@ -56,7 +61,7 @@ export default function Products() {
 
   // --- UI STATE ---
   const [search, setSearch] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [page, setPage] = useState(0);
   const [editCategoryOpen, setEditCategoryOpen] = useState(false);
   const [filters, setFilters] = useState({
     main: "All",
@@ -65,6 +70,7 @@ export default function Products() {
     supplier: "All"
   });
   
+  useEffect(() => setPage(0), [search, filters.main, filters.sub, filters.tertiary, filters.supplier]);
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -76,14 +82,14 @@ export default function Products() {
   const [importing, setImporting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   
-  const defaultForm = { name: "", sku: "", category: "", sub_category: "", tertiary_category: "", unit: "ea", material_cost: "", labor_cost: "", cost: "", price: "", margin: "", supplier: "", vendor_url: "", description: "", taxable: true, image_url: "" };
+  const defaultForm = { name: "", sku: "", category: "", sub_category: "", tertiary_category: "", unit: "ea", material_cost: "", labor_cost: "", cost: "", price: "", margin: "", supplier: "", vendor_url: "", description: "", taxable: true, image_url: "", finish_colour: "" };
   const [form, setForm] = useState(defaultForm);
 
   const [catForm, setCatForm] = useState({ level: "1", main_category: "", sub_category: "", new_name: "" });
   const [editCatForm, setEditCatForm] = useState({ level: "1", main_category: "", sub_category: "", tertiary_category: "", new_name: "" });
 
   // 1. Fetch Products
-  const { data: products = [], isLoading: productsLoading } = useQuery({ 
+  const { data: products = [], isLoading: productsLoading, error: productsError, refetch: reloadProducts } = useQuery({
     queryKey: ["products", companyId], 
     enabled: !!companyId,
     queryFn: async () => {
@@ -122,7 +128,7 @@ export default function Products() {
 
   // --- FILTERING ---
   const filteredProducts = products.filter(p => {
-    const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase()) || p.description?.toLowerCase().includes(search.toLowerCase()) || p.supplier?.toLowerCase().includes(search.toLowerCase()) || p.finish_colour?.toLowerCase().includes(search.toLowerCase());
     const matchMain = filters.main === "All" || p.category === filters.main;
     const matchSub = filters.sub === "All" || p.sub_category === filters.sub;
     const matchTer = filters.tertiary === "All" || p.tertiary_category === filters.tertiary;
@@ -136,7 +142,7 @@ export default function Products() {
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
     }
-    setSortConfig({ key, direction });
+    setSortConfig({ key, direction }); setPage(0);
   };
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
@@ -158,10 +164,11 @@ export default function Products() {
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
-  const priorityImageIds = new Set(sortedProducts.filter(p => p.image_url).slice(0, PRIORITY_IMAGE_COUNT).map(p => p.id));
+  useEffect(() => setPage(p => Math.min(p,Math.max(0,Math.ceil(sortedProducts.length/PAGE_SIZE)-1))),[sortedProducts.length]);
+  const priorityImageIds = new Set(sortedProducts.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).filter(p => p.image_url).slice(0, PRIORITY_IMAGE_COUNT).map(p => p.id));
 
   const renderSortIcon = (key) => {
-    if (sortConfig.key !== key) return <ArrowUpDown className="h-3 w-3 ml-1 text-slate-300 group-hover:text-slate-400" />;
+    if (sortConfig.key !== key) return <ArrowUpDown className="h-3 w-3 ml-1 text-slate-300 group-hover:text-slate-600" />;
     return sortConfig.direction === 'asc' 
       ? <ChevronUp className="h-3 w-3 ml-1 text-amber-500" />
       : <ChevronDown className="h-3 w-3 ml-1 text-amber-500" />;
@@ -277,7 +284,7 @@ export default function Products() {
         price: parseFloat(payload.price) || 0,
         supplier: payload.supplier || null, 
         vendor_url: payload.vendor_url || null,
-        description: payload.description || null, taxable: payload.taxable !== false, image_url: payload.image_url || null
+        finish_colour: payload.finish_colour?.trim() || null, description: payload.description || null, taxable: payload.taxable !== false, image_url: payload.image_url || null
       };
 
       if (editing) {
@@ -298,7 +305,7 @@ export default function Products() {
       if (err.message !== "Validation failed" && err.message !== "Duplicate name") {
         setErrorPopup({
           title: "Database Save Error",
-          message: `Supabase rejected the save. Did you run the SQL script to add the new columns?\n\nError: ${err.message}`
+          message: `Supabase rejected the save. Please check the information and try again.\n\nError: ${err.message}`
         });
       }
     }
@@ -337,7 +344,7 @@ export default function Products() {
     onError: (err) => {
       setErrorPopup({
         title: "Import Failed",
-        message: `Supabase rejected the import. Did you run the SQL script to add the new columns?\n\nError: ${err.message}`
+        message: `Supabase rejected the import. Please check the information and try again.\n\nError: ${err.message}`
       });
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
@@ -358,7 +365,7 @@ export default function Products() {
     const price = product.price || 0;
     const margin = price > 0 ? (((price - cost) / price) * 100).toFixed(1) : "";
     setForm({
-      name: product.name || "", sku: product.sku || "", 
+      finish_colour: product.finish_colour || "", name: product.name || "", sku: product.sku || "",
       category: product.category || "", sub_category: product.sub_category || "", tertiary_category: product.tertiary_category || "",
       unit: product.unit || "ea", 
       material_cost: product.material_cost || "", 
@@ -448,6 +455,7 @@ export default function Products() {
         const priceIdx = headers.findIndex(h => h === "price" || h.includes("client") || h.includes("retail"));
         const supIdx = headers.findIndex(h => h.includes("supplier") || h.includes("vendor"));
         const urlIdx = headers.findIndex(h => h.includes("vendor url") || h.includes("link") || h === "url");
+        const finishIdx = headers.findIndex(h => h.includes("finish") || h.includes("colour") || h.includes("color"));
         const imgIdx = headers.findIndex(h => h.includes("image") || h.includes("photo"));
 
         if (nameIdx === -1) throw new Error("Could not find a 'Name' column in the CSV.");
@@ -484,6 +492,7 @@ export default function Products() {
             price: priceIdx > -1 ? (parseFloat(row[priceIdx].replace(/[^0-9.-]+/g, "")) || 0) : 0,
             supplier: supIdx > -1 ? row[supIdx].replace(/['"]/g, '') : null,
             vendor_url: urlIdx > -1 ? row[urlIdx].replace(/['"]/g, '') : null,
+            finish_colour: finishIdx > -1 ? row[finishIdx] || null : null,
             image_url: imgIdx > -1 ? row[imgIdx].replace(/['"]/g, '') : null,
             taxable: true
           });
@@ -508,11 +517,11 @@ export default function Products() {
     if (!sortedProducts.length) return toast.error("No products to export");
     
     // ⚡ ADDED "ID" AS THE FIRST COLUMN
-    const headers = ["ID", "Name", "SKU", "Category", "Sub Category", "3rd Category", "Unit", "Material Cost", "Labor Cost", "Total Cost", "Price", "Supplier", "Vendor URL", "Taxable", "Image URL"];
+    const headers = ["ID", "Name", "SKU", "Category", "Sub Category", "3rd Category", "Unit", "Material Cost", "Labor Cost", "Total Cost", "Price", "Supplier", "Vendor URL", "Taxable", "Image URL", "Finish / Colour"];
     
     // ⚡ ADDED p.id TO THE EXPORT ROWS
     const rows = sortedProducts.map(p => 
-      [p.id, p.name, p.sku, p.category, p.sub_category, p.tertiary_category, p.unit, p.material_cost, p.labor_cost, p.cost, p.price, p.supplier, p.vendor_url, p.taxable ? 'Yes' : 'No', p.image_url]
+      [p.id, p.name, p.sku, p.category, p.sub_category, p.tertiary_category, p.unit, p.material_cost, p.labor_cost, p.cost, p.price, p.supplier, p.vendor_url, p.taxable ? 'Yes' : 'No', p.image_url, p.finish_colour]
       .map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')
     );
     
@@ -527,6 +536,7 @@ export default function Products() {
   const handleImageUpload = async (file) => {
     setUploadingImage(true);
     try {
+      file = await prepareProductImage(file);
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `${companyId}/${fileName}`;
@@ -543,6 +553,8 @@ export default function Products() {
     }
   };
 
+  if (productsError) return <div role="alert" className="m-4 rounded-xl border border-red-200 bg-white p-6 text-red-800"><p>Products could not load. Please try again.</p><Button variant="outline" onClick={() => reloadProducts()} className="mt-3 min-h-11">Try again</Button></div>;
+
   if (productsLoading || catsLoading) return (
     <div className="flex justify-center items-center py-20 min-h-screen bg-slate-50">
       <div className="h-8 w-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin"></div>
@@ -550,12 +562,12 @@ export default function Products() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-full min-w-0 bg-slate-50 flex flex-col font-sans products-workspace">
       
       {/* TOP HEADER */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shrink-0 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                 <Package className="h-6 w-6 text-amber-500" /> Pricebook
@@ -567,7 +579,7 @@ export default function Products() {
               <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleCSVUpload} disabled={importing} />
               
               {/* Desktop Actions (Hidden on mobile) */}
-              <div className="hidden md:flex items-center gap-3">
+              <div className="hidden xl:flex flex-wrap items-center gap-3">
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing} className="bg-white font-bold text-slate-600">
                   {importing ? "Processing..." : <><UploadCloud className="h-4 w-4 mr-2" /> Import CSV</>}
                 </Button>
@@ -586,26 +598,16 @@ export default function Products() {
                 </Button>
               </div>
 
-              {/* Mobile Hamburger Menu (Visible only on small screens) */}
-              <div className="md:hidden relative">
-                <Button variant="outline" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="bg-white font-bold text-slate-600 px-3">
-                  <Menu className="h-5 w-5" />
-                </Button>
-                
-                {mobileMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 flex flex-col p-2 gap-1">
-                    <Button variant="ghost" className="justify-start text-sm font-bold text-slate-600 w-full" onClick={() => { setMobileMenuOpen(false); setAddCategoryOpen(true); }}>
-                      <FolderTree className="h-4 w-4 mr-2 text-slate-400" /> New Category
-                    </Button>
-                    <Button variant="ghost" className="justify-start text-sm font-bold text-slate-600 w-full" onClick={() => { setMobileMenuOpen(false); setEditCategoryOpen(true); }}>
-                      <Pencil className="h-4 w-4 mr-2 text-slate-400" /> Edit Category
-                    </Button>
-                    <div className="h-px w-full bg-slate-100 my-1"></div>
-                    <Button variant="ghost" className="justify-start text-sm font-black text-amber-900 bg-amber-50 hover:bg-amber-100 w-full" onClick={() => { setMobileMenuOpen(false); openNew(); }}>
-                      <Plus className="h-4 w-4 mr-2 text-amber-600" /> Add Product
-                    </Button>
-                  </div>
-                )}
+              <div className="flex items-center gap-2 xl:hidden">
+                <Button onClick={openNew} className="min-h-11 bg-amber-400 font-bold text-slate-950 hover:bg-amber-500"><Plus className="mr-2 h-4 w-4" />Add Product</Button>
+                <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-h-11" aria-label="Product actions"><Menu className="mr-2 h-5 w-5" />Actions</Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" sideOffset={8} className="w-56 max-w-[calc(100vw-2rem)]">
+                    <DropdownMenuItem className="min-h-11" onSelect={() => setAddCategoryOpen(true)}>New Category</DropdownMenuItem>
+                    <DropdownMenuItem className="min-h-11" onSelect={() => setEditCategoryOpen(true)}>Edit Category</DropdownMenuItem>
+                    <DropdownMenuItem className="min-h-11" disabled={importing} onSelect={() => fileInputRef.current?.click()}>Import CSV</DropdownMenuItem>
+                    <DropdownMenuItem className="min-h-11" onSelect={exportToCSV}>Export CSV</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
             </div>
@@ -618,16 +620,16 @@ export default function Products() {
         {/* ADVANCED FILTER BAR */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <Filter className="h-4 w-4 text-slate-400" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Filters & Search</h3>
+            <Filter className="h-4 w-4 text-slate-600" />
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-500">Filters & Search</h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 items-end">
             <div className="md:col-span-2">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Search</Label>
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Search</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
                 <Input 
-                  placeholder="Search products or SKUs..." 
+                  aria-label="Search products" placeholder="Search products, SKU, supplier or finish…"
                   value={search} 
                   onChange={e => setSearch(e.target.value)} 
                   className="pl-9 h-10 bg-slate-50 font-bold border-slate-200" 
@@ -636,33 +638,33 @@ export default function Products() {
             </div>
             
             <div>
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Main Category</Label>
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Main Category</Label>
               <Select value={filters.main} onValueChange={v => setFilters({...filters, main: v, sub: "All", tertiary: "All"})}>
-                <SelectTrigger className="bg-slate-50 font-bold border-slate-200 text-xs h-10"><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectTrigger aria-label="Main" className="bg-slate-50 font-bold border-slate-200 text-sm h-10"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>{filterUniqueMains.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             
             <div>
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Sub Category</Label>
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Sub Category</Label>
               <Select value={filters.sub} disabled={filters.main === "All" || filterUniqueSubs.length <= 1} onValueChange={v => setFilters({...filters, sub: v, tertiary: "All"})}>
-                <SelectTrigger className="bg-slate-50 font-bold border-slate-200 text-xs h-10"><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectTrigger aria-label="Sub" className="bg-slate-50 font-bold border-slate-200 text-sm h-10"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>{filterUniqueSubs.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">3rd Category</Label>
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">3rd Category</Label>
               <Select value={filters.tertiary} disabled={filters.sub === "All" || filterUniqueTers.length <= 1} onValueChange={v => setFilters({...filters, tertiary: v})}>
-                <SelectTrigger className="bg-slate-50 font-bold border-slate-200 text-xs h-10"><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectTrigger aria-label="Tertiary" className="bg-slate-50 font-bold border-slate-200 text-sm h-10"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>{filterUniqueTers.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             
             <div>
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Supplier</Label>
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Supplier</Label>
               <Select value={filters.supplier} onValueChange={v => setFilters({...filters, supplier: v})}>
-                <SelectTrigger className="bg-slate-50 font-bold border-slate-200 text-xs h-10"><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectTrigger aria-label="Supplier" className="bg-slate-50 font-bold border-slate-200 text-sm h-10"><SelectValue placeholder="All" /></SelectTrigger>
                 <SelectContent>{filterUniqueSuppliers.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
@@ -689,99 +691,30 @@ export default function Products() {
                 </Button>
               </div>
             ) : (
-              <table className="w-full text-sm text-left whitespace-nowrap">
-                <thead className="bg-white border-b border-slate-200 text-[10px] uppercase font-black text-slate-400 tracking-wider sticky top-0 z-10 shadow-sm select-none">
-                  <tr>
-                    <th className="px-6 py-4 w-16">Image</th>
-                    <th className="px-6 py-4 cursor-pointer hover:bg-slate-50 group transition-colors" onClick={() => handleSort('name')}>
-                      <div className="flex items-center">Item Name / SKU {renderSortIcon('name')}</div>
-                    </th>
-                    <th className="px-6 py-4 cursor-pointer hover:bg-slate-50 group transition-colors" onClick={() => handleSort('category')}>
-                      <div className="flex items-center">Category Path {renderSortIcon('category')}</div>
-                    </th>
-                    <th className="px-6 py-4 cursor-pointer hover:bg-slate-50 group transition-colors text-right" onClick={() => handleSort('cost')}>
-                      <div className="flex items-center justify-end">Cost {renderSortIcon('cost')}</div>
-                    </th>
-                    <th className="px-6 py-4 cursor-pointer hover:bg-slate-50 group transition-colors text-right" onClick={() => handleSort('price')}>
-                      <div className="flex items-center justify-end">Price {renderSortIcon('price')}</div>
-                    </th>
-                    <th className="px-6 py-4 cursor-pointer hover:bg-slate-50 group transition-colors text-right" onClick={() => handleSort('margin')}>
-                      <div className="flex items-center justify-end">Margin {renderSortIcon('margin')}</div>
-                    </th>
-                    <th className="px-6 py-4 text-right w-24">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {sortedProducts.map(p => {
-                    const marginPct = p.price > 0 ? (((p.price - (p.cost || 0)) / p.price) * 100).toFixed(0) : 0;
-                    return (
-                      <tr key={p.id} className="hover:bg-amber-50/30 transition-colors">
-                        <td className="px-6 py-4">
-                          {p.image_url ? (
-                            <img
-                              src={p.image_url}
-                              alt={p.name}
-                              width="40"
-                              height="40"
-                              loading={priorityImageIds.has(p.id) ? "eager" : "lazy"}
-                              fetchPriority={priorityImageIds.has(p.id) ? "high" : "low"}
-                              decoding="async"
-                              className="h-10 w-10 object-cover rounded-lg border border-slate-200 shadow-sm"
-                            />
-                          ) : (
-                            <div className="h-10 w-10 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center">
-                              <ImageIcon className="h-4 w-4 text-slate-300" />
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4" onClick={() => { setSelectedProduct(p); setDetailOpen(true); }} style={{cursor: 'pointer'}}>
-                          <p className="font-bold text-slate-900 hover:text-amber-600 transition-colors">{p.name}</p>
-                          <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">{p.sku || "No SKU"}</p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1 items-start">
-                            {p.category ? (
-                              <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-bold text-slate-600 bg-white shadow-sm">
-                                {p.category}
-                              </Badge>
-                            ) : <span className="text-xs text-slate-300">—</span>}
-                            {p.sub_category && (
-                              <span className="text-[9px] font-bold text-slate-500 uppercase flex items-center gap-1"><ChevronRight className="h-3 w-3 text-slate-300" /> {p.sub_category}</span>
-                            )}
-                            {p.tertiary_category && (
-                              <span className="text-[8px] font-bold text-slate-400 uppercase flex items-center gap-1 pl-2"><ChevronRight className="h-2 w-2 text-slate-200" /> {p.tertiary_category}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="font-bold text-slate-500">{formatCurrencyUSD(p.cost)} <span className="text-[10px] font-medium text-slate-400">/{p.unit}</span></div>
-                          {(p.material_cost > 0 || p.labor_cost > 0) && (
-                            <div className="text-[9px] font-medium text-slate-400 mt-1">
-                              M: ${p.material_cost || 0} / L: ${p.labor_cost || 0}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-right font-black text-slate-900">{formatCurrencyUSD(p.price)} <span className="text-[10px] font-medium text-slate-400">/{p.unit}</span></td>
-                        <td className="px-6 py-4 text-right">
-                          <Badge variant="outline" className={`border font-black text-[10px] px-2 py-0.5 ${marginPct > 30 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : marginPct > 15 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                            {marginPct}%
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(p)} className="h-8 w-8 text-slate-400 hover:text-amber-600 hover:bg-amber-50">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => { if(confirm("Delete this product?")) deleteMutation.mutate(p.id); }} className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <>
+              <div className="flex flex-wrap items-center gap-2 border-b bg-slate-50 p-3 md:hidden"><label htmlFor="product-sort" className="text-sm font-bold">Sort by</label><select id="product-sort" value={sortConfig.key} onChange={e => {setSortConfig({key:e.target.value,direction:'asc'});setPage(0);}} className="min-h-11 rounded-md border border-slate-300 bg-white px-3 text-base">{[['name','Name'],['category','Category'],['cost','Cost'],['price','Client price'],['margin','Margin']].map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select><Button variant="outline" className="min-h-11" aria-label={sortConfig.direction==='asc'?'Sort descending':'Sort ascending'} onClick={() => handleSort(sortConfig.key)}>{sortConfig.direction==='asc'?'Ascending':'Descending'}</Button></div>
+              <div className="divide-y divide-slate-200 md:hidden">
+                {sortedProducts.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(p => <article key={p.id} className="p-4">
+                  <div className="flex items-start gap-3"><ProductImage src={p.image_url} name={p.name} eager={priorityImageIds.has(p.id)} className="h-20 w-20" />
+                    <div className="min-w-0 flex-1"><button type="button" onClick={() => {setSelectedProduct(p);setDetailOpen(true);}} className="min-h-11 text-left text-base font-bold leading-6 text-slate-900 focus-visible:ring-2 focus-visible:ring-amber-500">{p.name}</button><p className="mt-1 break-words text-sm text-slate-600">{p.sku || 'No SKU'} · {p.unit}</p><FinishColour value={p.finish_colour} /></div>
+                  </div>
+                  <p className="mt-3 text-sm text-slate-600">{[p.category,p.sub_category,p.tertiary_category].filter(Boolean).join(' / ')}</p>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><div><span className="text-sm text-slate-600">Client price</span><p className="text-lg font-bold text-slate-950">{formatCurrencyUSD(p.price)} / {p.unit}</p><p className="text-sm text-slate-600">Cost {formatCurrencyUSD(p.cost)}</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => openEdit(p)} className="min-h-11" aria-label={`Edit ${p.name}`}>Edit</Button><Button variant="outline" onClick={() => {if(confirm('Delete this product?'))deleteMutation.mutate(p.id);}} className="min-h-11 text-red-700" aria-label={`Delete ${p.name}`}>Delete</Button></div></div>
+                </article>)}
+              </div>
+              <div className="hidden overflow-x-auto md:block"><table className="w-full text-left text-sm">
+                <thead className="border-b bg-slate-50 text-slate-700"><tr><th className="p-3">Image</th>
+                  {[['name','Item / SKU'],['category','Category'],['cost','Cost'],['price','Client price'],['margin','Margin']].map(([key,label]) => <th key={key} className="p-3" aria-sort={sortConfig.key===key?(sortConfig.direction==='asc'?'ascending':'descending'):'none'}><button type="button" onClick={() => handleSort(key)} className="flex min-h-11 items-center gap-1 font-bold focus-visible:ring-2 focus-visible:ring-amber-500">{label}{renderSortIcon(key)}</button></th>)}
+                  <th className="p-3">Finish / Colour</th><th className="p-3">Actions</th></tr></thead>
+                <tbody className="divide-y divide-slate-200">{sortedProducts.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(p => <tr key={p.id} className="hover:bg-amber-50/30">
+                  <td className="p-3"><ProductImage src={p.image_url} name={p.name} eager={priorityImageIds.has(p.id)} /></td>
+                  <td className="min-w-[200px] max-w-sm p-3"><button type="button" onClick={() => {setSelectedProduct(p);setDetailOpen(true);}} className="min-h-11 text-left font-bold leading-6 text-slate-900 focus-visible:ring-2 focus-visible:ring-amber-500">{p.name}</button><p className="mt-1 text-sm text-slate-600">{p.sku || 'No SKU'}</p></td>
+                  <td className="max-w-48 p-3 text-slate-600">{[p.category,p.sub_category,p.tertiary_category].filter(Boolean).join(' / ')}</td>
+                  <td className="p-3 text-slate-600">{formatCurrencyUSD(p.cost)} / {p.unit}</td><td className="p-3 font-bold text-slate-950">{formatCurrencyUSD(p.price)} / {p.unit}</td><td className="p-3">{p.price>0?(((p.price-(p.cost||0))/p.price)*100).toFixed(0):0}%</td><td className="max-w-40 break-words p-3">{p.finish_colour || '—'}</td>
+                  <td className="p-3"><div className="flex gap-1"><Button variant="outline" aria-label={`Edit ${p.name}`} onClick={() => openEdit(p)} className="h-11 w-11 p-0"><Pencil className="h-4 w-4" /></Button><Button variant="outline" aria-label={`Delete ${p.name}`} onClick={() => {if(confirm('Delete this product?'))deleteMutation.mutate(p.id);}} className="h-11 w-11 p-0 text-red-700"><Trash2 className="h-4 w-4" /></Button></div></td>
+                </tr>)}</tbody></table></div>
+              <nav aria-label="Product pages" className="flex flex-wrap items-center justify-between gap-3 border-t bg-slate-50 p-4"><p role="status" className="text-sm text-slate-600">{page*PAGE_SIZE+1}–{Math.min((page+1)*PAGE_SIZE,sortedProducts.length)} of {sortedProducts.length} products</p><div className="flex gap-2"><Button variant="outline" disabled={page===0} onClick={() => setPage(p => p-1)} className="min-h-11">Previous</Button><Button variant="outline" disabled={(page+1)*PAGE_SIZE>=sortedProducts.length} onClick={() => setPage(p => p+1)} className="min-h-11">Next</Button></div></nav>
+              </>
             )}
           </div>
         </div>
@@ -797,7 +730,7 @@ export default function Products() {
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div>
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Level to Edit</Label>
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Category Level to Edit</Label>
               <Select value={editCatForm.level} onValueChange={v => setEditCatForm({...editCatForm, level: v, main_category: "", sub_category: "", tertiary_category: "", new_name: ""})}>
                 <SelectTrigger className="mt-1 font-bold bg-slate-50 h-10"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -809,7 +742,7 @@ export default function Products() {
             </div>
 
             <div>
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Select Main Category</Label>
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Select Main Category</Label>
               <Select value={editCatForm.main_category} onValueChange={v => setEditCatForm({...editCatForm, main_category: v, sub_category: "", tertiary_category: ""})}>
                 <SelectTrigger className="mt-1 font-bold h-10"><SelectValue placeholder="Select Main..." /></SelectTrigger>
                 <SelectContent>
@@ -820,7 +753,7 @@ export default function Products() {
 
             {editCatForm.level !== "1" && (
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Select Sub-Category</Label>
+                <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Select Sub-Category</Label>
                 <Select value={editCatForm.sub_category} onValueChange={v => setEditCatForm({...editCatForm, sub_category: v, tertiary_category: ""})} disabled={!editCatForm.main_category}>
                   <SelectTrigger className="mt-1 font-bold h-10"><SelectValue placeholder="Select Sub..." /></SelectTrigger>
                   <SelectContent>
@@ -834,7 +767,7 @@ export default function Products() {
 
             {editCatForm.level === "3" && (
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Select 3rd Category</Label>
+                <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Select 3rd Category</Label>
                 <Select value={editCatForm.tertiary_category} onValueChange={v => setEditCatForm({...editCatForm, tertiary_category: v})} disabled={!editCatForm.sub_category}>
                   <SelectTrigger className="mt-1 font-bold h-10"><SelectValue placeholder="Select 3rd..." /></SelectTrigger>
                   <SelectContent>
@@ -847,14 +780,14 @@ export default function Products() {
             )}
 
             <div>
-              <Label className="text-xs font-bold uppercase tracking-wider text-amber-600">Rename To</Label>
+              <Label className="text-sm font-bold uppercase tracking-wider text-amber-600">Rename To</Label>
               <Input 
                 value={editCatForm.new_name} 
                 onChange={e => setEditCatForm({...editCatForm, new_name: e.target.value})} 
                 className="mt-1 font-black border-amber-300 bg-amber-50 h-10" 
                 placeholder="New category name..." 
               />
-              <p className="text-[10px] text-slate-400 mt-1 font-medium leading-tight">
+              <p className="text-sm text-slate-600 mt-1 font-medium leading-tight">
                 Renaming this category will automatically update all existing products currently assigned to it.
               </p>
             </div>
@@ -879,7 +812,7 @@ export default function Products() {
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div>
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Level</Label>
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Category Level</Label>
               <Select value={catForm.level} onValueChange={v => setCatForm({...catForm, level: v, main_category: "", sub_category: ""})}>
                 <SelectTrigger className="mt-1 font-bold bg-slate-50 h-10"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -892,7 +825,7 @@ export default function Products() {
 
             {catForm.level !== "1" && (
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Main Category</Label>
+                <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Parent Main Category</Label>
                 <Select value={catForm.main_category} onValueChange={v => setCatForm({...catForm, main_category: v, sub_category: ""})}>
                   <SelectTrigger className="mt-1 font-bold h-10"><SelectValue placeholder="Select Main Category..." /></SelectTrigger>
                   <SelectContent>
@@ -904,7 +837,7 @@ export default function Products() {
 
             {catForm.level === "3" && (
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Sub-Category</Label>
+                <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Parent Sub-Category</Label>
                 <Select value={catForm.sub_category} onValueChange={v => setCatForm({...catForm, sub_category: v})} disabled={!catForm.main_category}>
                   <SelectTrigger className="mt-1 font-bold h-10"><SelectValue placeholder="Select Sub-Category..." /></SelectTrigger>
                   <SelectContent>
@@ -917,14 +850,14 @@ export default function Products() {
             )}
 
             <div>
-              <Label className="text-xs font-bold uppercase tracking-wider text-amber-600">New Category Name</Label>
+              <Label className="text-sm font-bold uppercase tracking-wider text-amber-600">New Category Name</Label>
               <Input 
                 value={catForm.new_name} 
                 onChange={e => setCatForm({...catForm, new_name: e.target.value})} 
                 className="mt-1 font-black border-amber-300 bg-amber-50 h-10" 
                 placeholder="e.g., HVAC, Trim, Valves..." 
               />
-              <p className="text-[10px] text-slate-400 mt-1 font-medium">Names must be completely unique across your entire catalog.</p>
+              <p className="text-sm text-slate-600 mt-1 font-medium">Names must be completely unique across your entire catalog.</p>
             </div>
 
             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
@@ -951,20 +884,20 @@ export default function Products() {
               <div className="shrink-0 w-full sm:w-auto flex justify-center">
                 {form.image_url ? (
                   <div className="relative group">
-                    <img src={form.image_url} alt="Product" className="h-32 w-32 object-cover rounded-xl border border-slate-200 shadow-sm" />
-                    <button type="button" onClick={() => setForm({ ...form, image_url: "" })} className="absolute -top-2 -right-2 bg-slate-900 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600">
+                    <ProductImage src={form.image_url} name={form.name || "Product"} className="h-32 w-32" />
+                    <button type="button" aria-label="Remove product photo" onClick={() => setForm({ ...form, image_url: "" })} className="absolute -top-2 -right-2 bg-slate-900 text-white rounded-full h-11 w-11 flex items-center justify-center opacity-100 transition-opacity shadow-md hover:bg-red-600">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
                 ) : (
-                  <label className="h-32 w-32 border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-colors">
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
+                  <label className="h-32 w-32 focus-within:ring-2 focus-within:ring-amber-500 border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-colors">
+                    <input type="file" accept="image/*" aria-label="Upload product photo" className="sr-only" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
                     {uploadingImage ? (
                       <div className="h-6 w-6 border-2 border-amber-200 border-t-amber-500 rounded-full animate-spin" />
                     ) : (
                       <>
-                        <UploadCloud className="h-6 w-6 text-slate-400 mb-1.5" />
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Photo</span>
+                        <UploadCloud className="h-6 w-6 text-slate-600 mb-1.5" />
+                        <span className="text-sm font-black text-slate-500 uppercase tracking-wider">Photo</span>
                       </>
                     )}
                   </label>
@@ -973,41 +906,41 @@ export default function Products() {
 
               <div className="flex-1 space-y-4 w-full">
                 <div>
-                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Item Name *</Label>
-                  <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="mt-1 font-black text-lg text-slate-900 h-12 border-slate-300" placeholder="e.g., Kohler Kitchen Faucet" />
+                  <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Item Name *</Label>
+                  <Input aria-label="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="mt-1 font-black text-lg text-slate-900 h-12 border-slate-300" placeholder="e.g., Kohler Kitchen Faucet" />
                 </div>
                 
                 {/* 3-TIER CATEGORY CASCADING DROPDOWNS */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
                   <div className="flex items-center justify-between px-3 py-2 bg-slate-100 border-b border-slate-200">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><FolderTree className="h-3 w-3" /> Categorization</span>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => { setCatForm({ level: "1", main_category: "", sub_category: "", new_name: "" }); setAddCategoryOpen(true); }} className="h-6 text-[10px] font-bold text-amber-700 hover:text-amber-800 hover:bg-amber-100">
+                    <span className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><FolderTree className="h-3 w-3" /> Categorization</span>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => { setCatForm({ level: "1", main_category: "", sub_category: "", new_name: "" }); setAddCategoryOpen(true); }} className="h-6 text-sm font-bold text-amber-700 hover:text-amber-800 hover:bg-amber-100">
                       <Plus className="h-3 w-3 mr-1" /> Add Category
                     </Button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
                     <div>
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Main Category</Label>
+                      <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Main Category</Label>
                       <Select value={form.category} onValueChange={v => setForm({...form, category: v, sub_category: "", tertiary_category: ""})}>
-                        <SelectTrigger className="bg-white font-bold text-xs h-10"><SelectValue placeholder="Select Main..." /></SelectTrigger>
+                        <SelectTrigger aria-label="Category" className="bg-white font-bold text-sm h-10"><SelectValue placeholder="Select Main..." /></SelectTrigger>
                         <SelectContent>
                           {uniqueMains.map(m => <SelectItem key={m} value={m} className="font-bold">{m}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Sub Category</Label>
+                      <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Sub Category</Label>
                       <Select value={form.sub_category} disabled={!form.category || uniqueSubs.length === 0} onValueChange={v => setForm({...form, sub_category: v, tertiary_category: ""})}>
-                        <SelectTrigger className="bg-white font-bold text-xs h-10"><SelectValue placeholder="Select Sub..." /></SelectTrigger>
+                        <SelectTrigger aria-label="Sub Category" className="bg-white font-bold text-sm h-10"><SelectValue placeholder="Select Sub..." /></SelectTrigger>
                         <SelectContent>
                           {uniqueSubs.map(s => <SelectItem key={s} value={s} className="font-bold">{s}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">3rd Category</Label>
+                      <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">3rd Category</Label>
                       <Select value={form.tertiary_category} disabled={!form.sub_category || uniqueTers.length === 0} onValueChange={v => setForm({...form, tertiary_category: v})}>
-                        <SelectTrigger className="bg-white font-bold text-xs h-10"><SelectValue placeholder="Select 3rd..." /></SelectTrigger>
+                        <SelectTrigger aria-label="Tertiary Category" className="bg-white font-bold text-sm h-10"><SelectValue placeholder="Select 3rd..." /></SelectTrigger>
                         <SelectContent>
                           {uniqueTers.map(t => <SelectItem key={t} value={t} className="font-bold">{t}</SelectItem>)}
                         </SelectContent>
@@ -1021,48 +954,48 @@ export default function Products() {
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-2 space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Unit</Label>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Unit</Label>
                   <Select value={form.unit} onValueChange={v => setForm({...form, unit: v})}>
-                    <SelectTrigger className="mt-1 bg-white font-bold h-10"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Unit" className="mt-1 bg-white font-bold h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>{UNITS.map(u => <SelectItem key={u} value={u} className="font-bold">{u}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Material Cost</Label>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Material Cost</Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-3 text-slate-500 font-bold">$</span>
-                    <Input type="number" step="0.01" value={form.material_cost} onChange={e => handleMatLabChange('material_cost', e.target.value)} className="pl-7 font-bold h-10 border-slate-300 bg-white" placeholder="0.00" />
+                    <Input aria-label="Material Cost" type="number" step="0.01" value={form.material_cost} onChange={e => handleMatLabChange('material_cost', e.target.value)} className="pl-7 font-bold h-10 border-slate-300 bg-white" placeholder="0.00" />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Labor Cost</Label>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Labor Cost</Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-3 text-slate-500 font-bold">$</span>
-                    <Input type="number" step="0.01" value={form.labor_cost} onChange={e => handleMatLabChange('labor_cost', e.target.value)} className="pl-7 font-bold h-10 border-slate-300 bg-white" placeholder="0.00" />
+                    <Input aria-label="Labor Cost" type="number" step="0.01" value={form.labor_cost} onChange={e => handleMatLabChange('labor_cost', e.target.value)} className="pl-7 font-bold h-10 border-slate-300 bg-white" placeholder="0.00" />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[10px] font-black uppercase tracking-wider text-slate-800">Total Cost</Label>
+                  <Label className="text-sm font-black uppercase tracking-wider text-slate-800">Total Cost</Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-3 text-slate-800 font-bold">$</span>
-                    <Input type="number" step="0.01" value={form.cost} onChange={e => handleCostChange(e.target.value)} className="pl-7 font-black h-10 border-slate-400 bg-slate-100" placeholder="0.00" />
+                    <Input aria-label="Cost" type="number" step="0.01" value={form.cost} onChange={e => handleCostChange(e.target.value)} className="pl-7 font-black h-10 border-slate-400 bg-slate-100" placeholder="0.00" />
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-200">
                 <div className="sm:col-start-3">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Margin</Label>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Margin</Label>
                   <div className="relative mt-1">
-                    <Input type="number" step="0.1" value={form.margin} onChange={e => handleMarginChange(e.target.value)} className="pr-7 font-bold h-10 text-emerald-700 bg-emerald-50/30 border-emerald-200 text-right" placeholder="0.0" />
+                    <Input aria-label="Margin" type="number" step="0.1" value={form.margin} onChange={e => handleMarginChange(e.target.value)} className="pr-7 font-bold h-10 text-emerald-700 bg-emerald-50/30 border-emerald-200 text-right" placeholder="0.0" />
                     <span className="absolute right-3 top-3 text-emerald-700 font-black">%</span>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Client Pays</Label>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-amber-600">Client Pays</Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-3 text-amber-700 font-black">$</span>
-                    <Input type="number" step="0.01" value={form.price} onChange={e => handlePriceChange(e.target.value)} className="pl-7 font-black text-amber-900 border-amber-300 bg-amber-50 h-10" placeholder="0.00" />
+                    <Input aria-label="Price" type="number" step="0.01" value={form.price} onChange={e => handlePriceChange(e.target.value)} className="pl-7 font-black text-amber-900 border-amber-300 bg-amber-50 h-10" placeholder="0.00" />
                   </div>
                 </div>
               </div>
@@ -1070,23 +1003,24 @@ export default function Products() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">SKU / Item #</Label>
-                <Input value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} className="mt-1 font-bold" placeholder="Optional" />
+                <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">SKU / Item #</Label>
+                <Input aria-label="Sku" value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} className="mt-1 font-bold" placeholder="Optional" />
               </div>
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Supplier / Vendor</Label>
-                <Input value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} className="mt-1 font-bold" placeholder="e.g., Home Depot" />
+                <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Supplier / Vendor</Label>
+                <Input aria-label="Supplier" value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} className="mt-1 font-bold" placeholder="e.g., Home Depot" />
               </div>
             </div>
 
             <div>
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Supplier Link / URL</Label>
-              <Input type="url" value={form.vendor_url} onChange={e => setForm({...form, vendor_url: e.target.value})} className="mt-1 font-bold" placeholder="https://..." />
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Supplier Link / URL</Label>
+              <Input aria-label="Vendor Url" type="url" value={form.vendor_url} onChange={e => setForm({...form, vendor_url: e.target.value})} className="mt-1 font-bold" placeholder="https://..." />
             </div>
 
+            <div><Label htmlFor="product-finish">Finish / Colour <span className="font-normal normal-case">(optional)</span></Label><Input id="product-finish" value={form.finish_colour || ''} onChange={e => setForm({...form,finish_colour:e.target.value})} className="mt-1 min-h-11 text-base" /></div>
             <div>
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description & Notes</Label>
-              <Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} className="mt-1" placeholder="Internal notes or material specs..." />
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Description & Notes</Label>
+              <Textarea aria-label="Description" value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} className="mt-1" placeholder="Internal notes or material specs..." />
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
@@ -1114,7 +1048,7 @@ export default function Products() {
             <DialogHeader>
               <div className="flex items-start gap-4">
                 {selectedProduct.image_url ? (
-                  <img src={selectedProduct.image_url} alt="" className="h-16 w-16 object-cover rounded-xl border border-slate-200 shadow-sm" />
+                  <ProductImage src={selectedProduct.image_url} name={selectedProduct.name} />
                 ) : (
                   <div className="h-16 w-16 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center">
                     <Package className="h-6 w-6 text-slate-300" />
@@ -1122,7 +1056,7 @@ export default function Products() {
                 )}
                 <div>
                   <DialogTitle className="text-lg font-black text-slate-900 leading-tight pr-6">{selectedProduct.name}</DialogTitle>
-                  <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mt-1">{selectedProduct.sku || "No SKU"}</p>
+                  <p className="text-sm font-bold text-slate-600 uppercase tracking-wider mt-1">{selectedProduct.sku || "No SKU"}</p>
                 </div>
               </div>
             </DialogHeader>
@@ -1130,35 +1064,35 @@ export default function Products() {
             <div className="space-y-4 pt-4 border-t border-slate-100">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Your Total Cost</p>
+                  <p className="text-sm font-bold uppercase tracking-wider text-slate-600 mb-0.5">Your Total Cost</p>
                   <p className="text-lg font-bold text-slate-600">{formatCurrencyUSD(selectedProduct.cost)}</p>
                   {(selectedProduct.material_cost > 0 || selectedProduct.labor_cost > 0) && (
-                    <div className="text-[9px] font-medium text-slate-400 mt-1">
+                    <div className="text-sm font-medium text-slate-600 mt-1">
                       M: ${selectedProduct.material_cost || 0} / L: ${selectedProduct.labor_cost || 0}
                     </div>
                   )}
                 </div>
                 <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-amber-600 mb-0.5">Client Price</p>
+                  <p className="text-sm font-black uppercase tracking-wider text-amber-600 mb-0.5">Client Price</p>
                   <p className="text-xl font-black text-amber-900">{formatCurrencyUSD(selectedProduct.price)}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-y-4 gap-x-4 text-sm bg-white p-4 rounded-xl border border-slate-100">
                 <div className="col-span-2 flex flex-col gap-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Category Path</p>
-                  <div className="flex flex-wrap items-center gap-1.5 font-black text-slate-900 text-xs">
+                  <p className="text-sm font-bold uppercase tracking-wider text-slate-600 mb-0.5">Category Path</p>
+                  <div className="flex flex-wrap items-center gap-1.5 font-black text-slate-900 text-sm">
                     {selectedProduct.category ? <span>{selectedProduct.category}</span> : <span className="text-slate-300">—</span>}
                     {selectedProduct.sub_category && <><ChevronRight className="h-3 w-3 text-slate-300" /> <span>{selectedProduct.sub_category}</span></>}
                     {selectedProduct.tertiary_category && <><ChevronRight className="h-3 w-3 text-slate-300" /> <span>{selectedProduct.tertiary_category}</span></>}
                   </div>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Unit Type</p>
+                  <p className="text-sm font-bold uppercase tracking-wider text-slate-600 mb-1">Unit Type</p>
                   <p className="font-black text-slate-900 uppercase">{selectedProduct.unit}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Supplier</p>
+                  <p className="text-sm font-bold uppercase tracking-wider text-slate-600 mb-1">Supplier</p>
                   <p className="font-black text-slate-900">{selectedProduct.supplier || "—"}</p>
                 </div>
               </div>
@@ -1171,6 +1105,7 @@ export default function Products() {
                 </div>
               )}
 
+              <FinishColour value={selectedProduct.finish_colour} />
               {selectedProduct.description && (
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm font-medium text-slate-700 italic">
                   "{selectedProduct.description}"

@@ -1,3 +1,5 @@
+import ProductImage from "@/components/shared/ProductImage";
+import FinishColour from "@/components/shared/FinishColour";
 import React, { useMemo, useState } from "react";
 import { Building2, Calendar, FileText, MapPin, Receipt } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -176,10 +178,10 @@ export default function QuotePresentation({
                           <div key={item.id} className={`border-b border-slate-200 py-3 ${itemSelected && phaseSelected ? "" : "opacity-55"}`}>
                             <div className="flex items-start gap-3">
                               {item.is_optional && phaseSelected && allowSelections ? <SelectionCheckbox checked={itemSelected} onChange={() => onToggleItem?.(item.id)} color={brandColor} label={`Include ${item.name}`} /> : null}
-                              {item.photo_url ? <button type="button" onClick={() => setLightboxImage(item.photo_url)} className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300" aria-label={`Open photo for ${item.name}`}><img src={item.photo_url} alt={item.name} loading="lazy" className="h-full w-full object-cover" /></button> : null}
+                              {item.photo_url ? <ProductImage src={item.photo_url} name={item.name} className="h-20 w-20" /> : null}
                               <div className="min-w-0 flex-1">
                                 <p className="break-words font-bold text-slate-950">{item.name}{item.is_optional ? <span className="ml-2 inline-block rounded-full border px-1.5 py-0.5 text-xs font-medium" style={itemSelected ? { color: brandColor, borderColor: brandColor } : undefined}>Optional{itemSelected ? " ✓" : ""}</span> : null}</p>
-                                {item.description ? <p className="mt-1 whitespace-pre-wrap break-words text-xs font-medium leading-relaxed text-slate-500">{item.description}</p> : null}
+                                <FinishColour value={item.finish_colour} />{item.description ? <p className="mt-1 whitespace-pre-wrap break-words text-xs font-medium leading-relaxed text-slate-500">{item.description}</p> : null}
                               </div>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 pl-11 text-right">

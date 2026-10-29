@@ -1,3 +1,5 @@
+import ProductImage from "@/components/shared/ProductImage";
+import FinishColour from "@/components/shared/FinishColour";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -272,6 +274,7 @@ export default function InvoiceView() {
                                 <span className="text-slate-700 font-medium">
                                   {item.name} <span className="text-slate-400 font-normal">({item.quantity} {item.unit})</span>
                                 </span>
+                                <FinishColour value={item.finish_colour} />{item.photo_url && <ProductImage src={item.photo_url} name={item.name || item.item_name} />}
                                 {item.description && (
                                   <span className="text-slate-500 text-xs mt-1 whitespace-pre-wrap">{item.description}</span>
                                 )}

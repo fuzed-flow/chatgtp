@@ -1,3 +1,5 @@
+import ProductImage from "@/components/shared/ProductImage";
+import FinishColour from "@/components/shared/FinishColour";
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
@@ -28,7 +30,7 @@ export default function PurchaseOrderDetail() {
   const queryClient = useQueryClient();
 
   const [itemDialog, setItemDialog] = useState(false);
-  const [itemForm, setItemForm] = useState({ product_id: "", item_name: "", description: "", quantity: "1", unit_cost: "" });
+  const [itemForm, setItemForm] = useState({ product_id: "", item_name: "", description: "", finish_colour: "", photo_url: "", quantity: "1", unit_cost: "" });
   const [uploadingFile, setUploadingFile] = useState(false);
   const [emailDialog, setEmailDialog] = useState(false);
   const [emailForm, setEmailForm] = useState({ recipient: "", message: "" });
@@ -147,7 +149,7 @@ export default function PurchaseOrderDetail() {
       await recalculateTotals();
       queryClient.invalidateQueries({ queryKey: ["po-items", poId] });
       setItemDialog(false);
-      setItemForm({ product_id: "", item_name: "", description: "", quantity: "1", unit_cost: "" });
+      setItemForm({ product_id: "", item_name: "", description: "", finish_colour: "", photo_url: "", quantity: "1", unit_cost: "" });
       toast.success("Item added");
     },
     onError: (err) => toast.error(`Failed to add item: ${err.message}`)
@@ -444,6 +446,7 @@ export default function PurchaseOrderDetail() {
               <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-amber-300 transition-colors group">
                 <div className="flex-1">
                   <p className="font-bold text-slate-900">{item.item_name}</p>
+                  <FinishColour value={item.finish_colour} />{item.photo_url && <ProductImage src={item.photo_url} name={item.item_name} />}
                   {item.description && <p className="text-xs text-slate-600 mt-0.5">{item.description}</p>}
                   <div className="flex items-center gap-4 text-xs font-medium text-slate-500 mt-1.5">
                     <span className="bg-white px-2 py-0.5 rounded border border-slate-200">Qty: {item.quantity} {item.unit}</span>
@@ -526,7 +529,7 @@ export default function PurchaseOrderDetail() {
                       ...itemForm, 
                       product_id: v,
                       item_name: product?.name || "",
-                      description: product?.description || "",
+                      description: product?.description || "", finish_colour: product?.finish_colour || "", photo_url: product?.image_url || "",
                       unit_cost: product?.cost?.toString() || ""
                     });
                   }}
@@ -549,6 +552,7 @@ export default function PurchaseOrderDetail() {
 
               <div>
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Description</Label>
+                <Label htmlFor="po-item-finish">Finish / Colour (optional)</Label><Input id="po-item-finish" value={itemForm.finish_colour || ""} onChange={e => setItemForm({...itemForm,finish_colour:e.target.value})} className="min-h-11 bg-white text-base" />
                 <Input value={itemForm.description} onChange={(e) => setItemForm({...itemForm, description: e.target.value})} className="bg-white" />
               </div>
 

@@ -20,6 +20,7 @@ function transformedUrl(url, size, resize, quality) {
 
 export const galleryThumbnailUrl = (url, size = 480) => transformedUrl(url, size, "cover", 72);
 export const galleryViewerUrl = (url) => transformedUrl(url, 1920, "contain", 80);
+export const productThumbnailUrl = (url) => transformedUrl(url, 240, "contain", 76);
 
 export function canPreloadGalleryImages() {
   if (typeof navigator === "undefined") return false;

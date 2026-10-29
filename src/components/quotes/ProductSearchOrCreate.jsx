@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import ProductImage from "@/components/shared/ProductImage";
+import { prepareProductImage } from "@/lib/productImages";
+import React, { useState, useEffect, useRef, useId, useLayoutEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -23,26 +26,41 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false); // ⚡ NEW STATE
   const dropdownRef = useRef(null);
+  const resultsRef = useRef(null);
+  const listId = useId();
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  const [popup, setPopup] = useState({});
+  useEffect(() => {const timer=setTimeout(() => setDebouncedSearch(searchTerm.trim()),250);return () => clearTimeout(timer);},[searchTerm]);
+  useEffect(() => setActiveIndex(-1), [debouncedSearch]);
+  useLayoutEffect(() => {
+    if (!showDropdown) return;
+    const position=() => {const r=dropdownRef.current?.getBoundingClientRect();if(!r)return;const height=window.visualViewport?.height || window.innerHeight;const width=Math.min(540,window.innerWidth-24);const maxHeight=Math.max(100,Math.min(320,height-r.bottom-12));const above=height-r.bottom<180 && r.top>180;setPopup({position:'fixed',zIndex:200,left:Math.max(12,Math.min(r.left,window.innerWidth-width-12)),width,top:above?undefined:r.bottom+4,bottom:above?window.innerHeight-r.top+4:undefined,maxHeight:above?Math.min(320,r.top-16):maxHeight});};
+    position();window.addEventListener('resize',position);window.addEventListener('scroll',position,true);window.visualViewport?.addEventListener('resize',position);return () => {window.removeEventListener('resize',position);window.removeEventListener('scroll',position,true);window.visualViewport?.removeEventListener('resize',position);};
+  },[showDropdown]);
 
   const defaultMargin = settings?.default_margin ?? 20;
 
   const defaultForm = {
     name: "", category: "", sub_category: "", tertiary_category: "", 
     unit: "ea", material_cost: "", labor_cost: "", cost: "", margin: defaultMargin, price: "", 
-    description: "", sku: "", supplier: "", vendor_url: "", taxable: true, image_url: ""
+    finish_colour: "", description: "", sku: "", supplier: "", vendor_url: "", taxable: true, image_url: ""
   };
   const [newProduct, setNewProduct] = useState(defaultForm);
 
   // ⚡ NEW: INLINE PRODUCT SEARCH QUERY
   const { data: searchResults = [], isLoading: isSearching } = useQuery({
-    queryKey: ["product-inline-search", companyId, searchTerm],
-    enabled: !!companyId && searchTerm.trim().length > 1, 
-    queryFn: async () => {
+    queryKey: ["product-inline-search", companyId, debouncedSearch],
+    enabled: !!companyId && showDropdown && debouncedSearch.length > 1,
+    queryFn: async ({signal}) => {
+      const term=debouncedSearch.replace(/[%,()]/g," ").trim();
       const { data, error } = await supabase
         .from("products")
         .select("*")
         .eq("company_id", companyId) 
-        .ilike("name", `%${searchTerm}%`) 
+        .or(`name.ilike.%${term}%,sku.ilike.%${term}%,supplier.ilike.%${term}%,finish_colour.ilike.%${term}%`)
+        .order("name")
+        .abortSignal(signal)
         .limit(8); 
 
       if (error) throw error;
@@ -53,7 +71,7 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
   // Handle closing dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !resultsRef.current?.contains(event.target)) {
         setShowDropdown(false);
       }
     };
@@ -140,6 +158,7 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
   const handleImageUpload = async (file) => {
     setUploadingImage(true);
     try {
+      file = await prepareProductImage(file);
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `${companyId}/${fileName}`;
@@ -164,7 +183,7 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
         material_cost: parseFloat(data.material_cost) || 0, labor_cost: parseFloat(data.labor_cost) || 0,
         cost: parseFloat(data.cost) || 0, price: parseFloat(data.price) || 0, 
         supplier: data.supplier || null, vendor_url: data.vendor_url || null,
-        description: data.description || null, sku: data.sku || null, taxable: data.taxable, image_url: data.image_url || null
+        finish_colour: data.finish_colour?.trim() || null, description: data.description || null, sku: data.sku || null, taxable: data.taxable, image_url: data.image_url || null
       };
       const { data: inserted, error } = await supabase.from("products").insert([payload]).select().single();
       if (error) throw error;
@@ -183,33 +202,41 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
   useEffect(() => { setSearchTerm(value || ""); }, [value]);
 
   return (
-    <div className="relative flex-1" ref={dropdownRef}>
+    <div className="relative min-w-0 flex-1" ref={dropdownRef}>
       <div className="relative flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600 pointer-events-none" />
           <Input
             value={searchTerm}
+            role="combobox" aria-label="Line item name or product search" aria-autocomplete="list" aria-expanded={showDropdown && searchTerm.trim().length>1} aria-controls={listId} aria-activedescendant={activeIndex>=0?`${listId}-${activeIndex}`:undefined}
+            onKeyDown={e => {
+              if(e.key==='Escape'){setShowDropdown(false);setActiveIndex(-1);}
+              if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();setShowDropdown(true);setActiveIndex(i => searchResults.length ? (i+(e.key==='ArrowDown'?1:-1)+searchResults.length)%searchResults.length : -1);}
+              if(e.key==='Enter'&&showDropdown&&activeIndex>=0&&searchResults[activeIndex]){e.preventDefault();const prod=searchResults[activeIndex];setSearchTerm(prod.name);onSelect(prod.name,prod);setShowDropdown(false);}
+            }}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               onSelect(e.target.value); 
               setShowDropdown(true); // ⚡ OPEN DROPDOWN ON TYPE
             }}
             onFocus={() => setShowDropdown(true)}
+            onBlur={() => setShowDropdown(false)}
             placeholder="Type line item name..."
-            className="pl-9 font-bold bg-white shadow-sm border-slate-300 h-9 text-slate-900"
+            className="pl-9 min-w-0 font-bold bg-white shadow-sm border-slate-300 h-11 text-base text-slate-900"
           />
           
           {/* ⚡ NEW: INLINE DROPDOWN MENU */}
           {showDropdown && searchTerm.trim().length > 1 && (
-            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+            createPortal(<div ref={resultsRef} id={listId} role="listbox" aria-label="Matching products" style={popup} className="bg-white border border-slate-200 rounded-lg shadow-xl overflow-y-auto overscroll-contain">
               {isSearching ? (
                 <div className="p-3 text-sm text-slate-500 text-center font-medium">Searching catalog...</div>
               ) : searchResults.length > 0 ? (
                 <div className="divide-y divide-slate-100">
-                  {searchResults.map(prod => (
+                  {searchResults.map((prod,index) => (
                     <div 
-                      key={prod.id} 
-                      className="px-3 py-2 hover:bg-amber-50 cursor-pointer transition-colors flex items-center justify-between group"
+                      key={prod.id} id={`${listId}-${index}`} role="option" aria-selected={activeIndex===index}
+                      onPointerDown={e => e.preventDefault()}
+                      className={`min-h-14 px-3 py-3 hover:bg-amber-50 cursor-pointer transition-colors flex items-start gap-3 justify-between group ${activeIndex===index?"bg-amber-100":""}`}
                       onClick={() => {
                         setSearchTerm(prod.name);
                         onSelect(prod.name, prod);
@@ -217,12 +244,12 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
                       }}
                     >
                       <div className="min-w-0 pr-4">
-                        <p className="text-sm font-bold text-slate-900 truncate group-hover:text-amber-800">{prod.name}</p>
-                        {prod.category && <p className="text-[10px] uppercase font-bold text-slate-400 truncate">{prod.category}</p>}
+                        <p className="text-sm font-bold text-slate-900 whitespace-normal break-words group-hover:text-amber-800">{prod.name}</p>
+                        {prod.category && <p className="text-sm uppercase font-bold text-slate-600 truncate">{prod.category}</p>}
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-sm font-black text-slate-900">${Number(prod.price).toFixed(2)}</p>
-                        <p className="text-[10px] text-slate-500 uppercase font-bold">{prod.unit || 'ea'}</p>
+                        <p className="text-sm text-slate-500 uppercase font-bold">{prod.unit || 'ea'}</p>
                       </div>
                     </div>
                   ))}
@@ -231,10 +258,10 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
                 <div className="p-4 flex flex-col items-center justify-center text-center">
                   <Package className="h-6 w-6 text-slate-300 mb-2" />
                   <p className="text-sm font-bold text-slate-600 mb-1">No matches found</p>
-                  <p className="text-xs text-slate-400">Click "Add to Catalog" to create this item.</p>
+                  <p className="text-sm text-slate-600">Click "Add to Catalog" to create this item.</p>
                 </div>
               )}
-            </div>
+            </div>,document.body)
           )}
         </div>
 
@@ -267,7 +294,7 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
               setShowNewProduct(true);
               setShowDropdown(false); // ⚡ Close dropdown when adding
             }}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black h-9 px-3 shrink-0 shadow-sm"
+            className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black min-h-11 px-2 shrink-0 shadow-sm"
           >
             <Plus className="h-4 w-4 sm:mr-1" />
             <span className="hidden sm:inline">Add to Catalog</span>
@@ -290,20 +317,20 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
               <div className="shrink-0 w-full sm:w-auto flex justify-center">
                 {newProduct.image_url ? (
                   <div className="relative group">
-                    <img src={newProduct.image_url} alt="Product" className="h-32 w-32 object-cover rounded-xl border border-slate-200 shadow-sm" />
-                    <button type="button" onClick={() => setNewProduct({ ...newProduct, image_url: "" })} className="absolute -top-2 -right-2 bg-slate-900 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600">
+                    <ProductImage src={newProduct.image_url} name={newProduct.name || "Product"} className="h-32 w-32" />
+                    <button type="button" aria-label="Remove product photo" onClick={() => setNewProduct({ ...newProduct, image_url: "" })} className="absolute -top-2 -right-2 bg-slate-900 text-white rounded-full h-11 w-11 flex items-center justify-center opacity-100 transition-opacity shadow-md hover:bg-red-600">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
                 ) : (
-                  <label className="h-32 w-32 border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-colors">
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
+                  <label className="h-32 w-32 focus-within:ring-2 focus-within:ring-amber-500 border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-colors">
+                    <input type="file" accept="image/*" aria-label="Upload product photo" className="sr-only" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
                     {uploadingImage ? (
                       <div className="h-6 w-6 border-2 border-amber-200 border-t-amber-500 rounded-full animate-spin" />
                     ) : (
                       <>
-                        <UploadCloud className="h-6 w-6 text-slate-400 mb-1.5" />
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Photo</span>
+                        <UploadCloud className="h-6 w-6 text-slate-600 mb-1.5" />
+                        <span className="text-sm font-black text-slate-500 uppercase tracking-wider">Photo</span>
                       </>
                     )}
                   </label>
@@ -312,33 +339,33 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
 
               <div className="flex-1 space-y-4 w-full">
                 <div>
-                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Item Name *</Label>
-                  <Input value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="mt-1 font-black text-lg text-slate-900 h-12 border-slate-300" placeholder="e.g., Kohler Kitchen Faucet" />
+                  <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Item Name *</Label>
+                  <Input aria-label="Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="mt-1 font-black text-lg text-slate-900 h-12 border-slate-300" placeholder="e.g., Kohler Kitchen Faucet" />
                 </div>
                 
                 <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
                   <div className="flex items-center px-3 py-2 bg-slate-100 border-b border-slate-200">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><FolderTree className="h-3 w-3" /> Categorization</span>
+                    <span className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><FolderTree className="h-3 w-3" /> Categorization</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
                     <div>
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Main Category</Label>
+                      <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Main Category</Label>
                       <Select value={newProduct.category} onValueChange={v => setNewProduct({...newProduct, category: v, sub_category: "", tertiary_category: ""})}>
-                        <SelectTrigger className="bg-white font-bold text-xs h-10"><SelectValue placeholder="Select Main..." /></SelectTrigger>
+                        <SelectTrigger aria-label="Category" className="bg-white font-bold text-sm h-10"><SelectValue placeholder="Select Main..." /></SelectTrigger>
                         <SelectContent>{uniqueMains.map(m => <SelectItem key={m} value={m} className="font-bold">{m}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Sub Category</Label>
+                      <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Sub Category</Label>
                       <Select value={newProduct.sub_category} disabled={!newProduct.category || uniqueSubs.length === 0} onValueChange={v => setNewProduct({...newProduct, sub_category: v, tertiary_category: ""})}>
-                        <SelectTrigger className="bg-white font-bold text-xs h-10"><SelectValue placeholder="Select Sub..." /></SelectTrigger>
+                        <SelectTrigger aria-label="Sub Category" className="bg-white font-bold text-sm h-10"><SelectValue placeholder="Select Sub..." /></SelectTrigger>
                         <SelectContent>{uniqueSubs.map(s => <SelectItem key={s} value={s} className="font-bold">{s}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">3rd Category</Label>
+                      <Label className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">3rd Category</Label>
                       <Select value={newProduct.tertiary_category} disabled={!newProduct.sub_category || uniqueTers.length === 0} onValueChange={v => setNewProduct({...newProduct, tertiary_category: v})}>
-                        <SelectTrigger className="bg-white font-bold text-xs h-10"><SelectValue placeholder="Select 3rd..." /></SelectTrigger>
+                        <SelectTrigger aria-label="Tertiary Category" className="bg-white font-bold text-sm h-10"><SelectValue placeholder="Select 3rd..." /></SelectTrigger>
                         <SelectContent>{uniqueTers.map(t => <SelectItem key={t} value={t} className="font-bold">{t}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
@@ -350,48 +377,48 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-2 space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Unit</Label>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Unit</Label>
                   <Select value={newProduct.unit} onValueChange={v => setNewProduct({...newProduct, unit: v})}>
-                    <SelectTrigger className="mt-1 bg-white font-bold h-10"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Unit" className="mt-1 bg-white font-bold h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>{UNITS.map(u => <SelectItem key={u} value={u} className="font-bold">{u}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Material Cost</Label>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Material Cost</Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-3 text-slate-500 font-bold">$</span>
-                    <Input type="number" step="0.01" value={newProduct.material_cost} onChange={e => handleMatLabChange('material_cost', e.target.value)} className="pl-7 font-bold h-10 border-slate-300 bg-white" placeholder="0.00" />
+                    <Input aria-label="Material Cost" type="number" step="0.01" value={newProduct.material_cost} onChange={e => handleMatLabChange('material_cost', e.target.value)} className="pl-7 font-bold h-10 border-slate-300 bg-white" placeholder="0.00" />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Labor Cost</Label>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Labor Cost</Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-3 text-slate-500 font-bold">$</span>
-                    <Input type="number" step="0.01" value={newProduct.labor_cost} onChange={e => handleMatLabChange('labor_cost', e.target.value)} className="pl-7 font-bold h-10 border-slate-300 bg-white" placeholder="0.00" />
+                    <Input aria-label="Labor Cost" type="number" step="0.01" value={newProduct.labor_cost} onChange={e => handleMatLabChange('labor_cost', e.target.value)} className="pl-7 font-bold h-10 border-slate-300 bg-white" placeholder="0.00" />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[10px] font-black uppercase tracking-wider text-slate-800">Total Cost</Label>
+                  <Label className="text-sm font-black uppercase tracking-wider text-slate-800">Total Cost</Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-3 text-slate-800 font-bold">$</span>
-                    <Input type="number" step="0.01" value={newProduct.cost} onChange={e => handleCostChange(e.target.value)} className="pl-7 font-black h-10 border-slate-400 bg-slate-100" placeholder="0.00" />
+                    <Input aria-label="Cost" type="number" step="0.01" value={newProduct.cost} onChange={e => handleCostChange(e.target.value)} className="pl-7 font-black h-10 border-slate-400 bg-slate-100" placeholder="0.00" />
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-200">
                 <div className="sm:col-start-3">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Margin</Label>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Margin</Label>
                   <div className="relative mt-1">
-                    <Input type="number" step="0.1" value={newProduct.margin} onChange={e => handleMarginChange(e.target.value)} className="pr-7 font-bold h-10 text-emerald-700 bg-emerald-50/30 border-emerald-200 text-right" placeholder="0.0" />
+                    <Input aria-label="Margin" type="number" step="0.1" value={newProduct.margin} onChange={e => handleMarginChange(e.target.value)} className="pr-7 font-bold h-10 text-emerald-700 bg-emerald-50/30 border-emerald-200 text-right" placeholder="0.0" />
                     <span className="absolute right-3 top-3 text-emerald-700 font-black">%</span>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Client Pays</Label>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-amber-600">Client Pays</Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-3 text-amber-700 font-black">$</span>
-                    <Input type="number" step="0.01" value={newProduct.price} onChange={e => handlePriceChange(e.target.value)} className="pl-7 font-black text-amber-900 border-amber-300 bg-amber-50 h-10" placeholder="0.00" />
+                    <Input aria-label="Price" type="number" step="0.01" value={newProduct.price} onChange={e => handlePriceChange(e.target.value)} className="pl-7 font-black text-amber-900 border-amber-300 bg-amber-50 h-10" placeholder="0.00" />
                   </div>
                 </div>
               </div>
@@ -399,23 +426,24 @@ export default function ProductSearchOrCreate({ value, initialData, onSelect, on
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">SKU / Item #</Label>
-                <Input value={newProduct.sku} onChange={e => setNewProduct({...newProduct, sku: e.target.value})} className="mt-1 font-bold" placeholder="Optional" />
+                <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">SKU / Item #</Label>
+                <Input aria-label="Sku" value={newProduct.sku} onChange={e => setNewProduct({...newProduct, sku: e.target.value})} className="mt-1 font-bold" placeholder="Optional" />
               </div>
               <div>
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Supplier / Vendor</Label>
-                <Input value={newProduct.supplier} onChange={e => setNewProduct({...newProduct, supplier: e.target.value})} className="mt-1 font-bold" placeholder="e.g., Home Depot" />
+                <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Supplier / Vendor</Label>
+                <Input aria-label="Supplier" value={newProduct.supplier} onChange={e => setNewProduct({...newProduct, supplier: e.target.value})} className="mt-1 font-bold" placeholder="e.g., Home Depot" />
               </div>
             </div>
 
             <div>
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Supplier Link / URL</Label>
-              <Input type="url" value={newProduct.vendor_url} onChange={e => setNewProduct({...newProduct, vendor_url: e.target.value})} className="mt-1 font-bold" placeholder="https://..." />
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Supplier Link / URL</Label>
+              <Input aria-label="Vendor Url" type="url" value={newProduct.vendor_url} onChange={e => setNewProduct({...newProduct, vendor_url: e.target.value})} className="mt-1 font-bold" placeholder="https://..." />
             </div>
 
+            <div><Label htmlFor={`${listId}-finish`}>Finish / Colour (optional)</Label><Input id={`${listId}-finish`} value={newProduct.finish_colour || ''} onChange={e => setNewProduct({...newProduct,finish_colour:e.target.value})} className="mt-1 min-h-11 text-base" /></div>
             <div>
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description & Notes</Label>
-              <Textarea value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} rows={2} className="mt-1" placeholder="Internal notes or material specs..." />
+              <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Description & Notes</Label>
+              <Textarea aria-label="Description" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} rows={2} className="mt-1" placeholder="Internal notes or material specs..." />
             </div>
 
             {/* RESPONSIVE BOTTOM ACTION BAR */}

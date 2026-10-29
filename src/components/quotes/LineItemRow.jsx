@@ -1,3 +1,4 @@
+import ProductImage from "@/components/shared/ProductImage";
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/AuthContext"; 
 import { Input } from "@/components/ui/input";
@@ -82,6 +83,7 @@ export default function LineItemRow({
   const handleProductSelect = (name, product) => {
     if (product) {
       updateField("name", product.name);
+      updateField("finish_colour", product.finish_colour || "");
       updateField("description", product.description || "");
       setLocalDesc(product.description || "");
       updateField("unit", product.unit || "ea");
@@ -198,10 +200,10 @@ export default function LineItemRow({
         // ⚡ COLLAPSED VIEW HEADER
         <div className="flex gap-2 items-center">
           <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing p-1.5 rounded-md hover:bg-slate-200 shrink-0 transition-colors" title="Drag to reorder">
-            <GripVertical className="h-4 w-4 text-slate-400" />
+            <GripVertical className="h-4 w-4 text-slate-600" />
           </div>
           
-          <Button type="button" variant="ghost" size="icon" aria-label={`Expand ${item.name || "line item"}`} aria-expanded={false} aria-controls={detailsId} title="Expand line item" onClick={() => setIsCollapsed(false)} className="h-9 w-9 shrink-0 hover:bg-amber-100 hover:text-amber-800 text-slate-500">
+          <Button type="button" variant="ghost" size="icon" aria-label={`Expand ${item.name || "line item"}`} aria-expanded={false} aria-controls={detailsId} title="Expand line item" onClick={() => setIsCollapsed(false)} className="h-11 w-11 shrink-0 hover:bg-amber-100 hover:text-amber-800 text-slate-500">
             <ChevronRight className="h-5 w-5" />
           </Button>
 
@@ -212,12 +214,12 @@ export default function LineItemRow({
             </span>
             <span className="flex shrink-0 items-center gap-4 text-right">
               <span className="hidden text-right sm:block">
-                <span className="block text-[10px] font-black uppercase text-slate-400">Qty</span>
+                <span className="block text-xs font-black uppercase text-slate-600">Qty</span>
                 <span className="block text-xs font-bold text-slate-700">{localQty} {localUnit}</span>
               </span>
               <span className="text-right">
-                <span className="block text-[10px] font-black uppercase text-slate-400">Total</span>
-                <span className="block text-sm font-black text-amber-600">${itemTotal}</span>
+                <span className="block text-xs font-black uppercase text-slate-600">Total</span>
+                <span className="block text-sm font-black text-amber-800">${itemTotal}</span>
               </span>
             </span>
           </button>
@@ -228,11 +230,11 @@ export default function LineItemRow({
           {/* Row 1 on Mobile (Name & Search) / Left side on Desktop */}
           <div className="flex-1 flex gap-2 items-center min-w-0">
             <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing p-1.5 rounded-md hover:bg-slate-200 shrink-0 transition-colors" title="Drag to reorder">
-              <GripVertical className="h-4 w-4 text-slate-400" />
+              <GripVertical className="h-4 w-4 text-slate-600" />
             </div>
             
             {/* Keep long line-item names compact on both mobile and desktop. */}
-            <div className="flex-1 min-w-0 [&_input]:text-xs sm:[&_input]:text-sm">
+            <div className="flex-1 min-w-0 [&_input]:text-base">
               <ProductSearchOrCreate
                 value={item.name}
                 initialData={{
@@ -244,19 +246,19 @@ export default function LineItemRow({
                   unit_cost: localTotalCost,
                   unit_price: localPrice,
                   taxable: item.taxable,
-                  photo_url: item.photo_url
+                  finish_colour: item.finish_colour || "", photo_url: item.photo_url
                 }}
                 onSelect={handleProductSelect}
                 onProductCreated={(product) => handleProductSelect(product.name, product)}
               />
             </div>
             
-            <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0 bg-white border-slate-300 shadow-sm hover:border-amber-400 transition-colors" onClick={() => setProductDialogOpen(true)}>
-              <Search className="h-4 w-4 text-amber-600" />
+            <Button type="button" variant="outline" size="icon" aria-label="Browse product catalog" className="h-11 w-11 shrink-0 bg-white border-slate-300 shadow-sm hover:border-amber-400 transition-colors" onClick={() => setProductDialogOpen(true)}>
+              <Search className="h-4 w-4 text-amber-800" />
             </Button>
 
             {/* Collapse toggle (Mobile Top-Right) */}
-            <Button type="button" variant="ghost" size="icon" aria-label={`Collapse ${item.name || "line item"}`} aria-expanded={true} aria-controls={detailsId} title="Collapse line item" onClick={() => setIsCollapsed(true)} className="ml-auto h-9 w-9 shrink-0 text-slate-500 hover:bg-amber-100 hover:text-amber-800 sm:hidden">
+            <Button type="button" variant="ghost" size="icon" aria-label={`Collapse ${item.name || "line item"}`} aria-expanded={true} aria-controls={detailsId} title="Collapse line item" onClick={() => setIsCollapsed(true)} className="ml-auto h-11 w-11 shrink-0 text-slate-500 hover:bg-amber-100 hover:text-amber-800 sm:hidden">
               <ChevronUp className="h-5 w-5" />
             </Button>
           </div>
@@ -264,12 +266,12 @@ export default function LineItemRow({
           {/* Row 2 on Mobile (Duplicate / Delete) / Right side on Desktop */}
           <div className="flex items-center justify-between sm:justify-end gap-1 w-full sm:w-auto bg-white sm:bg-transparent p-1.5 sm:p-0 rounded-lg sm:rounded-none border sm:border-none border-slate-200 shadow-sm sm:shadow-none">
             <div className="flex items-center gap-1">
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 hover:bg-amber-50 hover:text-amber-700 rounded-md bg-slate-50 sm:bg-transparent border border-slate-200 sm:border-transparent" onClick={() => onDuplicate(phaseIdx, itemIdx)} title="Duplicate">
+              <Button type="button" variant="ghost" size="icon" className="h-11 w-11 hover:bg-amber-50 hover:text-amber-700 rounded-md bg-slate-50 sm:bg-transparent border border-slate-200 sm:border-transparent" onClick={() => onDuplicate(phaseIdx, itemIdx)} title="Duplicate">
                 <Copy className="h-4 w-4" />
               </Button>
               {phases?.length > 1 && (
                 <Select onValueChange={v => onMove(phaseIdx, itemIdx, Number(v))}>
-                  <SelectTrigger className="h-8 w-8 sm:h-9 sm:w-9 p-0 border border-slate-200 sm:border-transparent bg-slate-50 sm:bg-transparent hover:bg-slate-100 rounded-md flex items-center justify-center [&>svg]:hidden" title="Move to phase">
+                  <SelectTrigger className="h-11 w-11 p-0 border border-slate-200 sm:border-transparent bg-slate-50 sm:bg-transparent hover:bg-slate-100 rounded-md flex items-center justify-center [&>svg]:hidden" title="Move to phase">
                     <MoveRight className="h-4 w-4 text-slate-600" />
                   </SelectTrigger>
                   <SelectContent>
@@ -279,7 +281,7 @@ export default function LineItemRow({
                   </SelectContent>
                 </Select>
               )}
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 hover:bg-red-50 hover:text-red-600 rounded-md bg-slate-50 sm:bg-transparent border border-slate-200 sm:border-transparent" onClick={() => onRemove(phaseIdx, itemIdx)} title="Remove Item">
+              <Button type="button" variant="ghost" size="icon" className="h-11 w-11 hover:bg-red-50 hover:text-red-600 rounded-md bg-slate-50 sm:bg-transparent border border-slate-200 sm:border-transparent" onClick={() => onRemove(phaseIdx, itemIdx)} title="Remove Item">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
@@ -296,7 +298,7 @@ export default function LineItemRow({
       {!isCollapsed && (
         <div id={detailsId} className="animate-in fade-in slide-in-from-top-2 duration-200">
           {isItemModified && (
-            <div className="bg-red-600 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded mb-2 inline-block shadow-sm">
+            <div className="bg-red-600 text-white text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded mb-2 inline-block shadow-sm">
               CLIENT MODIFIED
             </div>
           )}
@@ -311,18 +313,18 @@ export default function LineItemRow({
           <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-3">
             <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 items-start">
               <div>
-                <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Qty</Label>
-                <Input 
+                <Label className="text-xs font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Qty</Label>
+                <Input aria-label="Qty"
                   type="number" 
                   value={localQty}
                   onChange={e => { setLocalQty(e.target.value); updateField("quantity", Number(e.target.value)); }}
-                  className="text-sm h-9 font-black text-slate-900 border-slate-300" 
+                  className="text-base h-11 font-black text-slate-900 border-slate-300"
                 />
               </div>
               <div>
-                <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Unit</Label>
+                <Label className="text-xs font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Unit</Label>
                 <Select value={localUnit} onValueChange={v => { setLocalUnit(v); updateField("unit", v); }}>
-                  <SelectTrigger className="h-9 text-xs font-bold border-slate-300"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Line item unit" className="h-11 text-xs font-bold border-slate-300"><SelectValue /></SelectTrigger>
                   <SelectContent>{UNITS.map(u => <SelectItem key={u} value={u} className="font-bold">{u}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -330,11 +332,11 @@ export default function LineItemRow({
               {/* COST BLOCK WITH M/L SPLIT */}
               <div className="col-span-2 relative bg-slate-50/50 p-2 rounded-lg border border-slate-100 -mt-2">
                 <div className="flex items-center justify-between mb-1.5">
-                  <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Unit Cost</Label>
+                  <Label className="text-xs font-black uppercase tracking-wider text-slate-500">Unit Cost</Label>
                   <button 
                     type="button" 
                     onClick={() => setShowCostBreakdown(!showCostBreakdown)} 
-                    className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded transition-colors ${showCostBreakdown ? 'bg-slate-200 text-slate-600' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                    className={`text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded transition-colors ${showCostBreakdown ? 'bg-slate-200 text-slate-600' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
                   >
                     {showCostBreakdown ? "Hide M/L" : "Split M/L"}
                   </button>
@@ -343,19 +345,19 @@ export default function LineItemRow({
                 {showCostBreakdown && (
                   <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-200 border-dashed">
                     <div className="relative flex-1">
-                      <span className="absolute left-2 top-2 text-[10px] font-black text-slate-400">M:</span>
-                      <Input type="number" step="0.01" value={localMatCost} onChange={e => handleMatLabChange('material', e.target.value)} className="h-8 text-xs font-bold pl-6 border-slate-300 bg-white" />
+                      <span className="absolute left-2 top-2 text-xs font-black text-slate-600">M:</span>
+                      <Input aria-label="Mat Cost" type="number" step="0.01" value={localMatCost} onChange={e => handleMatLabChange('material', e.target.value)} className="h-8 text-xs font-bold pl-6 border-slate-300 bg-white" />
                     </div>
                     <div className="relative flex-1">
-                      <span className="absolute left-2 top-2 text-[10px] font-black text-slate-400">L:</span>
-                      <Input type="number" step="0.01" value={localLabCost} onChange={e => handleMatLabChange('labor', e.target.value)} className="h-8 text-xs font-bold pl-5 border-slate-300 bg-white" />
+                      <span className="absolute left-2 top-2 text-xs font-black text-slate-600">L:</span>
+                      <Input aria-label="Lab Cost" type="number" step="0.01" value={localLabCost} onChange={e => handleMatLabChange('labor', e.target.value)} className="h-8 text-xs font-bold pl-5 border-slate-300 bg-white" />
                     </div>
                   </div>
                 )}
                 
                 <div className="relative">
-                  {showCostBreakdown && <span className="absolute left-2 top-2 text-[10px] font-black text-slate-400">Total:</span>}
-                  <Input 
+                  {showCostBreakdown && <span className="absolute left-2 top-2 text-xs font-black text-slate-600">Total:</span>}
+                  <Input aria-label="Total Cost"
                     type="number" step="0.01" value={localTotalCost} onChange={e => handleTotalCostChange(e.target.value)}
                     className={`text-sm h-9 font-bold text-slate-900 border-slate-300 ${showCostBreakdown ? 'bg-slate-100 pl-11' : 'bg-white'}`} 
                   />
@@ -363,8 +365,8 @@ export default function LineItemRow({
               </div>
 
               <div>
-                <Label className="text-[10px] font-black uppercase tracking-wider text-amber-600 mb-1.5 block">Unit Price</Label>
-                <Input 
+                <Label className="text-xs font-black uppercase tracking-wider text-amber-800 mb-1.5 block">Unit Price</Label>
+                <Input aria-label="Price"
                   type="number" step="0.01" value={localPrice}
                   onChange={e => { 
                     setLocalPrice(e.target.value); 
@@ -373,14 +375,14 @@ export default function LineItemRow({
                     const c = Number(localTotalCost);
                     if (p > 0 && c > 0) setLocalMargin((((p - c) / p) * 100).toFixed(1));
                   }}
-                  className="text-sm h-9 font-black text-amber-900 border-amber-300 bg-amber-50 shadow-inner" 
+                  className="text-base h-11 font-black text-amber-900 border-amber-300 bg-amber-50 shadow-inner"
                 />
               </div>
 
               <div>
-                <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Margin</Label>
+                <Label className="text-xs font-black uppercase tracking-wider text-slate-500 mb-1.5 block">Margin</Label>
                 <div className="relative">
-                  <Input
+                  <Input aria-label="Margin"
                     type="number" step="0.1" min="-100" max="100" value={localMargin}
                     onChange={e => {
                       setLocalMargin(e.target.value); 
@@ -394,9 +396,9 @@ export default function LineItemRow({
                     }}
                     className="text-sm h-9 font-bold text-emerald-700 bg-emerald-50 border-emerald-200 pr-6"
                   />
-                  <span className="absolute right-2 top-2 text-[10px] font-black text-emerald-700">%</span>
+                  <span className="absolute right-2 top-2 text-xs font-black text-emerald-700">%</span>
                 </div>
-                <div className="text-[9px] font-black text-emerald-600 text-center mt-1.5 whitespace-nowrap tracking-wider">
+                <div className="text-xs font-black text-emerald-600 text-center mt-1.5 whitespace-nowrap tracking-wider">
                   Profit: ${((Number(localQty) * Number(localPrice)) - (Number(localQty) * Number(localTotalCost))).toFixed(2)}
                 </div>
               </div>
@@ -405,13 +407,13 @@ export default function LineItemRow({
 
           {/* Settings row (Moved duplicate/delete out of here) */}
           <div className="flex flex-wrap items-center gap-4 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm mb-3">
-            <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-slate-700 cursor-pointer hover:opacity-70 transition-opacity">
+            <label className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-700 cursor-pointer hover:opacity-70 transition-opacity">
               <input type="checkbox" checked={item.taxable} onChange={e => updateField("taxable", e.target.checked)} className="rounded border-slate-300 text-amber-500 focus:ring-amber-500 w-3.5 h-3.5" />
               Taxable
             </label>
             <div className="w-px h-4 bg-slate-200"></div>
             
-            <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-slate-900 cursor-pointer hover:opacity-70 transition-opacity">
+            <label className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-900 cursor-pointer hover:opacity-70 transition-opacity">
               <input type="checkbox" checked={item.is_material === true} onChange={e => updateField("is_material", e.target.checked)} className="rounded border-slate-300 text-amber-500 focus:ring-amber-500 w-3.5 h-3.5" />
               Track Material
             </label>
@@ -420,15 +422,15 @@ export default function LineItemRow({
               <>
                 <div className="w-px h-4 bg-slate-200"></div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Supplier:</span>
-                  <input type="text" placeholder="Supplier Name..." value={localSupplier} onChange={e => { setLocalSupplier(e.target.value); updateField("supplier", e.target.value); }} className="h-7 text-[11px] font-bold border border-slate-300 rounded bg-amber-50/40 px-2 outline-none focus:border-amber-500 w-[140px]" />
+                  <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Supplier:</span>
+                  <input type="text" placeholder="Supplier Name..." value={localSupplier} onChange={e => { setLocalSupplier(e.target.value); updateField("supplier", e.target.value); }} className="h-7 text-sm font-bold border border-slate-300 rounded bg-amber-50/40 px-2 outline-none focus:border-amber-500 w-[140px]" />
                 </div>
               </>
             )}
 
             <div className="w-px h-4 bg-slate-200"></div>
 
-            <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-slate-700 cursor-pointer hover:opacity-70 transition-opacity">
+            <label className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-700 cursor-pointer hover:opacity-70 transition-opacity">
               <input type="checkbox" checked={item.is_optional === true} onChange={e => updateField("is_optional", e.target.checked)} className="rounded border-slate-300 text-amber-500 focus:ring-amber-500 w-3.5 h-3.5" />
               Optional
             </label>
@@ -436,7 +438,7 @@ export default function LineItemRow({
             {item.is_optional && (
               <>
                 <div className="w-px h-4 bg-slate-200"></div>
-                <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-slate-500 cursor-pointer hover:opacity-70 transition-opacity">
+                <label className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-500 cursor-pointer hover:opacity-70 transition-opacity">
                   <input type="checkbox" checked={item.default_selected === true} onChange={e => updateField("default_selected", e.target.checked)} className="rounded border-slate-300 text-amber-500 focus:ring-amber-500 w-3.5 h-3.5" />
                   Pre-select
                 </label>
@@ -444,8 +446,9 @@ export default function LineItemRow({
             )}
           </div>
           
-          <div className="flex gap-4 items-start">
-            <div className="flex-1 space-y-3">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div className="w-full min-w-0 flex-1 space-y-3">
+              <div><Label htmlFor={`${detailsId}-finish`} className="mb-1 block text-sm font-semibold text-slate-700">Finish / Colour (optional)</Label><Input id={`${detailsId}-finish`} value={item.finish_colour || ""} onChange={e => updateField("finish_colour",e.target.value)} className="min-h-11 bg-white text-base" /></div>
               {/* Writing tools provide Expand/Collapse on touch devices and vertical resizing on desktop. */}
               <Textarea
                writingTools
@@ -474,14 +477,14 @@ export default function LineItemRow({
             <div className="flex flex-col items-center gap-1.5 shrink-0 pt-1">
               {item.photo_url ? (
                 <div className="relative group">
-                  <img src={item.photo_url} alt={item.name} className="h-28 w-28 object-cover rounded-xl border border-slate-200 shadow-md bg-white" />
-                  <button type="button" onClick={() => updateField("photo_url", "")} className="absolute -top-2 -right-2 bg-slate-900 hover:bg-red-600 text-white rounded-full h-6 w-6 flex items-center justify-center text-sm font-black opacity-0 group-hover:opacity-100 transition-all shadow-lg">×</button>
+                  <ProductImage src={item.photo_url} name={item.name || "Line item"} className="h-28 w-28" />
+                  <button type="button" aria-label="Remove line item photo" onClick={() => updateField("photo_url", "")} className="absolute -top-2 -right-2 bg-slate-900 hover:bg-red-600 text-white rounded-full h-11 w-11 flex items-center justify-center text-sm font-black opacity-100 transition-all shadow-lg">×</button>
                 </div>
               ) : (
                 <label className="h-28 w-28 border-2 border-dashed border-slate-300 bg-white rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-colors shadow-sm">
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onPhotoUpload(phaseIdx, itemIdx, e.target.files[0])} />
+                  <input type="file" accept="image/*" aria-label="Upload line item photo" className="sr-only" onChange={(e) => e.target.files?.[0] && onPhotoUpload(phaseIdx, itemIdx, e.target.files[0])} />
                   <ImageIcon className="h-6 w-6 text-slate-300 mb-1.5" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Photo</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-600">Photo</span>
                 </label>
               )}
             </div>

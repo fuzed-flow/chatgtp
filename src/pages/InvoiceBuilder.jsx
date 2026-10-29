@@ -1,3 +1,4 @@
+import { prepareProductImage } from "@/lib/productImages";
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
@@ -196,7 +197,7 @@ export default function InvoiceBuilder() {
           items: quoteItems.filter(item => item.phase_id === phase.id).map((item, idx) => ({
              id: `temp-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`,
              name: item.name,
-             description: item.description || "",
+             description: item.description || "", finish_colour: item.finish_colour || "", photo_url: item.photo_url || null,
              quantity: item.quantity || 1,
              unit: item.unit || "ea",
              unit_cost: item.unit_cost || 0,
@@ -241,10 +242,10 @@ export default function InvoiceBuilder() {
   const addLineItem = (phaseIdx, product = null) => {
     const updated = [...phases];
     const newItem = product ? {
-      id: `temp-${Date.now()}`, name: product.name, description: product.description || "", quantity: 1, unit: product.unit || "ea",
-      unit_price: product.price || 0, taxable: product.taxable !== false, product_id: product.id, is_material: product.is_material || false
+      id: `temp-${Date.now()}`, name: product.name, description: product.description || "", finish_colour: product.finish_colour || "", quantity: 1, unit: product.unit || "ea",
+      photo_url: product.image_url || "", unit_price: product.price || 0, taxable: product.taxable !== false, product_id: product.id, is_material: product.is_material || false
     } : {
-      id: `temp-${Date.now()}`, name: "", description: "", quantity: 1, unit: "ea", unit_price: 0, taxable: true
+      id: `temp-${Date.now()}`, name: "", description: "", finish_colour: "", quantity: 1, unit: "ea", unit_price: 0, taxable: true
     };
     updated[phaseIdx].items = [...(updated[phaseIdx].items || []), newItem];
     setPhases(updated);
@@ -273,7 +274,17 @@ export default function InvoiceBuilder() {
   };
   const handleSplitLineItem = () => {}; 
   const onPhotoUpload = () => {}; 
-  const onLineItemPhotoUpload = () => {}; 
+  const onLineItemPhotoUpload = async (phaseIdx,itemIdx,file) => {
+    try {
+      const photo=await prepareProductImage(file);
+      const path=`${companyId}/invoices/${Date.now()}-${crypto.randomUUID()}.${photo.name.split('.').pop()}`;
+      const {error}=await supabase.storage.from('quotes').upload(path,photo);
+      if(error)throw error;
+      const {data}=supabase.storage.from('quotes').getPublicUrl(path);
+      setPhases(current => current.map((phase,p) => p!==phaseIdx?phase:{...phase,items:phase.items.map((item,i) => i!==itemIdx?item:{...item,photo_url:data.publicUrl})}));
+      toast.success('Line item photo uploaded');
+    } catch {toast.error('The photo could not upload. Please try again.');}
+  };
 
   // --- MATH & DERIVED TOTALS ---
   const isItemActive = (item) => !item.is_optional || item.default_selected === true;
@@ -514,7 +525,7 @@ export default function InvoiceBuilder() {
         if (newPhase && phase.items?.length > 0) {
           const itemsToInsert = phase.items.filter(isItemActive).map((item, idx) => ({
             company_id: companyId, invoice_id: savedId, phase_id: newPhase.id, name: item.name,
-            description: item.description || "", quantity: safeNum(item.quantity) || 1, unit: item.unit || "ea",
+            description: item.description || "", finish_colour: item.finish_colour || "", photo_url: item.photo_url || null, quantity: safeNum(item.quantity) || 1, unit: item.unit || "ea",
             unit_price: safeNum(item.unit_price) || 0, taxable: Boolean(item.taxable), 
             line_total: safeNum(item.quantity) * safeNum(item.unit_price), display_order: idx
           }));
@@ -528,7 +539,7 @@ export default function InvoiceBuilder() {
       const validManualItems = manualItems.filter(i => i.name && i.name.trim() !== "");
       if (validManualItems.length > 0) {
         const manualItemsToInsert = validManualItems.map((item, idx) => ({
-          company_id: companyId, invoice_id: savedId, name: item.name, 
+          company_id: companyId, invoice_id: savedId, name: item.name, finish_colour: item.finish_colour || "", photo_url: item.photo_url || null,
           amount: Number(item.amount) || 0, unit_price: Number(item.amount) || 0, line_total: Number(item.amount) || 0, display_order: idx + 1000
         }));
         const { error: mErr } = await supabase.from("invoice_line_items").insert(manualItemsToInsert);
@@ -938,7 +949,8 @@ export default function InvoiceBuilder() {
 
               {/* Manual Ad-Hoc Additions */}
               {manualItems.map((mItem, idx) => (
-                <div key={idx} className="flex gap-2 items-center mb-2">
+                <div key={idx} className="flex flex-wrap gap-2 items-center mb-2">
+                  <Input aria-label="Finish / Colour for additional charge (optional)" value={mItem.finish_colour || ""} onChange={e => {const updated=[...manualItems];updated[idx]={...updated[idx],finish_colour:e.target.value};setManualItems(updated);}} className="min-h-11 bg-white" />
                   <Input placeholder="Additional Item Name (e.g. Extra Dumpster Fee)" value={mItem.name} onChange={e => { const updated = [...manualItems]; updated[idx].name = e.target.value; setManualItems(updated); }} className="flex-1 bg-white" />
                   <div className="relative w-32">
                     <span className="absolute left-3 top-2.5 text-slate-500 text-sm">$</span>
@@ -949,7 +961,7 @@ export default function InvoiceBuilder() {
                   </Button>
                 </div>
               ))}
-              <Button variant="outline" size="sm" onClick={() => setManualItems([...manualItems, {name:"", amount:""}])} className="bg-white border-dashed border-slate-300 text-slate-600 mt-2 mb-6">
+              <Button variant="outline" size="sm" onClick={() => setManualItems([...manualItems, {name:"", amount:"", finish_colour:""}])} className="bg-white border-dashed border-slate-300 text-slate-600 mt-2 mb-6">
                 <Plus className="h-4 w-4 mr-2" /> Add Additional Charge
               </Button>
 

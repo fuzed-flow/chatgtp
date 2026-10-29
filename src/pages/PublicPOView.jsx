@@ -1,3 +1,5 @@
+import ProductImage from "@/components/shared/ProductImage";
+import FinishColour from "@/components/shared/FinishColour";
 import { notifyDocumentActivity } from '@/lib/documentActivity';
 import React, { useRef } from "react";
 import { supabase } from "@/api/supabaseClient";
@@ -236,7 +238,7 @@ export default function PublicPOView() {
                     <div key={idx} className="flex flex-col text-sm py-3 border-b border-slate-100">
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-slate-900">{item.item_name || item.product_name}</p>
-                        {item.description && <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed whitespace-pre-wrap break-words">{item.description}</p>}
+                        <FinishColour value={item.finish_colour} />{item.photo_url && <ProductImage src={item.photo_url} name={item.name || item.item_name} />}{item.description && <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed whitespace-pre-wrap break-words">{item.description}</p>}
                       </div>
                       <div className="flex justify-end items-center gap-4 mt-2 pt-1">
                         <p className="text-xs font-medium text-slate-500">{item.quantity} {item.unit || ''} × {formatCurrencyUSD(item.unit_cost || 0)}</p>

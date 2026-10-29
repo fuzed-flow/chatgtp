@@ -1,3 +1,5 @@
+import ProductImage from "@/components/shared/ProductImage";
+import FinishColour from "@/components/shared/FinishColour";
 import { notifyDocumentActivity } from '@/lib/documentActivity';
 import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -464,7 +466,7 @@ export default function ChangeOrderView() {
                                       )}
                                       {item.photo_url && (
                                         <div className="hidden sm:block shrink-0 overflow-hidden rounded border border-slate-300 h-16 w-16">
-                                          <img src={item.photo_url} alt={item.name} onClick={() => setLightboxImage(item.photo_url)} className="h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-125" />
+                                          <ProductImage src={item.photo_url} name={item.name || item.item_name} className="h-20 w-20" />
                                         </div>
                                       )}
                                       <div className="flex-1 min-w-0">
@@ -476,7 +478,7 @@ export default function ChangeOrderView() {
                                             </span>
                                           )}
                                         </p>
-                                        {item.description && <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed whitespace-pre-wrap break-words">{item.description}</p>}
+                                        <FinishColour value={item.finish_colour} />{item.description && <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed whitespace-pre-wrap break-words">{item.description}</p>}
                                       </div>
                                      </div>
                                      <div className="flex justify-end items-center gap-4 mt-2 pt-1 pl-7">

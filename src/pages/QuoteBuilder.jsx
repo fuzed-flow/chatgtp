@@ -1,3 +1,4 @@
+import { prepareProductImage } from "@/lib/productImages";
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient"; 
@@ -249,7 +250,7 @@ export default function QuoteBuilder() {
     if (!phaseToSave) return;
     
     const cleanItems = (phaseToSave.items || []).map((item, idx) => ({
-      name: item.name || "", description: item.description || "",
+      name: item.name || "", description: item.description || "", finish_colour: item.finish_colour || "",
       quantity: item.quantity || 1, unit: item.unit || "ea",
       unit_cost: item.unit_cost || 0, unit_price: item.unit_price || 0,
       material_cost: item.material_cost || 0, labor_cost: item.labor_cost || 0, // ⚡ Added
@@ -380,7 +381,7 @@ export default function QuoteBuilder() {
         is_optional: phase.is_optional === true, default_selected: phase.default_selected === true,
         items: templateItems.filter(item => item.phase_id === phase.id).map(item => ({
           id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          name: item.name, description: item.description || "", quantity: item.quantity || 1, unit: item.unit || "ea",
+          name: item.name, description: item.description || "", finish_colour: item.finish_colour || "", quantity: item.quantity || 1, unit: item.unit || "ea",
           unit_cost: item.unit_cost || 0, unit_price: item.unit_price || 0, taxable: item.taxable !== false,
           product_id: item.product_id || "", photo_url: item.photo_url || "", is_optional: item.is_optional === true,
           default_selected: item.default_selected === true, is_material: item.is_material === true, supplier: item.supplier || null
@@ -416,7 +417,7 @@ export default function QuoteBuilder() {
         const matchedProduct = products.find(p => p.name === item.name);
         return {
           id: `temp-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`,
-          name: item.name || "", description: item.description || "", quantity: Number(item.quantity) || 1, unit: item.unit || "ea",
+          name: item.name || "", description: item.description || "", finish_colour: item.finish_colour || "", quantity: Number(item.quantity) || 1, unit: item.unit || "ea",
           unit_cost: Number(matchedProduct?.cost ?? item.unit_cost ?? 0), 
           unit_price: Number(matchedProduct?.price ?? item.unit_price ?? 0),
           material_cost: Number(matchedProduct?.material_cost ?? item.material_cost ?? 0), // ⚡ Added
@@ -442,11 +443,11 @@ export default function QuoteBuilder() {
     const updated = [...phases];
     const uniqueId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newItem = product ? {
-      id: uniqueId, name: product.name, description: product.description || "", quantity: 1, unit: product.unit || "ea",
+      id: uniqueId, name: product.name, description: product.description || "", finish_colour: product.finish_colour || "", quantity: 1, unit: product.unit || "ea",
       unit_cost: product.cost || 0, unit_price: product.price || 0, taxable: product.taxable !== false, product_id: product.id,
       photo_url: product.image_url || "", is_optional: false, is_material: product.is_material || false, supplier: product.supplier || null
     } : {
-      id: uniqueId, name: "", description: "", quantity: 1, unit: "ea", unit_cost: 0, unit_price: 0, taxable: true,
+      id: uniqueId, name: "", description: "", finish_colour: "", quantity: 1, unit: "ea", unit_cost: 0, unit_price: 0, taxable: true,
       product_id: "", photo_url: "", is_optional: false, is_material: false, supplier: null
     };
     updated[phaseIdx].items = [...(updated[phaseIdx].items || []), newItem];
@@ -643,6 +644,7 @@ export default function QuoteBuilder() {
     markDirty();
     setUploadingPhoto(true);
     try {
+      file = await prepareProductImage(file);
       const fileName = `${companyId}/${quoteId || 'new'}/items/${Date.now()}_${file.name}`;
       const { error } = await supabase.storage.from('quotes').upload(fileName, file);
       if (error) throw error;
@@ -934,7 +936,7 @@ export default function QuoteBuilder() {
         if (phase.items?.length > 0) {
           const itemsToInsert = phase.items.map((item, idx) => ({
             company_id: companyId, quote_id: savedQuoteId, phase_id: insertedPhase.id, name: item.name || "Unnamed Item",
-            description: item.description || "", quantity: safeNum(item.quantity) || 1, unit: item.unit || "ea",
+            description: item.description || "", finish_colour: item.finish_colour || "", quantity: safeNum(item.quantity) || 1, unit: item.unit || "ea",
             unit_cost: safeNum(item.unit_cost), unit_price: safeNum(item.unit_price), 
             material_cost: safeNum(item.material_cost), labor_cost: safeNum(item.labor_cost), 
             taxable: Boolean(item.taxable), product_id: (item.product_id && typeof item.product_id === 'string' && item.product_id.length > 10) ? item.product_id : null,
@@ -1112,7 +1114,7 @@ export default function QuoteBuilder() {
             project_id: projectRef.id,
             phase_id: insertedProjPhase.id,
             task_name: item.name,
-            description: item.description || "",
+            description: item.description || "", finish_colour: item.finish_colour || "",
             status: "Not Started",
             display_order: idx
           });
@@ -2025,7 +2027,7 @@ export default function QuoteBuilder() {
                           default_selected: phase.default_selected === true,
                           items: (templateItemsData || []).filter(item => item.phase_id === phase.id).map(item => ({
                             id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                            name: item.name, description: item.description || "", quantity: Number(item.quantity) || 1, unit: item.unit || "ea",
+                            name: item.name, description: item.description || "", finish_colour: item.finish_colour || "", quantity: Number(item.quantity) || 1, unit: item.unit || "ea",
                             unit_cost: Number(item.unit_cost) || 0, unit_price: Number(item.unit_price) || 0, 
                             material_cost: Number(item.material_cost) || 0, labor_cost: Number(item.labor_cost) || 0, // ⚡ THIS IS CRITICAL
                             taxable: item.taxable !== false, product_id: item.product_id || "", photo_url: item.photo_url || "", 

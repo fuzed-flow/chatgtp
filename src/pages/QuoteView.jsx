@@ -22,7 +22,7 @@ async function loadQuotePreview(quoteId) {
     recipientQuery,
     supabase.from("companies").select("id,name,logo_url,company_logo_url,settings").eq("id", quote.company_id).single(),
     supabase.from("quote_phases").select("id,quote_id,phase_name,scope_of_work,show_scope_to_client,photos,sort_order,is_optional,default_selected").eq("quote_id", quote.id).eq("company_id", quote.company_id).order("sort_order"),
-    supabase.from("quote_line_items").select("id,quote_id,phase_id,name,description,quantity,unit,unit_price,taxable,photo_url,is_optional,default_selected,display_order").eq("quote_id", quote.id).eq("company_id", quote.company_id).order("display_order"),
+    supabase.from("quote_line_items").select("id,quote_id,phase_id,name,description,finish_colour,quantity,unit,unit_price,taxable,photo_url,is_optional,default_selected,display_order").eq("quote_id", quote.id).eq("company_id", quote.company_id).order("display_order"),
     supabase.from("quote_payment_schedules").select("id,quote_id,payment_name,due_event,amount,amount_type,percentage,sort_order").eq("quote_id", quote.id).eq("company_id", quote.company_id).order("sort_order"),
   ]);
 

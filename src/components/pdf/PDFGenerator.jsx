@@ -1,3 +1,4 @@
+const productDescription = item => [item.description, item.finish_colour?.trim() ? `Finish / Colour: ${item.finish_colour}` : null].filter(Boolean).join("\n");
 import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
 import { formatCurrency, getCompanyCurrency } from '../utils/formatCurrency';
@@ -377,7 +378,7 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
 
       doc.setFontSize(8.5);
       doc.setFont(undefined, 'normal');
-      const descLines = item.description ? doc.splitTextToSize(item.description, maxDescWidth) : [];
+      const descLines = productDescription(item) ? doc.splitTextToSize(productDescription(item), maxDescWidth) : [];
       
       const initialSpaceNeeded = Math.max(10, hasPhoto ? photoSize + 2 : 0);
       checkPageBreak(initialSpaceNeeded, true);
@@ -759,10 +760,12 @@ export async function generateInvoicePDF({
       doc.setTextColor(...colors.text);
       
       for (const item of items) {
-        checkPageBreak(10);
+        const finishLines = item.finish_colour?.trim() ? doc.splitTextToSize(`Finish / Colour: ${item.finish_colour}`, pageWidth-margin*2-30) : [];
+        checkPageBreak(10 + finishLines.length*4);
         doc.text(`${item.name} (${item.quantity} ${item.unit || ''})`.trim(), margin + 4, yPos);
         doc.text(`$${formatCurrency((item.quantity || 1) * (item.unit_price || 0))}`, pageWidth - margin - 2, yPos, { align: 'right' });
         yPos += 6;
+        if (finishLines.length) {doc.text(finishLines,margin+4,yPos);yPos+=finishLines.length*4;}
       }
       yPos += 2;
     }
@@ -784,10 +787,12 @@ export async function generateInvoicePDF({
     doc.setTextColor(...colors.text);
     
     for (const item of manualItems) {
-      checkPageBreak(10);
+      const finishLines = item.finish_colour?.trim() ? doc.splitTextToSize(`Finish / Colour: ${item.finish_colour}`, pageWidth-margin*2-30) : [];
+      checkPageBreak(10 + finishLines.length*4);
       doc.text(item.name, margin + 4, yPos);
       doc.text(`$${formatCurrency(item.amount || 0)}`, pageWidth - margin - 2, yPos, { align: 'right' });
       yPos += 6;
+      if (finishLines.length) {doc.text(finishLines,margin+4,yPos);yPos+=finishLines.length*4;}
     }
     yPos += 4;
   }
@@ -916,6 +921,7 @@ export async function generateInvoicePDF({
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
   }
 
+  if (invoice?.returnBase64) return doc.output("datauristring").split(",")[1];
   doc.save(`Invoice-${invoice?.invoice_number || 'Record'}.pdf`);
 }
 
@@ -1052,7 +1058,7 @@ export async function generatePOPDF(po, vendor, items, organization) {
     doc.setFont(undefined, 'normal');
     
     const maxDescWidth = pageWidth - margin * 2 - 70;
-    const descLines = item.description ? doc.splitTextToSize(item.description, maxDescWidth) : [];
+    const descLines = productDescription(item) ? doc.splitTextToSize(productDescription(item), maxDescWidth) : [];
     const lineHeight = 8 + (descLines.length * 3.5);
 
     checkPageBreak(lineHeight + 4);

@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import ProductImage from "@/components/shared/ProductImage";
+import FinishColour from "@/components/shared/FinishColour";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/api/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -11,10 +13,12 @@ export default function ProductSearchDialog({ open, onOpenChange, onSelect }) {
   const { profile } = useAuth();
   const companyId = profile?.company_id;
   const [searchTerm, setSearchTerm] = useState("");
-  const [browsePath, setBrowsePath] = useState([]); // Array to hold [main, sub, ter]
+  const [browsePath, setBrowsePath] = useState([]);
+  const [visible,setVisible]=useState(40);
+  useEffect(() => setVisible(40),[searchTerm,browsePath]); // Array to hold [main, sub, ter]
 
   // FETCH SUPABASE PRODUCTS
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading, error } = useQuery({
     queryKey: ["products", companyId],
     enabled: open && !!companyId, 
     queryFn: async () => {
@@ -55,7 +59,7 @@ export default function ProductSearchDialog({ open, onOpenChange, onSelect }) {
         p.name?.toLowerCase().includes(term) ||
         p.category?.toLowerCase().includes(term) ||
         p.sub_category?.toLowerCase().includes(term) ||
-        p.sku?.toLowerCase().includes(term)
+        p.sku?.toLowerCase().includes(term) || p.description?.toLowerCase().includes(term) || p.supplier?.toLowerCase().includes(term) || p.finish_colour?.toLowerCase().includes(term)
       );
     });
   }
@@ -67,166 +71,23 @@ export default function ProductSearchDialog({ open, onOpenChange, onSelect }) {
     onOpenChange(false);
   };
 
-  return (
-    <Dialog open={open} onOpenChange={(v) => {
-      onOpenChange(v);
-      if (!v) {
-        setSearchTerm("");
-        setBrowsePath([]);
-      }
-    }}>
-      <DialogContent aria-describedby={undefined} className="max-w-4xl max-h-[85vh] flex flex-col bg-white border-slate-200 shadow-xl p-0 overflow-hidden">
-        
-        {/* HEADER */}
-        <div className="px-6 py-4 border-b border-slate-100 bg-white shrink-0">
-          <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
-            <Package className="h-5 w-5 text-amber-500" /> Pricebook Catalog
-          </DialogTitle>
-          <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search catalog..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 font-bold bg-slate-50 border-slate-200 h-9"
-            />
-          </div>
-        </div>
-
-        {/* MAIN EXPLORER AREA */}
-        <div className="flex flex-col flex-1 overflow-hidden bg-slate-50/50">
-          
-          {/* BREADCRUMB BAR (WINDOWS STYLE) */}
-          {!isSearchMode && (
-            <div className="flex items-center px-4 py-2 bg-white border-b border-slate-200 shadow-sm z-10 shrink-0 text-sm overflow-x-auto whitespace-nowrap">
-              <button 
-                onClick={() => setBrowsePath([])} 
-                className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-100 transition-colors ${browsePath.length === 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-600'}`}
-              >
-                <Home className="h-4 w-4" /> Root
-              </button>
-              
-              {browsePath.map((folder, idx) => (
-                <React.Fragment key={folder}>
-                  <ChevronRight className="h-4 w-4 text-slate-300 mx-0.5 shrink-0" />
-                  <button 
-                    onClick={() => setBrowsePath(browsePath.slice(0, idx + 1))} 
-                    className={`px-2 py-1 rounded hover:bg-slate-100 transition-colors ${idx === browsePath.length - 1 ? 'font-bold text-slate-900' : 'font-medium text-slate-600'}`}
-                  >
-                    {folder}
-                  </button>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-
-          {/* LIST COLUMNS HEADER */}
-          <div className="flex items-center justify-between px-4 py-1.5 bg-white border-b border-slate-200 text-xs font-black text-slate-400 uppercase tracking-wider shrink-0 shadow-sm z-10">
-            <div className="flex-1 pl-1">Name</div>
-            <div className="flex items-center gap-4 shrink-0">
-              <div className="w-24">SKU</div>
-              <div className="w-16">Unit</div>
-              <div className="w-20 text-right pr-2">Price</div>
-            </div>
-          </div>
-
-          {/* LIST BODY */}
-          <div className="flex-1 overflow-y-auto bg-white">
-            {isLoading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="h-6 w-6 border-2 border-amber-200 border-t-amber-500 rounded-full animate-spin"></div>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                
-                {/* UP FOLDER (..) */}
-                {!isSearchMode && browsePath.length > 0 && (
-                  <div 
-                    onClick={() => setBrowsePath(prev => prev.slice(0, -1))}
-                    className="flex items-center px-4 py-3 hover:bg-amber-50/50 cursor-pointer select-none transition-colors group"
-                  >
-                    <div className="w-10 h-10 flex items-center justify-center mr-3 bg-slate-50 rounded-lg border border-slate-200/60">
-                      <CornerLeftUp className="h-5 w-5 text-amber-500" />
-                    </div>
-                    <span className="text-sm font-bold text-slate-700 group-hover:text-amber-700">..</span>
-                  </div>
-                )}
-
-                {/* FOLDERS */}
-                {!isSearchMode && currentFolders.map(folder => (
-                  <div
-                    key={folder}
-                    onClick={() => setBrowsePath([...browsePath, folder])}
-                    className="flex items-center px-4 py-3 hover:bg-amber-50/50 cursor-pointer select-none transition-colors group"
-                  >
-                    <div className="w-10 h-10 flex items-center justify-center mr-3 bg-amber-50/50 rounded-lg border border-amber-100 group-hover:bg-amber-100/50 transition-colors">
-                      <Folder className="h-5 w-5 text-amber-400 fill-amber-100 group-hover:text-amber-500 group-hover:fill-amber-200 transition-colors" />
-                    </div>
-                    <span className="text-sm font-bold text-slate-800 flex-1 group-hover:text-amber-900">{folder}</span>
-                    <span className="text-xs text-slate-400 font-black tracking-wider uppercase mr-2 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/40">Folder</span>
-                  </div>
-                ))}
-
-                {/* PRODUCTS (FILES) */}
-                {currentPathProducts.map(product => (
-                  <div 
-                    key={product.id} 
-                    onClick={() => handleSelect(product)}
-                    className="flex items-center justify-between px-4 py-3 hover:bg-blue-50/50 cursor-pointer select-none transition-colors group"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                      {product.image_url ? (
-                        <img src={product.image_url} alt="" className="h-10 w-10 rounded-xl object-cover border border-slate-200 shadow-sm shrink-0 bg-white" />
-                      ) : (
-                        <div className="h-10 w-10 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-center shrink-0 group-hover:bg-white transition-colors">
-                          <ImageIcon className="h-5 w-5 text-slate-300 group-hover:text-blue-400 transition-colors" />
-                        </div>
-                      )}
-                      
-                      <div className="min-w-0 flex flex-col justify-center">
-                        <span className="text-sm font-bold text-slate-900 truncate group-hover:text-blue-700">{product.name}</span>
-                        {/* Only show path if searching */}
-                        {isSearchMode && product.category && (
-                          <span className="text-[9px] text-slate-400 font-bold uppercase truncate mt-0.5">
-                            {product.category} {product.sub_category && `> ${product.sub_category}`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 text-sm shrink-0">
-                      <span className="w-24 truncate text-xs text-slate-500 font-bold tracking-wide">{product.sku || "—"}</span>
-                      <span className="w-16 text-xs text-slate-500 font-semibold uppercase">{product.unit || 'ea'}</span>
-                      <span className="w-20 text-right font-black text-slate-900 pr-2">${Number(product.price).toFixed(2)}</span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* EMPTY STATES */}
-                {!isSearchMode && currentFolders.length === 0 && currentPathProducts.length === 0 && (
-                  <div className="text-center py-16 bg-white">
-                    <Folder className="h-10 w-10 text-slate-200 mx-auto mb-2" />
-                    <p className="text-sm font-bold text-slate-400">This folder is empty.</p>
-                  </div>
-                )}
-
-                {isSearchMode && currentPathProducts.length === 0 && (
-                  <div className="text-center py-16 bg-white">
-                    <Package className="h-10 w-10 text-slate-200 mx-auto mb-2" />
-                    <p className="text-sm font-bold text-slate-400">No items found matching "{searchTerm}"</p>
-                  </div>
-                )}
-
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* FOOTER */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 shrink-0 flex justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="font-bold bg-white h-8">Close</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+  return <Dialog open={open} onOpenChange={v => {onOpenChange(v);if(!v){setSearchTerm('');setBrowsePath([]);}}}>
+    <DialogContent aria-describedby={undefined} className="flex max-h-[90dvh] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:p-0">
+      <DialogHeader className="shrink-0 border-b p-4 pr-24 text-left"><DialogTitle className="text-xl font-bold">Choose a product</DialogTitle><p className="mt-1 text-sm text-slate-600">Browse your pricebook or search by name, SKU, finish or supplier.</p></DialogHeader>
+      <div className="shrink-0 p-4"><Input aria-label="Search products" placeholder="Search products…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-12 text-base" /></div>
+      {!isSearchMode && <nav aria-label="Product categories" className="flex shrink-0 flex-wrap gap-1 border-y bg-slate-50 px-3 py-1"><button type="button" onClick={() => setBrowsePath([])} className="min-h-11 rounded px-2 text-sm font-bold text-slate-800 focus-visible:ring-2 focus-visible:ring-amber-500">All products</button>{browsePath.map((part,index) => <button type="button" key={index} onClick={() => setBrowsePath(browsePath.slice(0,index+1))} className="min-h-11 rounded px-2 text-sm text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500">/ {part}</button>)}</nav>}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+        {isLoading ? <p role="status" className="p-6 text-center text-slate-600">Loading products…</p> : error ? <p role="alert" className="p-6 text-red-700">Products could not load. Close and try again.</p> : <>
+          {!isSearchMode && browsePath.length>0 && <button type="button" onClick={() => setBrowsePath(p => p.slice(0,-1))} className="mb-2 min-h-11 rounded-lg border px-4 text-sm font-bold">Back to parent category</button>}
+          {!isSearchMode && <div className="grid gap-2 sm:grid-cols-2">{currentFolders.map(folder => <button type="button" key={folder} onClick={() => setBrowsePath([...browsePath,folder])} className="flex min-h-14 items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-left text-base font-bold text-slate-900 hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-amber-500"><Folder className="h-5 w-5 shrink-0 text-amber-700" />{folder}</button>)}</div>}
+          <ul className="mt-2 divide-y divide-slate-200">{currentPathProducts.slice(0,visible).map(product => <li key={product.id} className="flex items-start gap-3 py-3">
+            <ProductImage src={product.image_url} name={product.name} className="h-16 w-16 sm:h-20 sm:w-20" />
+            <div className="min-w-0 flex-1"><button type="button" onClick={() => handleSelect(product)} className="min-h-11 text-left text-base font-bold leading-6 text-slate-900 hover:text-amber-800 focus-visible:ring-2 focus-visible:ring-amber-500">{product.name}</button><p className="mt-1 break-words text-sm text-slate-600">{product.sku || 'No SKU'} · {product.unit || 'ea'}{product.supplier ? ` · ${product.supplier}` : ''}</p><FinishColour value={product.finish_colour} /><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="font-bold text-slate-950">${Number(product.price).toFixed(2)} / {product.unit || 'ea'}</span><Button type="button" onClick={() => handleSelect(product)} className="min-h-11 bg-amber-400 text-slate-950 hover:bg-amber-500" aria-label={`Use ${product.name}`}>Use item</Button></div></div>
+          </li>)}</ul>
+          {currentPathProducts.length>visible && <Button variant="outline" className="my-3 min-h-11 w-full" onClick={() => setVisible(v => v+40)}>Show more products</Button>}
+          {!currentFolders.length && !currentPathProducts.length && <p role="status" className="p-6 text-center text-slate-600">No products found. Try another search.</p>}
+        </>}
+      </div>
+    </DialogContent>
+  </Dialog>;
 }

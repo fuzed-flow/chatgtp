@@ -1,3 +1,5 @@
+import ProductImage from "@/components/shared/ProductImage";
+import FinishColour from "@/components/shared/FinishColour";
 import { notifyDocumentActivity } from '@/lib/documentActivity';
 import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -564,12 +566,7 @@ export default function QuoteView() {
                                         />
                                       ) : null}
                                       {item.photo_url && (
-                                        <img 
-                                          src={item.photo_url} 
-                                          alt={item.name} 
-                                          className="hidden sm:block h-16 w-16 object-cover rounded border border-slate-300 shrink-0 cursor-pointer hover:opacity-80 transition-opacity" 
-                                          onClick={() => openImageViewer(item.photo_url)}
-                                        />
+                                        <ProductImage src={item.photo_url} name={item.name || item.item_name} className="h-20 w-20" />
                                       )}
                                       <div className="flex-1 min-w-0">
                                         <p className={`font-medium ${itemIncluded && phaseIncluded ? 'text-slate-800' : 'text-slate-400'}`}>
@@ -580,7 +577,7 @@ export default function QuoteView() {
                                             </span>
                                           )}
                                         </p>
-                                        {item.description && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{item.description}</p>}
+                                        <FinishColour value={item.finish_colour} />{item.description && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{item.description}</p>}
                                       </div>
                                      </div>
                                      <div className="flex justify-end items-center gap-4 mt-1 pl-7">
