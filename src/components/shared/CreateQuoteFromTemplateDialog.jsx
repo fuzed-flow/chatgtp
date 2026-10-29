@@ -22,7 +22,7 @@ export default function CreateQuoteFromTemplateDialog({ clientId, leadId, childr
 
   // 1. Fetch Quote Templates from Supabase
   const { data: quoteTemplates = [] } = useQuery({
-    queryKey: ["quote-templates-list", companyId],
+    queryKey: ["quote-template-options", companyId],
     enabled: !!companyId,
     queryFn: async () => {
       const { data, error } = await supabase

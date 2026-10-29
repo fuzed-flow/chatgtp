@@ -30,7 +30,7 @@ async function fixture(builder, options = {}) {
     [builder.id]: options.newDocument ? null : 'document-one',
     companyId: 'company-one', company: { next_quote_number: 1001, next_change_order_number: 101, next_invoice_number: 1001 },
     existingQuote: null, existingInvoice: options.newDocument ? null : { invoice_number: 'INV-1001', status: 'Draft' },
-    isTemplate: false, isDocumentLoading: false, documentLoading: false, isQuoteImportPending: false, invoiceLoadError: false, quoteImportError: false,
+    isTemplate: false, isDocumentLoading: false, importingTemplateId: null, documentLoading: false, isQuoteImportPending: false, invoiceLoadError: false, quoteImportError: false,
     localTitle: 'Focused title', localOverallScope: 'Focused scope', localClientMessage: 'Focused message', localTerms: 'Focused terms', localNotes: 'Focused notes',
     form: { title: 'Old blurred title', project_id: 'project-one', client_id: 'client-0000000001', lead_id: 'none', quote_id: 'none', status: 'Draft',
       quote_number: options.newDocument ? '' : 'QT-1001', change_order_number: options.newDocument ? '' : 'CO-101',
@@ -48,6 +48,7 @@ async function fixture(builder, options = {}) {
     markSaved: value => { savedRevision = value; if (value !== revision) return false; dirty = false; return true; },
     setSaving: value => { saving = value; },
     hydrateForm: value => { state.form = typeof value === 'function' ? value(state.form) : value; },
+    hydratePhases: value => { state.phases = value; },
     setQuoteId: value => { state.quoteId = value; }, setCoId: value => { state.coId = value; }, setInvoiceId: value => { state.invoiceId = value; },
     createPageUrl: value => `/${value}`, navigate: path => { calls.push({ navigation: path }); },
     window: { history: { state: { idx: 1, key: 'original' }, replaceState: (...args) => { calls.push({ history: args }); } } },
@@ -70,7 +71,10 @@ async function fixture(builder, options = {}) {
           if (query.table === builder.table && query.action === 'insert') parentInserts += 1;
           if (options.onQuery) await options.onQuery(query, () => { revision += 1; });
           if (options.fail?.table === query.table && options.fail.action === query.action) return { data: null, error: { message: 'Synthetic persistence failure' } };
-          return { data: { id: query.table === builder.table ? 'saved-document' : `${query.table}-one`, ...(query.table === 'invoices' ? { status: options.persistedStatus || query.payload?.status || query.payload?.[0]?.status || 'Draft' } : {}) }, error: null };
+          const data = query.table === 'quote_line_items' && query.action === 'insert'
+            ? query.payload.map((item, index) => ({ ...item, id: `saved-line-${index}` }))
+            : { id: query.table === builder.table ? 'saved-document' : `${query.table}-one`, ...(query.table === 'invoices' ? { status: options.persistedStatus || query.payload?.status || query.payload?.[0]?.status || 'Draft' } : {}) };
+          return { data, error: null };
         })();
         return result.then(resolve, reject);
       },

@@ -950,7 +950,6 @@ export default function InvoiceBuilder() {
               {/* Manual Ad-Hoc Additions */}
               {manualItems.map((mItem, idx) => (
                 <div key={idx} className="flex flex-wrap gap-2 items-center mb-2">
-                  <Input aria-label="Finish / Colour for additional charge (optional)" value={mItem.finish_colour || ""} onChange={e => {const updated=[...manualItems];updated[idx]={...updated[idx],finish_colour:e.target.value};setManualItems(updated);}} className="min-h-11 bg-white" />
                   <Input placeholder="Additional Item Name (e.g. Extra Dumpster Fee)" value={mItem.name} onChange={e => { const updated = [...manualItems]; updated[idx].name = e.target.value; setManualItems(updated); }} className="flex-1 bg-white" />
                   <div className="relative w-32">
                     <span className="absolute left-3 top-2.5 text-slate-500 text-sm">$</span>

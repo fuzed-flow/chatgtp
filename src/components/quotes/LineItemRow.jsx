@@ -448,7 +448,6 @@ export default function LineItemRow({
           
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="w-full min-w-0 flex-1 space-y-3">
-              <div><Label htmlFor={`${detailsId}-finish`} className="mb-1 block text-sm font-semibold text-slate-700">Finish / Colour (optional)</Label><Input id={`${detailsId}-finish`} value={item.finish_colour || ""} onChange={e => updateField("finish_colour",e.target.value)} className="min-h-11 bg-white text-base" /></div>
               {/* Writing tools provide Expand/Collapse on touch devices and vertical resizing on desktop. */}
               <Textarea
                writingTools

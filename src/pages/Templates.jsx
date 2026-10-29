@@ -68,7 +68,7 @@ export default function Templates() {
       const { error } = await supabase.from("quotes").insert([{ ...data, company_id: companyId, is_template: true, title: data.name }]);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["quote-templates-list"] }); setDialogOpen(false); toast.success("Template created"); },
+    onSuccess: () => { ["quote-templates-list", "quote-template-options", "quote-template-detail"].forEach(key => queryClient.invalidateQueries({ queryKey: [key] })); setDialogOpen(false); toast.success("Template created"); },
   });
 
   const updateMutation = useMutation({
@@ -76,7 +76,7 @@ export default function Templates() {
       const { error } = await supabase.from("quotes").update({ ...data, title: data.name }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["quote-templates-list"] }); setDialogOpen(false); setEditing(null); toast.success("Template updated"); },
+    onSuccess: () => { ["quote-templates-list", "quote-template-options", "quote-template-detail"].forEach(key => queryClient.invalidateQueries({ queryKey: [key] })); setDialogOpen(false); setEditing(null); toast.success("Template updated"); },
   });
 
   const deleteMutation = useMutation({
@@ -84,7 +84,7 @@ export default function Templates() {
       const { error } = await supabase.from("quotes").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["quote-templates-list"] }); toast.success("Template deleted"); },
+    onSuccess: () => { ["quote-templates-list", "quote-template-options", "quote-template-detail"].forEach(key => queryClient.invalidateQueries({ queryKey: [key] })); toast.success("Template deleted"); },
   });
 
   const createPhaseMutation = useMutation({

@@ -552,7 +552,6 @@ export default function PurchaseOrderDetail() {
 
               <div>
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Description</Label>
-                <Label htmlFor="po-item-finish">Finish / Colour (optional)</Label><Input id="po-item-finish" value={itemForm.finish_colour || ""} onChange={e => setItemForm({...itemForm,finish_colour:e.target.value})} className="min-h-11 bg-white text-base" />
                 <Input value={itemForm.description} onChange={(e) => setItemForm({...itemForm, description: e.target.value})} className="bg-white" />
               </div>
 

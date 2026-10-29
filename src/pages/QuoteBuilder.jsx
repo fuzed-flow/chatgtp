@@ -30,6 +30,7 @@ import { normalizePhaseOrder } from "@/lib/phaseOrdering";
 import { MAX_PROJECT_PHOTOS, PROJECT_PHOTO_LIMIT_HINT, validateProjectPhotoUpload } from "@/lib/projectPhotoLimits";
 import { convertQuoteToInvoice } from "@/lib/quoteInvoiceConversion";
 import { ensureQuoteClient } from "@/lib/leadClientConversion";
+import { loadQuoteTemplate, loadQuoteTemplateBundle, quoteTemplateDetailKey, reusableQuoteTemplateFields, quoteTemplatePdfSettings } from "@/lib/quoteTemplates";
 
 const safeNum = (val) => {
   const num = Number(val);
@@ -89,6 +90,8 @@ export default function QuoteBuilder() {
 
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [showImportQuoteTemplateDialog, setShowImportQuoteTemplateDialog] = useState(false);
+  const [importingTemplateId, setImportingTemplateId] = useState(null);
+  const templateImportRequest = useRef(0);
   
   const [showSavePhaseTemplateDialog, setShowSavePhaseTemplateDialog] = useState(false);
   const [phaseIndexToSave, setPhaseIndexToSave] = useState(null); 
@@ -105,7 +108,7 @@ export default function QuoteBuilder() {
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [converting, setConverting] = useState(false);
   
-  const [pdfSettings, , hydratePdfSettings] = useDocumentState({
+  const [pdfSettings, setPdfSettings, hydratePdfSettings] = useDocumentState({
     template: "professional", primary_color: "#0f172a", accent_color: "#f59e0b", header_background_color: "#0f172a",
     header_text_color: "#ffffff", footer_text: "", footer_color: "#64748b", show_logo: true, show_company_info: true,
     show_payment_terms: true, font_family: "sans-serif", font_size_base: 11, page_layout: "single-column",
@@ -143,9 +146,14 @@ export default function QuoteBuilder() {
     queryKey: ["phase-templates", companyId], enabled: !!companyId,
     queryFn: async () => { const { data } = await supabase.from("phase_templates").select("*").eq("company_id", companyId).eq("is_active", true); return data || []; } 
   });
-  const { data: quoteTemplates = [], isFetched: quoteTemplatesFetched, error: quoteTemplatesLoadError } = useQuery({
+  const { data: quoteTemplates = [], error: quoteTemplatesLoadError } = useQuery({
     queryKey: ["quote-templates-list", companyId], enabled: !!companyId,
     queryFn: async () => { const { data, error } = await supabase.from("quotes").select("*").eq("company_id", companyId).eq("is_template", true); if (error) throw error; return data || []; }
+  });
+  const { data: selectedTemplate, isFetched: selectedTemplateFetched, error: selectedTemplateLoadError } = useQuery({
+    queryKey: quoteTemplateDetailKey(companyId, templateId),
+    enabled: !!companyId && !!templateId && !quoteId,
+    queryFn: () => loadQuoteTemplate(supabase, companyId, templateId),
   });
   const { data: companyResources = [], isLoading: loadingResources } = useQuery({ 
     queryKey: ["company_resources", companyId], enabled: !!companyId,
@@ -306,27 +314,19 @@ export default function QuoteBuilder() {
       if (existingQuote.pdf_customization_settings_json) {
         try { hydratePdfSettings(JSON.parse(existingQuote.pdf_customization_settings_json)); } catch (e) {}
       }
-    } else if (templateId && !quoteId && hydratedTemplateId.current !== templateId) {
-      const template = quoteTemplates.find(t => t.id === templateId);
-      if (template) {
-        hydratedTemplateId.current = templateId;
-        hydrateLocalTitle(template.title || ""); hydrateLocalOverallScope(template.overall_scope || "");
-        hydrateLocalClientMessage(template.client_message || ""); hydrateLocalTerms(template.terms || "");
-        hydrateForm(prev => ({
-          ...prev, title: template.title || "", issue_date: format(new Date(), "yyyy-MM-dd"),
-          overall_scope: template.overall_scope || "", client_message: template.client_message || "", terms: template.terms || "",
-          show_overall_scope: template.show_overall_scope !== false, deposit_amount: template.deposit_amount || 0,
-          discount_amount: template.discount_amount || 0, discount_type: template.discount_type || "fixed",
-          discount_percentage: template.discount_percentage || 0, has_payment_schedule: template.has_payment_schedule || false,
-          hero_image_url: template.hero_image_url || "", end_photos: template.end_photos || [], documents: template.documents || [],
-          margin: template.margin ?? 0, margin_adjustment_type: template.margin_adjustment_type || "none"
-        }));
-        if (template.pdf_customization_settings_json) {
-          try { hydratePdfSettings(JSON.parse(template.pdf_customization_settings_json)); } catch (e) {}
-        }
-      }
+    } else if (templateId && !quoteId && selectedTemplate && hydratedTemplateId.current !== templateId) {
+      const fields = reusableQuoteTemplateFields(selectedTemplate);
+      hydrateLocalTitle(selectedTemplate.title || "");
+      hydrateLocalOverallScope(fields.overall_scope);
+      hydrateLocalClientMessage(fields.client_message);
+      hydrateLocalTerms(fields.terms);
+      hydrateLocalNotes(fields.notes);
+      hydrateForm(prev => ({ ...prev, ...fields, title: selectedTemplate.title || "", issue_date: format(new Date(), "yyyy-MM-dd") }));
+      hydratePdfSettings(prev => quoteTemplatePdfSettings(selectedTemplate, prev));
+      setManualDeposit(true);
+      hydratedTemplateId.current = templateId;
     }
-  }, [existingQuote, templateId, quoteTemplates]);
+  }, [existingQuote, templateId, quoteId, selectedTemplate]);
 
   useEffect(() => {
     if (quoteId && scheduleFetched && !scheduleLoadError && !hasLoadedSchedule.current) {
@@ -382,7 +382,7 @@ export default function QuoteBuilder() {
         items: templateItems.filter(item => item.phase_id === phase.id).map(item => ({
           id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           name: item.name, description: item.description || "", finish_colour: item.finish_colour || "", quantity: item.quantity || 1, unit: item.unit || "ea",
-          unit_cost: item.unit_cost || 0, unit_price: item.unit_price || 0, taxable: item.taxable !== false,
+          unit_cost: item.unit_cost || 0, unit_price: item.unit_price || 0, material_cost: item.material_cost || 0, labor_cost: item.labor_cost || 0, taxable: item.taxable !== false,
           product_id: item.product_id || "", photo_url: item.photo_url || "", is_optional: item.is_optional === true,
           default_selected: item.default_selected === true, is_material: item.is_material === true, supplier: item.supplier || null
         }))
@@ -397,6 +397,58 @@ export default function QuoteBuilder() {
       hydratePaymentScheduleItems(templateScheduleItems.map(item => ({ ...item, id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` })));
     }
   }, [templateId, quoteId, templateScheduleItems, templateScheduleFetched, templateScheduleLoadError]);
+
+  const handleImportQuoteTemplate = async (templateIdToImport) => {
+    if (importingTemplateId || !companyId) return;
+    const request = ++templateImportRequest.current;
+    setImportingTemplateId(templateIdToImport);
+    try {
+      const { template, phases: templatePhasesData, items: templateItemsData, schedule: templateScheduleData } =
+        await loadQuoteTemplateBundle(supabase, companyId, templateIdToImport);
+      if (request !== templateImportRequest.current) return;
+      const importedPhases = (templatePhasesData || []).map((phase, importedIndex) => ({
+        id: `temp-phase-${Date.now()}-${importedIndex}-${Math.random().toString(36).substr(2, 9)}`,
+        phase_name: phase.phase_name,
+        scope_of_work: phase.scope_of_work || "",
+        show_scope_to_client: phase.show_scope_to_client !== false,
+        internal_notes: phase.internal_notes || "",
+        photos: Array.isArray(phase.photos) ? phase.photos : [],
+        sort_order: phases.length + importedIndex,
+        is_optional: phase.is_optional === true,
+        default_selected: phase.default_selected === true,
+        items: (templateItemsData || []).filter(item => item.phase_id === phase.id).map(item => ({
+          id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: item.name, description: item.description || "", finish_colour: item.finish_colour || "", quantity: Number(item.quantity) || 1, unit: item.unit || "ea",
+          unit_cost: Number(item.unit_cost) || 0, unit_price: Number(item.unit_price) || 0,
+          material_cost: Number(item.material_cost) || 0, labor_cost: Number(item.labor_cost) || 0,
+          taxable: item.taxable !== false, product_id: item.product_id || "", photo_url: item.photo_url || "",
+          is_optional: item.is_optional === true, default_selected: item.default_selected === true,
+          is_material: item.is_material === true, supplier: item.supplier || null
+        }))
+      }));
+      const fields = reusableQuoteTemplateFields(template);
+      const importedSchedule = templateScheduleData.map(item => ({
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        payment_name: item.payment_name, due_event: item.due_event || "",
+        amount: item.amount ?? 0, amount_type: item.amount_type || "fixed", percentage: item.percentage ?? 0,
+      }));
+      setPhases(current => normalizePhaseOrder([...current, ...importedPhases]));
+      setPaymentScheduleItems(importedSchedule);
+      setForm(prev => ({ ...prev, ...fields }));
+      setLocalOverallScope(fields.overall_scope);
+      setLocalClientMessage(fields.client_message);
+      setLocalTerms(fields.terms);
+      setLocalNotes(fields.notes);
+      setPdfSettings(prev => quoteTemplatePdfSettings(template, prev));
+      setManualDeposit(true);
+      setShowImportQuoteTemplateDialog(false);
+      toast.success(`Imported ${importedPhases.length} phases and template settings`);
+    } catch (error) {
+      if (request === templateImportRequest.current) toast.error("Failed to import template. No changes were applied.");
+    } finally {
+      if (request === templateImportRequest.current) setImportingTemplateId(null);
+    }
+  };
 
   const addPhase = () => {
     setPhases(current => normalizePhaseOrder([...current, {
@@ -783,7 +835,7 @@ export default function QuoteBuilder() {
 
   const handleSave = async (newStatus = null, forceSaveAsTemplate = false, skipToast = false, stayInBuilder = false, expectedStatus = null) => {
     if (saveInFlight.current) return null;
-    if (isDocumentLoading) { toast.error("Please wait for the quote to finish loading before saving."); return null; }
+    if (isDocumentLoading || importingTemplateId) { toast.error("Please wait for the quote to finish loading before saving."); return null; }
     const activeTitle = localTitle;
     if (!activeTitle || !activeTitle.trim()) { toast.error("Enter a title for this quote before saving."); return null; }
     if (!companyId) { toast.error("Your company profile is unavailable. Refresh the page and try again."); return null; }
@@ -986,7 +1038,7 @@ export default function QuoteBuilder() {
       await queryClient.invalidateQueries({ queryKey: ["quotes"] });
       await queryClient.invalidateQueries({ queryKey: ["quote", savedQuoteId] });
       await queryClient.invalidateQueries({ queryKey: ["quotes_lookup", companyId] });
-      await queryClient.invalidateQueries({ queryKey: ["quote-templates-list"] });
+      await Promise.all(["quote-templates-list", "quote-template-options", "quote-template-detail"].map(key => queryClient.invalidateQueries({ queryKey: [key] })));
       await queryClient.invalidateQueries({ queryKey: ["quote-phases", savedQuoteId] });
       await queryClient.invalidateQueries({ queryKey: ["quote-items", savedQuoteId] });
 
@@ -1372,9 +1424,9 @@ export default function QuoteBuilder() {
     );
   };
 
-  const missingTemplate = templateId && !quoteId && quoteTemplatesFetched && !quoteTemplates.some(template => template.id === templateId);
+  const missingTemplate = templateId && !quoteId && selectedTemplateFetched && !selectedTemplate;
   const initialLoadError = quoteLoadError || phasesLoadError || itemsLoadError || scheduleLoadError ||
-    (templateId && !quoteId && (quoteTemplatesLoadError || templatePhasesLoadError || templateItemsLoadError || templateScheduleLoadError || missingTemplate));
+    (templateId && !quoteId && (selectedTemplateLoadError || templatePhasesLoadError || templateItemsLoadError || templateScheduleLoadError || missingTemplate));
   if ((quoteId || templateId) && (isDocumentLoading || initialLoadError) && !saveInFlight.current && !isDirty) {
     return (
       <div className="min-h-full bg-slate-50 p-6" role="status">
@@ -1389,7 +1441,7 @@ export default function QuoteBuilder() {
       <UnsavedChangesGuard
         isDirty={isDirty}
         hasUnsavedChanges={hasUnsavedChanges}
-        saving={saving || uploadingPhoto || converting}
+        saving={saving || uploadingPhoto || converting || !!importingTemplateId}
         documentName="quote"
         onSave={async () => {
           const revision = getRevision();
@@ -1397,7 +1449,7 @@ export default function QuoteBuilder() {
           return Boolean(savedId) && getRevision() === revision;
         }}
       />
-      <fieldset disabled={saving || uploadingPhoto || converting} className="min-w-0 border-0 p-0 m-0">
+      <fieldset disabled={saving || uploadingPhoto || converting || !!importingTemplateId} className="min-w-0 border-0 p-0 m-0">
       <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-6">
         <div className="flex-1 min-w-0">
           
@@ -1997,70 +2049,26 @@ export default function QuoteBuilder() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showImportQuoteTemplateDialog} onOpenChange={setShowImportQuoteTemplateDialog}>
+      <Dialog open={showImportQuoteTemplateDialog} onOpenChange={open => {
+        setShowImportQuoteTemplateDialog(open);
+        if (!open) { templateImportRequest.current += 1; setImportingTemplateId(null); }
+      }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Import Full Quote Template</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">Import all phases, line items, and settings from a saved quote template:</p>
-            {quoteTemplates.length > 0 ? (
+            <p className="text-sm text-slate-600">Adds phases and line items. Replaces introduction, client message, terms, notes, photos, attachments, payment schedule, and display settings with the template’s saved values:</p>
+            {quoteTemplatesLoadError ? <p role="alert" className="text-sm text-red-700">Templates could not be loaded. Please close this dialog and try again.</p> : quoteTemplates.length > 0 ? (
               <div className="space-y-2">
                 {quoteTemplates.map(template => (
                   <Button 
                     key={template.id} 
                     variant="outline" 
                     className="w-full justify-start h-auto py-4 px-4 hover:border-amber-400 hover:bg-amber-50" 
-                    onClick={async () => {
-                      try {
-                        const { data: templatePhasesData } = await supabase.from("quote_phases").select("*").eq("quote_id", template.id).order("sort_order", { ascending: true });
-                        const { data: templateItemsData } = await supabase.from("quote_line_items").select("*").eq("quote_id", template.id).order("display_order", { ascending: true });
-                        const { data: templateScheduleData } = await supabase.from("quote_payment_schedules").select("*").eq("quote_id", template.id).order("sort_order", { ascending: true });
-
-                        const importedPhases = (templatePhasesData || []).map((phase, importedIndex) => ({
-                          id: `temp-phase-${Date.now()}-${importedIndex}-${Math.random().toString(36).substr(2, 9)}`,
-                          phase_name: phase.phase_name,
-                          scope_of_work: phase.scope_of_work || "",
-                          show_scope_to_client: phase.show_scope_to_client !== false,
-                          internal_notes: phase.internal_notes || "",
-                          photos: Array.isArray(phase.photos) ? phase.photos : [],
-                          sort_order: phases.length + importedIndex,
-                          is_optional: phase.is_optional === true,
-                          default_selected: phase.default_selected === true,
-                          items: (templateItemsData || []).filter(item => item.phase_id === phase.id).map(item => ({
-                            id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                            name: item.name, description: item.description || "", finish_colour: item.finish_colour || "", quantity: Number(item.quantity) || 1, unit: item.unit || "ea",
-                            unit_cost: Number(item.unit_cost) || 0, unit_price: Number(item.unit_price) || 0, 
-                            material_cost: Number(item.material_cost) || 0, labor_cost: Number(item.labor_cost) || 0, // ⚡ THIS IS CRITICAL
-                            taxable: item.taxable !== false, product_id: item.product_id || "", photo_url: item.photo_url || "", 
-                            is_optional: item.is_optional === true, default_selected: item.default_selected === true,
-                            is_material: item.is_material === true, supplier: item.supplier || null
-                          }))
-                        }));
-
-                        setPhases(current => normalizePhaseOrder([...current, ...importedPhases]));
-
-                        if (templateScheduleData?.length > 0) {
-                          const importedSchedule = templateScheduleData.map(item => ({
-                            id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                            payment_name: item.payment_name, due_event: item.due_event || "",
-                            amount: item.amount || 0, amount_type: item.amount_type || "fixed", percentage: item.percentage || 0
-                          }));
-                          setPaymentScheduleItems([...paymentScheduleItems, ...importedSchedule]);
-                        }
-
-                        if (!form.overall_scope && template.overall_scope) { setForm(prev => ({ ...prev, overall_scope: template.overall_scope })); setLocalOverallScope(template.overall_scope); }
-                        if (!form.client_message && template.client_message) { setForm(prev => ({ ...prev, client_message: template.client_message })); setLocalClientMessage(template.client_message); }
-                        if (!form.terms && template.terms) { setForm(prev => ({ ...prev, terms: template.terms })); setLocalTerms(template.terms); }
-                        if (template.hero_image_url) { setForm(prev => ({ ...prev, hero_image_url: template.hero_image_url })); }
-                        if (template.end_photos && template.end_photos.length > 0) { setForm(prev => ({ ...prev, end_photos: [...prev.end_photos, ...template.end_photos] })); }
-                        if (template.documents && template.documents.length > 0) { setForm(prev => ({ ...prev, documents: [...prev.documents, ...template.documents] })); }
-
-                        setShowImportQuoteTemplateDialog(false);
-                        toast.success(`Imported ${importedPhases.length} phases from template`);
-                      } catch (error) { toast.error("Failed to import template"); }
-                    }}
+                    disabled={!!importingTemplateId}
+                    onClick={() => handleImportQuoteTemplate(template.id)}
                   >
                     <div className="text-left flex-1">
-                      <p className="font-semibold text-base">{template.title}</p>
+                      <p className="font-semibold text-base">{importingTemplateId === template.id ? "Importing…" : template.title}</p>
                       {template.overall_scope && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{template.overall_scope}</p>}
                     </div>
                   </Button>
