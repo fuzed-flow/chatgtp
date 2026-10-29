@@ -470,7 +470,7 @@ export default function LineItemRow({
                  updateField("internal_notes", e.target.value); 
                }}
                placeholder="Internal notes (hidden from client)..."
-               className="min-h-[64px] bg-amber-50/50 text-xs font-medium text-slate-700 placeholder:text-amber-500/60"
+               className="min-h-[64px] bg-amber-50/50 text-sm font-medium text-slate-700 placeholder:text-slate-600"
               />
             </div>
             
