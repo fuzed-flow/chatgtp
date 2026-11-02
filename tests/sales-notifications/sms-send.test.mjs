@@ -107,7 +107,7 @@ test('Accepted SMS records server document party, trusted Twilio SID, history an
   const view=fixture();const response=await view.handler(request({client_id:FOREIGN_CLIENT,provider:'resend',provider_message_id:id(98)}));assert.equal(response.status,200);assert.deepEqual(await response.json(),{success:true,message_sid:SID});
   assert.deepEqual(calls(view,'finish_sms_intent'),[{name:'finish_sms_intent',args:{p_company:COMPANY,p_request:REQUEST,p_status:'sent',p_provider_id:SID}}]);
   assert.deepEqual(calls(view,'register_outbound_delivery')[0].args,{p_provider:'twilio',p_provider_id:SID,p_company:COMPANY,p_related:'Quote',p_id:QUOTE,p_client:CLIENT,p_lead:null,p_actor:USER,p_kind:'document',p_copy:false,p_recipient:'+17805551234',p_sender:FROM,p_reply:null});
-  assert.deepEqual(history(view)[0].payload,{company_id:COMPANY,client_id:CLIENT,lead_id:null,type:'SMS',direction:'Outbound',subject:'Text message sent',message:'A synthetic SMS',status:'Sent',sent_by:USER,provider:'twilio',provider_message_id:SID});
+  assert.deepEqual(history(view)[0].payload,{company_id:COMPANY,client_id:CLIENT,lead_id:null,type:'SMS',direction:'Outbound',subject:'Text message sent',message:'A synthetic SMS',status:'Sent',sent_by:USER,provider:'twilio',provider_message_id:SID,delivery_kind:'document',related_type:'Quote',related_id:QUOTE,related_label:'Q-SYNTHETIC'});
   assert.deepEqual(history(view)[0].config,{onConflict:'provider,provider_message_id',ignoreDuplicates:true});
 });
 test('Saved change order project determines SMS client and explicit inbound reply determines completion context',async()=>{
@@ -151,4 +151,23 @@ test('SMS claim database failure never contacts Twilio',async()=>{
 });
 test('SMS CORS preflight does not authenticate, claim or send',async()=>{
   const view=fixture();const response=await view.handler(new Request(URL_BASE+'/functions/v1/send-sms',{method:'OPTIONS'}));assert.equal(response.status,200);assert.equal(view.clients.length,0);assert.equal(view.fetches.length,0);
+});
+
+for (const [partyType,partyId,related] of [['client',CLIENT,'Message'],['lead',LEAD,'Lead']]) test(`direct ${partyType} communication SMS retains the saved party and reply context`,async()=>{
+  const party={client_id:partyType==='client'?partyId:null,lead_id:partyType==='lead'?partyId:null};
+  const view=fixture({rows:{client_communications:[{id:REPLY,company_id:COMPANY,...party,direction:'Inbound'}]}});
+  const response=await view.handler(request({document_type:undefined,document_id:undefined,...party,notification_kind:'communication',reply_to_communication_id:REPLY}));
+  assert.equal(response.status,200);assert.equal(view.fetches.length,1);
+  const args=calls(view,'register_outbound_delivery')[0].args;
+  assert.equal(args.p_related,related);assert.equal(args.p_id,partyId);assert.equal(args.p_reply,REPLY);assert.equal(args.p_kind,'communication');
+  assert.equal(history(view)[0].payload[`${partyType}_id`],partyId);assert.equal(history(view)[0].payload.delivery_kind,'communication');
+});
+for (const row of [
+  {id:REPLY,company_id:OTHER,client_id:CLIENT,direction:'Inbound'},
+  {id:REPLY,company_id:COMPANY,client_id:FOREIGN_CLIENT,direction:'Inbound'},
+  {id:REPLY,company_id:COMPANY,client_id:CLIENT,direction:'Outbound'},
+]) test('SMS replies reject a foreign or outgoing history record before sending '+JSON.stringify(row),async()=>{
+  const view=fixture({rows:{client_communications:[row]}});
+  const response=await view.handler(request({document_type:undefined,document_id:undefined,client_id:CLIENT,notification_kind:'communication',reply_to_communication_id:REPLY}));
+  assert.equal(response.status,400);assert.equal(view.fetches.length,0);assert.equal(view.rpcs.length,0);
 });

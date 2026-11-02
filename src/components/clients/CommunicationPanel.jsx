@@ -13,10 +13,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { communicationSendPayload, communicationText } from "@/lib/clientCommunications";
+import { communicationSendPayload, communicationText, communicationPhone, communicationSmsPayload, communicationSendError, isSmsCommunication, SMS_MESSAGE_LIMIT } from "@/lib/clientCommunications";
 
-export default function CommunicationPanel({ clientId, leadId, clientEmail, clientPhone, clientName }) {
+export default function CommunicationPanel(props) {
   const { profile } = useAuth();
+  const identity = `${profile?.company_id}:${props.leadId ? "lead" : "client"}:${props.leadId || props.clientId}`;
+  return <ContactCommunicationPanel key={identity} {...props} profile={profile} />;
+}
+
+function ContactCommunicationPanel({ clientId, leadId, clientEmail, clientPhone, clientName, profile }) {
   const companyId = profile?.company_id;
   const partyId = leadId || clientId;
   const partyColumn = leadId ? "lead_id" : "client_id";
@@ -28,6 +33,13 @@ export default function CommunicationPanel({ clientId, leadId, clientEmail, clie
   const [sending, setSending] = useState(false);
   const [replyId, setReplyId] = useState(null);
   const sendIntent = useRef(null);
+  const [smsDialogOpen, setSmsDialogOpen] = useState(false);
+  const [smsForm, setSmsForm] = useState({ message: "", replyId: null });
+  const [sendingSms, setSendingSms] = useState(false);
+  const [smsError, setSmsError] = useState("");
+  const smsIntent = useRef(null);
+  const smsInFlight = useRef(false);
+  const smsPhone = communicationPhone(clientPhone);
   
   const [emailForm, setEmailForm] = useState({ subject: "", message: "" });
   const [logForm, setLogForm] = useState({ type: "Phone Call", subject: "", message: "" });
@@ -48,6 +60,7 @@ export default function CommunicationPanel({ clientId, leadId, clientEmail, clie
   const { data: communications = [], isError: communicationsFailed } = useQuery({
     queryKey: ["client-communications", partyId, companyId],
     enabled: !!partyId && !!companyId,
+    refetchInterval: 15000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("client_communications")
@@ -57,7 +70,7 @@ export default function CommunicationPanel({ clientId, leadId, clientEmail, clie
         .or("delivery_kind.is.null,delivery_kind.eq.communication")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
@@ -159,6 +172,43 @@ export default function CommunicationPanel({ clientId, leadId, clientEmail, clie
     }
   };
 
+  const openSms = (reply = null) => {
+    setSmsForm(current => ({ ...current, replyId: reply?.id || null }));
+    setSmsError("");
+    setSmsDialogOpen(true);
+  };
+
+  const handleSendSms = async () => {
+    if (smsInFlight.current || !companyId || !partyId) return;
+    let payload;
+    try {
+      payload = communicationSmsPayload({ clientId, leadId, phone: clientPhone, message: smsForm.message, replyId: smsForm.replyId });
+    } catch (error) {
+      setSmsError(error.message);
+      return;
+    }
+    const signature = JSON.stringify([companyId, partyColumn, partyId, payload]);
+    if (smsIntent.current?.signature !== signature) smsIntent.current = { signature, requestId: crypto.randomUUID() };
+    payload.request_id = smsIntent.current.requestId;
+    smsInFlight.current = true;
+    setSendingSms(true);
+    setSmsError("");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-sms", { body: payload });
+      if (error || data?.success !== true) throw new Error(await communicationSendError(error, data));
+      smsIntent.current = null;
+      setSmsDialogOpen(false);
+      setSmsForm({ message: "", replyId: null });
+      toast.success("SMS accepted for sending. Delivery updates will appear in communication history.");
+      queryClient.invalidateQueries({ queryKey: ["client-communications", partyId, companyId] });
+    } catch (error) {
+      setSmsError(error.message || "SMS could not be sent. Your draft is still here.");
+    } finally {
+      smsInFlight.current = false;
+      setSendingSms(false);
+    }
+  };
+
   const handleLogCommunication = () => {
     if (!logForm.subject) {
       toast.error("Please add a subject");
@@ -197,6 +247,7 @@ export default function CommunicationPanel({ clientId, leadId, clientEmail, clie
     "Phone Call": Phone,
     Meeting: Calendar,
     "Text Message": MessageSquare,
+    SMS: MessageSquare,
     Other: MessageSquare
   };
 
@@ -207,6 +258,9 @@ export default function CommunicationPanel({ clientId, leadId, clientEmail, clie
         <Button onClick={() => { setReplyId(null); setEmailDialogOpen(true); }} disabled={!clientEmail} className="gap-2 bg-gradient-to-br from-amber-500 to-amber-600 text-slate-900 shadow-sm">
           <Mail className="h-4 w-4" />
           Send Email
+        </Button>
+        <Button type="button" onClick={() => openSms()} disabled={!smsPhone || !companyId || !partyId || sendingSms} className="gap-2 min-h-11 bg-amber-500 hover:bg-amber-600 text-slate-900 shadow-sm">
+          <MessageSquare className="h-4 w-4" /> Send SMS
         </Button>
         <Button variant="outline" onClick={() => setLogDialogOpen(true)} className="gap-2 bg-white shadow-sm hover:shadow">
           <Plus className="h-4 w-4" />
@@ -220,8 +274,9 @@ export default function CommunicationPanel({ clientId, leadId, clientEmail, clie
 
       <p className="text-xs text-slate-500 leading-relaxed">
         {replyStatus?.email === true ? 'Email replies to tracked messages appear in this history.' : 'Automatic email reply capture is unavailable. Replies use your configured company email address.'}
-        {replyStatus?.sms === true && ' SMS replies to tracked messages also appear here.'}
+        {replyStatus?.sms === true ? ' SMS replies to tracked messages also appear here.' : ' Automatic SMS reply capture is not confirmed for this account.'}
       </p>
+      {!smsPhone && <p className="text-sm text-slate-600">{clientPhone ? "Update this contact’s phone number, including the country code, to send SMS." : "Add a phone number to this contact to send SMS."}</p>}
 
       {/* Reminders */}
       {reminders.length > 0 && (
@@ -277,16 +332,21 @@ export default function CommunicationPanel({ clientId, leadId, clientEmail, clie
                         <Icon className="h-4 w-4 text-slate-500" />
                         <span className="font-semibold text-sm text-slate-900">{comm.subject || comm.type}</span>
                         <Badge variant="outline" className="text-xs bg-white">{comm.type}</Badge>
+                        {isSmsCommunication(comm) && comm.direction?.toLowerCase() === "outbound" && comm.status && !["failed", "bounced", "undelivered", "complained"].includes(comm.status.toLowerCase()) && <Badge variant="outline" className="text-xs bg-white">{comm.status}</Badge>}
                         {["failed", "bounced", "undelivered", "complained"].includes(comm.status?.toLowerCase()) && <Badge className="text-xs bg-red-100 text-red-800 border-red-200">Delivery failed</Badge>}
                         {comm.direction?.toLowerCase() === "inbound" && !comm.answered_at && <Badge className="bg-amber-100 text-amber-900">Needs reply</Badge>}
                       </div>
                       {comm.message && (
-                        <div className="text-sm text-slate-700 mt-2 whitespace-pre-wrap break-words overflow-hidden">{communicationText(comm.message)}</div>
+                        <div className="text-sm text-slate-700 mt-2 whitespace-pre-wrap break-words overflow-hidden">{isSmsCommunication(comm) ? String(comm.message) : communicationText(comm.message)}</div>
                       )}
                       <p className="text-xs text-slate-500 mt-3 font-medium">
                         {comm.direction} • {comm.sent_by} • {comm.created_at ? format(new Date(comm.created_at), "MMM d, yyyy h:mm a") : "—"}
                       </p>
-                      {comm.direction?.toLowerCase() === "inbound" && !comm.answered_at && <div className="flex flex-wrap gap-2 mt-2"><Button size="sm" className="min-h-10 bg-amber-500 hover:bg-amber-600 text-slate-900" disabled={!clientEmail || sending} onClick={() => { setReplyId(comm.id); setEmailForm({ subject: /^Re:/i.test(comm.subject || "") ? comm.subject : `Re: ${comm.subject || "Your message"}`, message: "" }); setEmailDialogOpen(true); }}>Reply by email</Button><Button size="sm" variant="outline" className="min-h-10 hover:bg-amber-50" disabled={markAnsweredMutation.isPending} onClick={() => markAnsweredMutation.mutate(comm.id)}>Mark handled</Button></div>}
+                      {comm.direction?.toLowerCase() === "inbound" && <div className="flex flex-wrap gap-2 mt-2">
+                        <Button type="button" size="sm" className="min-h-11 bg-amber-500 hover:bg-amber-600 text-slate-900" disabled={!smsPhone || sendingSms} onClick={() => openSms(comm)}>Reply by SMS</Button>
+                        <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={!clientEmail || sending} onClick={() => { setReplyId(comm.id); setEmailForm({ subject: /^Re:/i.test(comm.subject || "") ? comm.subject : `Re: ${comm.subject || "Your message"}`, message: "" }); setEmailDialogOpen(true); }}>Reply by email</Button>
+                        {!comm.answered_at && <Button type="button" size="sm" variant="outline" className="min-h-11 hover:bg-amber-50" disabled={markAnsweredMutation.isPending} onClick={() => markAnsweredMutation.mutate(comm.id)}>Mark handled</Button>}
+                      </div>}
                     </div>
                   </div>
                 </div>
@@ -295,6 +355,26 @@ export default function CommunicationPanel({ clientId, leadId, clientEmail, clie
           )}
         </div>
       </Card>
+
+      <Dialog open={smsDialogOpen} onOpenChange={open => { if (!smsInFlight.current) setSmsDialogOpen(open); }}>
+        <DialogContent aria-describedby="communication-sms-description" className="max-w-xl w-[calc(100vw-2rem)] max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{smsForm.replyId ? "Reply by SMS" : "Send SMS"} to {clientName}</DialogTitle></DialogHeader>
+          <p id="communication-sms-description" className="text-sm text-slate-600">{replyStatus?.sms === true ? "Replies to this text will appear in communication history." : "SMS sending uses your configured company messaging service. Automatic reply capture is not confirmed for this account."}</p>
+          <div className="space-y-4">
+            <div><Label htmlFor="communication-sms-recipient">To</Label><Input id="communication-sms-recipient" type="tel" value={smsPhone || clientPhone || ""} readOnly className="bg-slate-50 text-base" /></div>
+            <div>
+              <Label htmlFor="communication-sms-message">Message</Label>
+              <Textarea id="communication-sms-message" value={smsForm.message} disabled={sendingSms} onChange={event => setSmsForm(current => ({ ...current, message: event.target.value }))} placeholder="Write your text message…" rows={6} maxLength={SMS_MESSAGE_LIMIT} aria-describedby="communication-sms-count" className="bg-white text-base" />
+              <p id="communication-sms-count" className="mt-1 text-sm text-slate-600">{smsForm.message.length}/{SMS_MESSAGE_LIMIT} characters. Longer messages may be split into multiple texts.</p>
+            </div>
+            {smsError && <p role="alert" className="text-sm text-red-700 whitespace-pre-wrap">{smsError}</p>}
+            <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
+              <Button type="button" variant="outline" disabled={sendingSms} onClick={() => setSmsDialogOpen(false)} className="min-h-11">Cancel</Button>
+              <Button type="button" onClick={handleSendSms} disabled={sendingSms || !smsPhone || !smsForm.message.trim()} className="min-h-11 bg-amber-500 hover:bg-amber-600 text-slate-900"><Send className="mr-2 h-4 w-4" />{sendingSms ? "Sending…" : "Send SMS"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Send Email Dialog */}
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
