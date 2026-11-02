@@ -31,6 +31,7 @@ import DocumentManager from "../components/shared/DocumentManager";
 import { useTaskVendors } from "@/hooks/useTaskVendors";
 import CommunicationPanel from "../components/clients/CommunicationPanel";
 import ClientActivityPanel from "../components/clients/ClientActivityPanel";
+import { loadClientTasks, clientTaskUpdates, updateClientTask, deleteClientTask } from "@/lib/clientTasks";
 
 // --- CONSTANTS & HELPERS ---
 const STATUSES = ["To Do", "Doing", "Blocked", "Done", "Pending", "Active", "Under Review", "Completed"];
@@ -158,13 +159,9 @@ export default function ClientDetail() {
   });
 
   const { data: clientTasks = [] } = useQuery({
-    queryKey: ["client-tasks", clientId],
+    queryKey: ["client-tasks", clientId, companyId],
     enabled: !!clientId && !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("project_tasks").select("*").eq("client_id", clientId).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    }
+    queryFn: () => loadClientTasks(supabase, companyId, clientId)
   });
 
   const { data: attachments = [] } = useQuery({
@@ -224,20 +221,7 @@ export default function ClientDetail() {
   });
 
   const handleEditTaskSubmit = useMutation({
-    mutationFn: async (payload) => {
-      const taskPayload = {
-        title: payload.title,
-        description: payload.description || null,
-        project_id: (!payload.project_id || payload.project_id === "none") ? null : payload.project_id,
-        status: payload.status || "Pending",
-        priority: payload.priority || "Medium",
-        due_date_target: payload.due_date_target || null,
-        estimated_hours: payload.estimated_hours ? Number(payload.estimated_hours) : null,
-        assigned_to: (!payload.assigned_to || payload.assigned_to === "none") ? null : [payload.assigned_to] 
-      };
-      const { error } = await supabase.from("project_tasks").update(taskPayload).eq("id", payload.id);
-      if (error) throw error;
-    },
+    mutationFn: payload => updateClientTask(supabase, companyId, clientId, payload, clientTaskUpdates(payload)),
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: ["client-tasks", clientId] }); 
       setEditTaskOpen(false); 
@@ -247,13 +231,15 @@ export default function ClientDetail() {
   });
 
   const updateTaskStatusMutation = useMutation({
-    mutationFn: async ({ id, status }) => await supabase.from("project_tasks").update({ status }).eq("id", id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["client-tasks", clientId] }); toast.success("Task status updated"); }
+    mutationFn: ({ task, status }) => updateClientTask(supabase, companyId, clientId, task, { status }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["client-tasks", clientId] }); toast.success("Task status updated"); },
+    onError: err => toast.error(`Error: ${err.message}`)
   });
 
   const deleteTaskMutation = useMutation({
-    mutationFn: async (id) => await supabase.from("project_tasks").delete().eq("id", id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["client-tasks", clientId] }); toast.success("Task deleted."); }
+    mutationFn: task => deleteClientTask(supabase, companyId, clientId, task),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["client-tasks", clientId] }); toast.success("Task deleted."); },
+    onError: err => toast.error(`Error: ${err.message}`)
   });
 
   const deleteAttachmentMutation = useMutation({
@@ -387,13 +373,16 @@ export default function ClientDetail() {
     const assigneeVal = Array.isArray(task.assigned_to) && task.assigned_to.length > 0 ? task.assigned_to[0] : task.assigned_to;
     setEditTaskForm({
       id: task.id,
+      _taskTable: task._taskTable,
+      _originalDueDate: task.due_date_target || task.due_date || null,
+      _originalAssignedTo: task.assigned_to,
       title: task.title || "",
       description: task.description || "",
       project_id: task.project_id ? String(task.project_id) : "none",
       status: task.status || "Pending",
       priority: task.priority || "Medium",
-      due_date_target: task.due_date_target || task.due_date || "",
-      estimated_hours: task.estimated_hours || "",
+      due_date_target: (task.due_date_target || task.due_date || "").slice(0, 10),
+      estimated_hours: task.estimated_hours ?? "",
       assigned_to: (assigneeVal && typeof assigneeVal === "string") ? assigneeVal : "none"
     });
     setEditTaskOpen(true);
@@ -596,7 +585,7 @@ export default function ClientDetail() {
               else if (isHigh) cardClass = "bg-orange-50/50 p-4 rounded-xl border border-orange-200 shadow-sm relative overflow-hidden";
 
               return (
-                <div key={t.id} className={cardClass}>
+                <div key={`${t._taskTable}:${t.id}`} className={cardClass}>
                   {!isCompleted && (isOverdue || isUrgent) && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-600"></div>}
                   {!isCompleted && isHigh && !isOverdue && <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-400"></div>}
 
@@ -619,7 +608,7 @@ export default function ClientDetail() {
                       
                       <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" onClick={() => openTaskEditModal(t)} className="h-7 w-7 text-slate-400 hover:text-blue-600 hover:bg-blue-50"><Edit2 className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => { if(window.confirm("Delete this task?")) deleteTaskMutation.mutate(t.id); }} className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { if(window.confirm("Delete this task?")) deleteTaskMutation.mutate(t); }} className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></Button>
                       </div>
                     </div>
 
@@ -628,7 +617,7 @@ export default function ClientDetail() {
                     </div>
 
                     <div className="flex items-center justify-between border-t border-slate-100/50 pt-3" onClick={e => e.stopPropagation()}>
-                      <Select value={normalizeStatus(t.status)} onValueChange={v => updateTaskStatusMutation.mutate({ id: t.id, status: v })}>
+                      <Select value={normalizeStatus(t.status)} onValueChange={v => updateTaskStatusMutation.mutate({ task: t, status: v })}>
                         <SelectTrigger className={`w-[110px] h-8 text-xs font-bold ${isCompleted ? 'bg-green-50 text-green-700 border-green-200' : (isUrgent || isOverdue) ? 'bg-white border-red-300 text-red-900' : 'bg-white'}`}>
                           <SelectValue />
                         </SelectTrigger>
@@ -946,7 +935,7 @@ export default function ClientDetail() {
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Est. Hours</Label>
-                <Input type="number" min="0" step="0.5" value={editTaskForm.estimated_hours || ""} onChange={(e) => setEditTaskForm({ ...editTaskForm, estimated_hours: e.target.value })} className="font-medium border-slate-200 text-sm" />
+                <Input type="number" min="0" step="0.5" value={editTaskForm.estimated_hours ?? ""} onChange={(e) => setEditTaskForm({ ...editTaskForm, estimated_hours: e.target.value })} className="font-medium border-slate-200 text-sm" />
               </div>
             </div>
 
