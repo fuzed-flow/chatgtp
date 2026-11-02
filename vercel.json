@@ -25,8 +25,13 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/client-portal-icon.js": {
+      "maxDuration": 15
+    }
+  }
 }

@@ -19,6 +19,7 @@ import { buildPublicInvoiceUrl, getClientPortalInvoices } from "@/lib/invoiceSha
 import { buildPublicChangeOrderUrl } from "@/lib/changeOrderSharing";
 import PortalCommunicationPanel from "@/components/portal/PortalCommunicationPanel";
 import { portalCommunicationAccess, portalMessagingEnabled } from "@/lib/portalCommunications";
+import PortalInstallCard from "@/components/portal/PortalInstallCard";
 
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
@@ -211,6 +212,8 @@ export default function ClientPortal() {
 
       {/* 🧭 MAIN CONTENT AREA */}
       <div className="max-w-6xl mx-auto px-4 mt-8 flex-1 w-full">
+
+        {company && client.id === clientId && company.id === client.company_id && <PortalInstallCard key={client.id} clientId={client.id} company={company} />}
         
         {/* 💬 CUSTOM WELCOME MESSAGE */}
         {portalSettings.welcome_message && (

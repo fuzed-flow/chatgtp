@@ -1,4 +1,5 @@
 let deferredInstallPrompt = null;
+let deferredManifestUrl = null;
 const installStateListeners = new Set();
 
 const isStandalone = () => typeof window !== 'undefined'
@@ -10,11 +11,13 @@ if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault();
     deferredInstallPrompt = event;
+    deferredManifestUrl = document.querySelector('link[rel="manifest"]')?.href || null;
     notifyInstallState();
   });
 
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
+    deferredManifestUrl = null;
     notifyInstallState();
   });
 
@@ -29,15 +32,24 @@ export const subscribeInstallState = listener => {
 
 export const getInstallState = () => {
   if (isStandalone()) return 'installed';
-  return deferredInstallPrompt ? 'ready' : 'manual';
+  const manifestUrl = typeof document !== 'undefined' ? document.querySelector('link[rel="manifest"]')?.href : null;
+  return deferredInstallPrompt && deferredManifestUrl === manifestUrl ? 'ready' : 'manual';
 };
 
 export const getInstallServerState = () => 'manual';
 
-export async function requestAppInstall() {
+export const getScopedInstallState = manifestUrl => {
+  const expected = typeof window !== 'undefined' ? new URL(manifestUrl, window.location.href).href : null;
+  return deferredInstallPrompt && deferredManifestUrl === expected ? 'ready' : 'manual';
+};
+
+export async function requestAppInstall(manifestUrl) {
+  const expected = manifestUrl || (typeof document !== 'undefined' ? document.querySelector('link[rel="manifest"]')?.href : null);
+  if (expected && getScopedInstallState(expected) !== 'ready') return { outcome: 'unavailable' };
   if (!deferredInstallPrompt) return { outcome: 'unavailable' };
   const prompt = deferredInstallPrompt;
   deferredInstallPrompt = null;
+  deferredManifestUrl = null;
   notifyInstallState();
   await prompt.prompt();
   return prompt.userChoice;
