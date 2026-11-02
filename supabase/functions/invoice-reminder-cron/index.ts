@@ -1,5 +1,7 @@
 import { stableRequestId } from "../_shared/salesNotifications.js";
 import { authorizeReminderCron } from "../_shared/cronAuth.js";
+import { reminderLocalTime, reminderPolicy, recordReminderDelivery, previewReminder } from "../_shared/reminderPolicy.js";
+import { invoiceReminderContext, installmentReminderPolicy, recordInstallmentReminder } from "../_shared/invoiceInstallmentReminders.js";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -20,6 +22,9 @@ serve(async (req) => {
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
     if (!await authorizeReminderCron(req, supabaseAdmin)) return new Response("Authentication required", { status: 401 });
+    const { dry_run: dryRun = false } = await req.json().catch(() => ({}));
+    const previews = [];
+    let failed = 0;
 
     console.log("Wake up! Fetching pending invoices...");
 
@@ -52,7 +57,7 @@ serve(async (req) => {
       console.log(`\n--- Checking Invoice #${invoice.invoice_number} ---`);
       
       const [{ data: company }, { data: client }] = await Promise.all([
-        supabaseAdmin.from("companies").select("id,name,settings").eq("id", invoice.company_id).maybeSingle(),
+        supabaseAdmin.from("companies").select("id,name,settings,timezone").eq("id", invoice.company_id).maybeSingle(),
         supabaseAdmin.from("clients").select("name,email,phone").eq("id", invoice.client_id).eq("company_id", invoice.company_id).maybeSingle(),
       ]);
       const automations = company?.settings?.automations;
@@ -60,20 +65,24 @@ serve(async (req) => {
       // SAFETY CHECKS
       if (!automations || automations.invoice_enabled !== true) continue;
       if (!client?.email && !client?.phone) continue;
-      if (!invoice.due_date) {
-        console.log(`⏭️ SKIPPED: Invoice has no due date.`);
-        continue;
-      }
-
-      const stage = invoice.automation_stage || 0;
+      const localTime = reminderLocalTime(company);
+      if (!localTime.date || (!dryRun && !localTime.allowed)) continue;
+      let target;
+      try { target = await invoiceReminderContext(supabaseAdmin, invoice); }
+      catch { failed += 1; continue; }
+      // Scheduled invoices never fall back to the original invoice due date.
+      if (!target?.due_date || !(Number(target.balance_due) > 0)) continue;
+      const installment = Boolean(target.schedule_item_id);
+      const scope = installment
+        ? `invoice:${invoice.id}:installment:${target.schedule_item_id}:${target.due_date}`
+        : `invoice:${invoice.id}`;
+      const stage = installment ? 0 : invoice.automation_stage || 0;
       
       // Calculate days relative to Due Date (Negative = Upcoming, Positive = Overdue)
-      const dueDate = new Date(invoice.due_date);
-      const today = new Date();
-      
-      // Normalize to midnight to prevent timezone/time-of-day math errors
-      dueDate.setHours(0, 0, 0, 0);
-      today.setHours(0, 0, 0, 0);
+      const dueDate = new Date(target.due_date);
+      // Compare calendar dates in the company's timezone, independent of UTC
+      // midnight and daylight-saving changes.
+      const today = new Date(`${localTime.date}T00:00:00Z`);
 
       const diffTime = today.getTime() - dueDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
@@ -93,6 +102,24 @@ serve(async (req) => {
             ? 3
             : null;
       if (reminderStage === null) continue;
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      const fetchHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}`, apikey: serviceKey };
+      const legacySmsRequest = await stableRequestId(`${scope}:followup:${reminderStage}:sms`);
+      let policy;
+      try { policy = installment
+        ? await installmentReminderPolicy(supabaseAdmin, invoice, target, reminderStage)
+        : await reminderPolicy(supabaseAdmin, company.id, "Invoice", invoice.id, reminderStage, legacySmsRequest); }
+      catch { failed += 1; continue; }
+      if (!policy.email && !policy.sms) continue;
+      if ((!policy.email || policy.email_sent) && (!policy.sms || policy.sms_sent)) continue;
+      const smsRequest = await stableRequestId(`${scope}:followup:${reminderStage}:sms:${policy.cycle}`);
+      if ((policy.email && !client.email) || (policy.sms && !client.phone)) { failed += 1; continue; }
+      if (dryRun) {
+        previews.push({ ...await previewReminder(supabaseUrl, fetchHeaders, company, "invoice", invoice.id, client, policy, localTime),
+          schedule_item_id: target.schedule_item_id, due_date: target.due_date, balance_due: target.balance_due });
+        continue;
+      }
 
       const { data: shareToken, error: shareError } = await supabaseAdmin.rpc("issue_invoice_reminder_share_token", {
         p_invoice: invoice.id,
@@ -115,7 +142,7 @@ serve(async (req) => {
       let smsBody = "";
 
       // Format Due Date for the email copy
-      const formattedDueDate = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const formattedDueDate = dueDate.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
 
       // Clean, professional SaaS-style button (Green for payments)
       const buttonHtml = `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="left"><a href="${escapeHtml(portalLink)}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: sans-serif; display: inline-block; font-size: 16px;">View &amp; Pay Invoice</a></td></tr></table>`;
@@ -124,7 +151,12 @@ serve(async (req) => {
       const clientFirstName = client.name ? client.name.split(' ')[0] : 'there';
       const companyNameHtml = escapeHtml(companyName);
       const clientFirstNameHtml = escapeHtml(clientFirstName);
-      const invoiceNumberHtml = escapeHtml(invoice.invoice_number);
+      const paymentReference = installment
+        ? `${target.payment_name || 'Scheduled payment'} for Invoice #${invoice.invoice_number}`
+        : `Invoice #${invoice.invoice_number}`;
+      const paymentReferenceHtml = escapeHtml(paymentReference);
+      const amountDue = new Intl.NumberFormat('en-CA', { style: 'currency', currency: company.settings?.currency || 'CAD' }).format(Number(target.balance_due));
+      const amountHtml = `<p>Amount due for this ${installment ? 'installment' : 'invoice'}: <strong>${escapeHtml(amountDue)}</strong></p>`;
 
       // ==========================================
       // STAGE 0 -> 1: PRE-DUE REMINDER
@@ -134,13 +166,14 @@ serve(async (req) => {
         triggerNotification = true;
         newStage = 1;
         
-        subject = `Upcoming Reminder: Invoice #${invoice.invoice_number} from ${companyName}`;
+        subject = `Upcoming Reminder: ${paymentReference} from ${companyName}`;
         htmlBody = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; font-size: 16px; max-width: 600px;">
             <p>Hi ${clientFirstNameHtml},</p>
-            <p>This is a polite reminder that Invoice #${invoiceNumberHtml} is due on <strong>${escapeHtml(formattedDueDate)}</strong>.</p>
+            <p>This is a polite reminder that ${paymentReferenceHtml} is due on <strong>${escapeHtml(formattedDueDate)}</strong>.</p>
             <p>You can view your invoice details and securely complete your payment online using the link below.</p>
             <br>
+            ${amountHtml}
             ${buttonHtml}
             <br><br>
             <p>If you have already submitted your payment, please disregard this message. Thank you for your business!</p>
@@ -148,7 +181,7 @@ serve(async (req) => {
           </div>
         `;
         
-        smsBody = `Hi ${clientFirstName}. This is a polite reminder from ${companyName} that Invoice #${invoice.invoice_number} is due on ${formattedDueDate}. You can view and pay it securely here: ${portalLink}`;
+        smsBody = `Hi ${clientFirstName}. This is a polite reminder from ${companyName} that ${paymentReference} is due on ${formattedDueDate}. You can view and pay it securely here: ${portalLink}`;
       } 
       // ==========================================
       // STAGE 0/1 -> 2: LATE NOTICE #1
@@ -158,13 +191,14 @@ serve(async (req) => {
         triggerNotification = true;
         newStage = 2;
         
-        subject = `Overdue Notice: Invoice #${invoice.invoice_number} from ${companyName}`;
+        subject = `Overdue Notice: ${paymentReference} from ${companyName}`;
         htmlBody = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; font-size: 16px; max-width: 600px;">
             <p>Hi ${clientFirstNameHtml},</p>
-            <p>This is a friendly follow-up to let you know that Invoice #${invoiceNumberHtml} is currently past due.</p>
+            <p>This is a friendly follow-up to let you know that ${paymentReferenceHtml} is currently past due.</p>
             <p>We understand that things can occasionally slip through the cracks. Please take a moment to review the invoice and complete your payment online using the link below.</p>
             <br>
+            ${amountHtml}
             ${buttonHtml}
             <br><br>
             <p>If you recently mailed a check or submitted payment, please let us know so we can update your account. Thank you!</p>
@@ -172,7 +206,7 @@ serve(async (req) => {
           </div>
         `;
         
-        smsBody = `Hi ${clientFirstName}. A friendly reminder from ${companyName} that Invoice #${invoice.invoice_number} is currently past due. You can easily view and pay your balance here: ${portalLink}`;
+        smsBody = `Hi ${clientFirstName}. A friendly reminder from ${companyName} that ${paymentReference} is currently past due. You can easily view and pay your balance here: ${portalLink}`;
       }
       // ==========================================
       // STAGE 0/1/2 -> 3: LATE NOTICE #2
@@ -182,13 +216,14 @@ serve(async (req) => {
         triggerNotification = true;
         newStage = 3;
         
-        subject = `Urgent: Invoice #${invoice.invoice_number} is significantly past due`;
+        subject = `Urgent: ${paymentReference} is significantly past due`;
         htmlBody = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; font-size: 16px; max-width: 600px;">
             <p>Hi ${clientFirstNameHtml},</p>
-            <p>This is an urgent notice regarding Invoice #${invoiceNumberHtml}, which was due on <strong>${escapeHtml(formattedDueDate)}</strong> and is now significantly past due.</p>
+            <p>This is an urgent notice regarding ${paymentReferenceHtml}, which was due on <strong>${escapeHtml(formattedDueDate)}</strong> and is now significantly past due.</p>
             <p>Please remit payment immediately to bring your account current. You can pay securely online using the link below.</p>
             <br>
+            ${amountHtml}
             ${buttonHtml}
             <br><br>
             <p>If there is an issue preventing payment, please reply to this email immediately so we can assist you.</p>
@@ -196,25 +231,25 @@ serve(async (req) => {
           </div>
         `;
         
-        smsBody = `Hi ${clientFirstName}. This is an urgent notice from ${companyName}. Invoice #${invoice.invoice_number} is significantly past due. Please remit payment immediately via this link: ${portalLink}`;
+        smsBody = `Hi ${clientFirstName}. This is an urgent notice from ${companyName}. ${paymentReference} is significantly past due. Please remit payment immediately via this link: ${portalLink}`;
       }
 
       // FIRE THE AUTOMATIONS
       if (triggerNotification) {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-        
-        const fetchHeaders = {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${serviceKey}`,
-          "apikey": serviceKey
-        };
-
+        // Re-read after link issuance so an intervening payment or due-date edit
+        // cannot turn a stale selection into an overdue notice.
+        let currentTarget;
+        try { currentTarget = await invoiceReminderContext(supabaseAdmin, invoice); }
+        catch { failed += 1; continue; }
+        if (!currentTarget || currentTarget.schedule_item_id !== target.schedule_item_id
+          || currentTarget.due_date !== target.due_date
+          || Number(currentTarget.balance_due) !== Number(target.balance_due)) continue;
+        smsBody += ` Amount due: ${amountDue}.`;
         const notifications = [];
         let deliveriesSucceeded = true;
 
         // Queue Email
-        if (client.email) {
+        if (policy.email && !policy.email_sent) {
           notifications.push(
             fetch(`${supabaseUrl}/functions/v1/send-email`, {
               method: "POST",
@@ -225,18 +260,22 @@ serve(async (req) => {
                 html_body: htmlBody, 
                 client_id: invoice.client_id,
                 company_id: company.id, document_type: "invoice", document_id: invoice.id, notification_kind: "followup", track_replies: true,
-                request_id: await stableRequestId(`invoice:${invoice.id}:followup:${newStage}:email`)
+                request_id: await stableRequestId(`${scope}:followup:${newStage}:email:${policy.cycle}`)
               })
             }).then(async res => {
               const result = await res.json();
-              if (res.ok && result.success === true) emailsTriggered++;
+              if (res.ok && result.success === true) {
+                if (installment) await recordInstallmentReminder(supabaseAdmin, invoice, target, newStage, "email");
+                else await recordReminderDelivery(supabaseAdmin, company.id, "Invoice", invoice.id, newStage, "email");
+                emailsTriggered++;
+              }
               else deliveriesSucceeded = false;
             }).catch(() => { deliveriesSucceeded = false; })
           );
         }
 
         // Queue SMS
-        if (client.phone) {
+        if (policy.sms && !policy.sms_sent) {
           notifications.push(
             fetch(`${supabaseUrl}/functions/v1/send-sms`, {
               method: "POST",
@@ -246,22 +285,27 @@ serve(async (req) => {
                 message_body: smsBody,
                 client_id: invoice.client_id,
                 company_id: company.id, document_type: "invoice", document_id: invoice.id, notification_kind: "followup",
-                request_id: await stableRequestId(`invoice:${invoice.id}:followup:${newStage}:sms`)
+                request_id: smsRequest
               })
             }).then(async res => {
               const result = await res.json();
-              if (res.ok && result.success === true) smsTriggered++;
+              if (res.ok && result.success === true) {
+                if (installment) await recordInstallmentReminder(supabaseAdmin, invoice, target, newStage, "sms");
+                else await recordReminderDelivery(supabaseAdmin, company.id, "Invoice", invoice.id, newStage, "sms");
+                smsTriggered++;
+              }
               else deliveriesSucceeded = false;
             }).catch(() => { deliveriesSucceeded = false; })
           );
         }
 
         await Promise.all(notifications);
-        if (!deliveriesSucceeded) continue;
+        if (!deliveriesSucceeded) { failed += 1; continue; }
         
         // Update the invoice to the new stage and ensure status flips to Overdue if it wasn't already
-        const updatePayload: any = { automation_stage: newStage, last_reminder_sent_at: new Date().toISOString() };
-        if (diffDays > 0 && !["Partial", "Partially Paid"].includes(invoice.status)) {
+        const updatePayload: any = { last_reminder_sent_at: new Date().toISOString() };
+        if (!installment) updatePayload.automation_stage = newStage;
+        if (!installment && diffDays > 0 && !["Partial", "Partially Paid"].includes(invoice.status)) {
           updatePayload.status = "Overdue";
         }
         
@@ -275,7 +319,8 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, emails: emailsTriggered, sms: smsTriggered }), {
+    return new Response(JSON.stringify({ success: failed === 0, emails: emailsTriggered, sms: smsTriggered, failed, ...(dryRun ? { dry_run: true, previews } : {}) }), {
+      status: failed ? 207 : 200,
       headers: { "Content-Type": "application/json" },
     });
 
