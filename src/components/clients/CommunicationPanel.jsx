@@ -337,7 +337,7 @@ function ContactCommunicationPanel({ clientId, leadId, clientEmail, clientPhone,
                         {comm.direction?.toLowerCase() === "inbound" && !comm.answered_at && <Badge className="bg-amber-100 text-amber-900">Needs reply</Badge>}
                       </div>
                       {comm.message && (
-                        <div className="text-sm text-slate-700 mt-2 whitespace-pre-wrap break-words overflow-hidden">{isSmsCommunication(comm) ? String(comm.message) : communicationText(comm.message)}</div>
+                        <div className="text-sm text-slate-700 mt-2 whitespace-pre-wrap break-words overflow-hidden">{isSmsCommunication(comm) || comm.provider === 'portal' ? String(comm.message) : communicationText(comm.message)}</div>
                       )}
                       <p className="text-xs text-slate-500 mt-3 font-medium">
                         {comm.direction} • {comm.sent_by} • {comm.created_at ? format(new Date(comm.created_at), "MMM d, yyyy h:mm a") : "—"}

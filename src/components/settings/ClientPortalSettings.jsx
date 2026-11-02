@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Save, UserCircle, FileText, Receipt, FilePlus, Download, Image as ImageIcon, Newspaper } from 'lucide-react';
+import { Save, UserCircle, FileText, Receipt, FilePlus, Download, Image as ImageIcon, Newspaper, MessagesSquare } from 'lucide-react';
 
 export default function ClientPortalSettings() {
   const { company, settings } = useAuth();
@@ -22,23 +22,24 @@ export default function ClientPortalSettings() {
     show_invoices: true,
     show_documents: true,
     show_portfolio: true,
+    show_communications: false,
     welcome_message: "Welcome to your client portal. Here you can view your project progress, approve quotes, and manage your invoices."
   });
 
   useEffect(() => {
-    if (settings?.client_portal) {
-      setFeatures({
-        portal_active: settings.client_portal.portal_active !== false,
-        show_client_updates: settings.client_portal.show_client_updates !== false,
-        show_quotes: settings.client_portal.show_quotes !== false,
-        show_change_orders: settings.client_portal.show_change_orders !== false,
-        show_invoices: settings.client_portal.show_invoices !== false,
-        show_documents: settings.client_portal.show_documents !== false,
-        show_portfolio: settings.client_portal.show_portfolio !== false,
-        welcome_message: settings.client_portal.welcome_message || "Welcome to your client portal. Here you can view your project progress, approve quotes, and manage your invoices."
-      });
-    }
-  }, [settings]);
+    const portal = settings?.client_portal || {};
+    setFeatures({
+      portal_active: portal.portal_active !== false,
+      show_client_updates: portal.show_client_updates !== false,
+      show_quotes: portal.show_quotes !== false,
+      show_change_orders: portal.show_change_orders !== false,
+      show_invoices: portal.show_invoices !== false,
+      show_documents: portal.show_documents !== false,
+      show_portfolio: portal.show_portfolio !== false,
+      show_communications: portal.show_communications === true,
+      welcome_message: portal.welcome_message || "Welcome to your client portal. Here you can view your project progress, approve quotes, and manage your invoices."
+    });
+  }, [settings, company?.id]);
 
   const handleToggle = (key, value) => {
     setFeatures(prev => ({ ...prev, [key]: value }));
@@ -48,7 +49,7 @@ export default function ClientPortalSettings() {
     mutationFn: async () => {
       const updatedSettings = {
         ...settings,
-        client_portal: features
+        client_portal: { ...settings?.client_portal, ...features }
       };
 
       const { error } = await supabase
@@ -59,7 +60,7 @@ export default function ClientPortalSettings() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['company', company.id]);
+      queryClient.invalidateQueries({ queryKey: ['company', company.id] });
       toast.success('Client Portal settings saved successfully!');
     },
     onError: (error) => {
@@ -104,6 +105,18 @@ export default function ClientPortalSettings() {
         <h3 className="text-lg font-black text-slate-900 border-b pb-2">Visible Modules</h3>
         
         <div className={`space-y-4 ${!features.portal_active ? 'opacity-50 pointer-events-none' : ''}`}>
+          <div className="flex items-center justify-between gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="h-10 w-10 shrink-0 bg-white border border-slate-200 rounded-lg flex items-center justify-center">
+                <MessagesSquare className="h-5 w-5 text-amber-700" />
+              </div>
+              <div>
+                <Label htmlFor="portal-communications" className="text-base font-bold text-slate-900 block mb-0.5">Communication history &amp; messaging</Label>
+                <p id="portal-communications-description" className="text-xs font-medium text-slate-500">Let clients view their email/SMS exchanges and send messages to your saved business email or phone. Internal notes and reminders stay private. Off by default.</p>
+              </div>
+            </div>
+            <Switch id="portal-communications" aria-describedby="portal-communications-description" disabled={!features.portal_active} checked={features.show_communications} onCheckedChange={v => handleToggle('show_communications', v)} />
+          </div>
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
             <div className="flex items-center gap-4">
               <div className="h-10 w-10 bg-white border border-slate-200 shadow-sm rounded-lg flex items-center justify-center">

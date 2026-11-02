@@ -602,3 +602,9 @@ entrypoint = "./functions/notification-provider-setup/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/twilio-recording-email/index.ts"
+
+# Authenticated by the saved client capability inside the function and its RPC.
+[functions.client-portal-message]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/client-portal-message/index.ts"

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { clientUpdatePortalUrl, escapeEmailHtml } from "@/lib/clientUpdates";
+import { addPortalCommunicationAccess, isSavedPortalRecipient } from "@/lib/portalCommunications";
 
 async function edgeFunctionError(error, fallback) {
   let message = error?.message || fallback;
@@ -89,9 +90,14 @@ export default function ClientUpdateDeliveryDialog({ open, onOpenChange, mode, u
     const loadingToast = toast.loading(mode === "email" ? "Preparing PDF and sending update..." : "Sending client update...");
     try {
       await publish();
-      const portalUrl = clientUpdatePortalUrl(window.location.origin, client.id, update.id);
       const signature = JSON.stringify([mode, update.id, recipient.trim(), subject, message, attachPdf, sendCopy]);
       if (intent.current?.signature !== signature) intent.current = { signature, requestId: crypto.randomUUID(), accepted: false };
+      if (!intent.current.portalUrl) {
+        const base = clientUpdatePortalUrl(window.location.origin, client.id, update.id);
+        intent.current.portalUrl = company?.settings?.client_portal?.show_communications === true && isSavedPortalRecipient(client, recipient, mode)
+          ? await addPortalCommunicationAccess(supabase, base, client.id) : base;
+      }
+      const portalUrl = intent.current.portalUrl;
 
       if (!intent.current.accepted && mode === "email") {
         const attachments = [];

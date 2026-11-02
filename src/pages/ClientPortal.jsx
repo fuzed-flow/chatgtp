@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   FileText, Receipt, Calendar, DollarSign, Eye, 
   Lock, AlertCircle, Image as ImageIcon, Download, 
-  ShieldCheck, FilePlus, ChevronDown, Newspaper, DownloadCloud, ClipboardCheck
+  ShieldCheck, FilePlus, ChevronDown, Newspaper, DownloadCloud, ClipboardCheck, MessagesSquare
 } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "../components/shared/StatusBadge";
@@ -17,6 +17,8 @@ import ProjectCloseoutPreview from "@/components/closeouts/ProjectCloseoutPrevie
 import { buildPublicQuoteUrl } from "@/lib/quoteSharing";
 import { buildPublicInvoiceUrl, getClientPortalInvoices } from "@/lib/invoiceSharing";
 import { buildPublicChangeOrderUrl } from "@/lib/changeOrderSharing";
+import PortalCommunicationPanel from "@/components/portal/PortalCommunicationPanel";
+import { portalCommunicationAccess, portalMessagingEnabled } from "@/lib/portalCommunications";
 
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
@@ -26,6 +28,7 @@ export default function ClientPortal() {
   const quoteAccessToken = params.get("quote_token");
   const invoiceAccessToken = params.get("invoice_token");
   const changeOrderAccessToken = params.get("co_token");
+  const communicationAccess = portalCommunicationAccess(params);
 
   // --- UI STATE ---
   const [activeTab, setActiveTab] = useState(() => params.get("tab") || "quotes");
@@ -111,13 +114,14 @@ export default function ClientPortal() {
   const showPortfolio = portalSettings.show_portfolio !== false;
   const showUpdates = portalSettings.show_client_updates !== false;
   const showCloseouts = portalSettings.show_project_closeouts !== false;
+  const showCommunications = Boolean(communicationAccess) && portalMessagingEnabled(company?.settings, client?.portal_features);
 
   // Set the initial active tab based on what is actually enabled
   useEffect(() => {
     if (!company) return;
-    const available = [showUpdates && "updates", showCloseouts && "closeouts", showQuotes && "quotes", showCOs && "change_orders", showInvoices && "invoices", showDocs && "documents", showPortfolio && "photos"].filter(Boolean);
+    const available = [showCommunications && "communications", showUpdates && "updates", showCloseouts && "closeouts", showQuotes && "quotes", showCOs && "change_orders", showInvoices && "invoices", showDocs && "documents", showPortfolio && "photos"].filter(Boolean);
     if (!available.includes(activeTab)) setActiveTab(available[0] || "updates");
-  }, [company, showUpdates, showCloseouts, showQuotes, showCOs, showInvoices, showDocs, showPortfolio, activeTab]);
+  }, [company, showCommunications, showUpdates, showCloseouts, showQuotes, showCOs, showInvoices, showDocs, showPortfolio, activeTab]);
 
   // --- EXTRACT DOCUMENTS & PHOTOS ---
   const allDocuments = quotes.flatMap(q => 
@@ -237,6 +241,7 @@ export default function ClientPortal() {
               {showInvoices && <option value="invoices">Invoices ({invoices.length})</option>}
               {showDocs && <option value="documents">Documents ({allDocuments.length})</option>}
               {showPortfolio && <option value="photos">Past Project Portfolio ({allPhotos.length})</option>}
+              {showCommunications && <option value="communications">Communications</option>}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-amber-500">
               <ChevronDown className="h-5 w-5" />
@@ -245,6 +250,7 @@ export default function ClientPortal() {
 
           {/* 💻 DESKTOP PILLS NAVIGATION */}
           <TabsList className="hidden sm:flex bg-white border border-slate-200 shadow-sm p-1.5 rounded-full flex-wrap h-auto justify-center gap-2">
+            {showCommunications && <TabsTrigger value="communications" className="rounded-full px-5 py-2 font-bold data-[state=active]:bg-amber-400 data-[state=active]:text-slate-950"><MessagesSquare className="mr-2 h-4 w-4" />Communications</TabsTrigger>}
             {showUpdates && (
               <TabsTrigger value="updates" className="rounded-full px-5 py-2 data-[state=active]:bg-amber-500 data-[state=active]:text-white font-bold data-[state=inactive]:text-slate-500 data-[state=inactive]:hover:bg-slate-50 transition-all">
                 <Newspaper className="w-4 h-4 mr-2" /> Updates ({clientUpdates.length})
@@ -285,6 +291,10 @@ export default function ClientPortal() {
               </TabsTrigger>
             )}
           </TabsList>
+
+          {showCommunications && <TabsContent value="communications" className="focus:outline-none">
+            <PortalCommunicationPanel key={`${clientId}:${communicationAccess.kind}:${communicationAccess.token}`} clientId={clientId} access={communicationAccess} companyName={contractorName} />
+          </TabsContent>}
 
           <TabsContent value="updates" className="focus:outline-none">
             <div className="space-y-6">
