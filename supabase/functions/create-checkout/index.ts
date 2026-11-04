@@ -25,17 +25,16 @@ serve(async (req) => {
 
   try {
     // 👇 FIX 1: Catch the company_id sent from Dashboard.jsx
-    const { price_id, company_id, promotion_code } = await req.json();
-    const usdPriceId = getUsdPriceId(price_id);
-    if (!usdPriceId) {
+    const { price_id, company_id, promotion_code, resume_checkout } = await req.json();
+    const resumeCheckout = resume_checkout === true;
+    let usdPriceId = getUsdPriceId(price_id);
+    if (!resumeCheckout && !usdPriceId) {
       return new Response(JSON.stringify({ error: "Invalid subscription price" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
     }
-    const plan_id = getPlanIdFromPrice(usdPriceId);
-    const billingCycle = getBillingCycleFromPrice(usdPriceId);
-    const promotionCode = typeof promotion_code === 'string'
+    const promotionCode = !resumeCheckout && typeof promotion_code === 'string'
       ? promotion_code.trim().toUpperCase()
       : '';
     if (promotionCode && promotionCode !== ANNUAL_COUPON_CODE) {
@@ -44,14 +43,12 @@ serve(async (req) => {
         status: 400,
       });
     }
-    if (promotionCode === ANNUAL_COUPON_CODE && billingCycle !== 'annual') {
+    if (promotionCode === ANNUAL_COUPON_CODE && getBillingCycleFromPrice(usdPriceId) !== 'annual') {
       return new Response(JSON.stringify({ error: "FUZED25 is available on annual plans only" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
     }
-    const annualCoupon = promotionCode === ANNUAL_COUPON_CODE ? ANNUAL_COUPON_CODE : '';
-
     const authHeader = req.headers.get('Authorization') || '';
     if (!/^Bearer\s+\S+$/i.test(authHeader)) return Response.json({error:'Sign in to manage billing.'},{status:401,headers:corsHeaders});
     const supabaseClient = createClient(
@@ -68,6 +65,51 @@ serve(async (req) => {
     const {data:company,error:companyError}=await service.from('companies').select('stripe_customer_id,name').eq('id',company_id).single();
     if(companyError||!company)throw new Error('Company unavailable.');
     let customerId=company.stripe_customer_id;
+    let previousSession: Stripe.Checkout.Session | undefined;
+    const choosePlan = () => Response.json({ action: 'choose_plan' }, { headers: corsHeaders });
+
+    if (resumeCheckout) {
+      if (!customerId) return choosePlan();
+
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        expand: ['data.latest_invoice'],
+      });
+      const currentSubscription = subscriptions.data.find(({ status }) =>
+        ['active', 'trialing', 'past_due', 'unpaid', 'paused'].includes(status)
+      );
+      if (currentSubscription) {
+        return Response.json({ action: 'portal' }, { headers: corsHeaders });
+      }
+
+      const incompleteSubscription = subscriptions.data.find(({ status }) => status === 'incomplete');
+      if (incompleteSubscription) {
+        const invoice = incompleteSubscription.latest_invoice;
+        if (invoice && typeof invoice !== 'string' && invoice.status === 'open' && invoice.hosted_invoice_url) {
+          return Response.json({ url: invoice.hosted_invoice_url }, { headers: corsHeaders });
+        }
+        return Response.json({ action: 'portal' }, { headers: corsHeaders });
+      }
+
+      const sessions = await stripe.checkout.sessions.list({ customer: customerId, limit: 25 });
+      previousSession = sessions.data.find((session) => session.mode === 'subscription' &&
+        (session.client_reference_id === company_id || session.metadata?.company_id === company_id));
+      if (!previousSession) return choosePlan();
+      if (previousSession.status === 'open' && previousSession.url) {
+        return Response.json({ url: previousSession.url }, { headers: corsHeaders });
+      }
+      if (previousSession.status !== 'expired' || previousSession.subscription) {
+        return choosePlan();
+      }
+
+      const items = await stripe.checkout.sessions.listLineItems(previousSession.id, { limit: 2 });
+      const previousPrice = items.data[0]?.price?.id;
+      if (items.data.length !== 1 || !previousPrice || getUsdPriceId(previousPrice) !== previousPrice) {
+        return choosePlan();
+      }
+      usdPriceId = previousPrice;
+    }
+
     if(!customerId){
       const customer=await stripe.customers.create({email:user.email,name:company.name,metadata:{company_id}},{idempotencyKey:`company-customer:${company_id}`});
       customerId=customer.id;
@@ -75,12 +117,22 @@ serve(async (req) => {
     }
 
 
+    const plan_id = getPlanIdFromPrice(usdPriceId);
+    const billingCycle = getBillingCycleFromPrice(usdPriceId);
+    const savedPromotion = previousSession?.metadata?.promotion_code || promotionCode;
+    const annualCoupon = billingCycle === 'annual' && savedPromotion === ANNUAL_COUPON_CODE;
+    // Retries of the same expired session must have identical Stripe parameters.
+    const identifierBytes = previousSession
+      ? new TextEncoder().encode(previousSession.id.slice(-8))
+      : crypto.getRandomValues(new Uint8Array(8));
+    const identifier = [...identifierBytes].map((byte) => String.fromCharCode(97 + byte % 26)).join('');
+    const appUrl = Deno.env.get('APP_URL');
     const session = await stripe.checkout.sessions.create({
-      integration_identifier: `fuzedflow_subscription_${[...crypto.getRandomValues(new Uint8Array(8))].map(n=>String.fromCharCode(97+n%26)).join('')}`,
+      integration_identifier: `fuzedflow_subscription_${identifier}`,
       customer: customerId,
       line_items: [
         {
-          price: usdPriceId,
+          price: usdPriceId!,
           quantity: 1,
         },
       ],
@@ -95,20 +147,20 @@ serve(async (req) => {
         metadata: {
           plan_id: plan_id,
           company_id: company_id, // Attach to the recurring subscription
-          ...(annualCoupon ? { promotion_code: annualCoupon } : {})
+          ...(annualCoupon ? { promotion_code: ANNUAL_COUPON_CODE } : {})
         }
       },
       metadata: {
         plan_id: plan_id,
-        user_id: user?.id || '',
+        user_id: previousSession ? previousSession.metadata?.user_id || '' : user.id,
         company_id: company_id, // 👇 FIX 2: Attach to the checkout session
-        ...(annualCoupon ? { promotion_code: annualCoupon } : {})
+        ...(annualCoupon ? { promotion_code: ANNUAL_COUPON_CODE } : {})
       },
-      success_url: `${Deno.env.get('APP_URL')}/dashboard?success=true`,
-      cancel_url: `${Deno.env.get('APP_URL')}/pricing?canceled=true`,
+      success_url: `${appUrl}/dashboard?success=true`,
+      cancel_url: `${appUrl}/dashboard?canceled=true`,
       // 👇 FIX 3: Use company_id as the primary reference for the webhook
       client_reference_id: company_id, 
-    });
+    }, previousSession ? { idempotencyKey: `resume-checkout:${previousSession.id}` } : undefined);
 
     // 👇 3. Attach the CORS headers to the successful response
     return new Response(

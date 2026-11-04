@@ -26,6 +26,8 @@ import CreateTaskDialog from "../components/tasks/CreateTaskDialog";
 import ActiveProjectsSection from "../components/shared/ActiveProjects";
 import { useTaskVendors } from "@/hooks/useTaskVendors";
 
+const pricingUrl = 'https://www.fuzedflow.com/#pricing';
+
 const safeParseDate = (dateString) => {
   if (!dateString) return null;
   const parsed = parseISO(dateString);
@@ -45,6 +47,7 @@ export default function Dashboard() {
   });
   
   const [isPollingActivation, setIsPollingActivation] = useState(false);
+  const [isOpeningBilling, setIsOpeningBilling] = useState(false);
 
   useEffect(() => {
     let isMounted = true; 
@@ -207,6 +210,43 @@ export default function Dashboard() {
   });
 
   const isSubscriptionActive = myCompany?.subscription_status === 'Active' || myCompany?.subscription_status === 'trialing' || myCompany?.subscription_status === 'active';
+  const billingStatus = String(myCompany?.subscription_status || '').toLowerCase().replaceAll(' ', '_');
+  const needsBillingManagement = ['past_due', 'unpaid', 'paused'].includes(billingStatus);
+  const canManageBilling = profile?.is_active !== false && ['admin', 'owner'].includes(profile?.role);
+
+  const openBilling = async () => {
+    if (isOpeningBilling) return;
+    if (!myCompany?.stripe_customer_id) {
+      window.location.assign(pricingUrl);
+      return;
+    }
+
+    setIsOpeningBilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { company_id: companyId, resume_checkout: true },
+      });
+      if (error) throw error;
+      if (data?.action === 'choose_plan') {
+        window.location.assign(pricingUrl);
+        return;
+      }
+      if (data?.action === 'portal') {
+        const portal = await supabase.functions.invoke('create-portal-session', {
+          body: { return_url: `${window.location.origin}/dashboard` },
+        });
+        if (portal.error || !portal.data?.url) throw portal.error || new Error('Missing billing portal URL.');
+        window.location.assign(portal.data.url);
+        return;
+      }
+      if (!data?.url) throw new Error('Missing checkout URL.');
+      window.location.assign(data.url);
+    } catch (error) {
+      console.error('Could not open Stripe billing:', error);
+      toast.error('Could not open billing. Please try again or contact support.');
+      setIsOpeningBilling(false);
+    }
+  };
   
   const { data: leads = [] } = useQuery({ 
     queryKey: ["leads", companyId], enabled: !!companyId,
@@ -339,29 +379,28 @@ export default function Dashboard() {
           </div>
           <h2 className="text-2xl font-black text-slate-900 mb-2">Subscription Required</h2>
           <p className="text-slate-500 mb-8 font-medium">
-            Your Fuzed Flow account is currently inactive. Please complete your secure checkout to unlock your dashboard and start managing your projects.
+            {needsBillingManagement
+              ? 'Review your subscription and payment details to restore dashboard access.'
+              : 'Complete your secure checkout to unlock your dashboard and start managing your projects.'}
           </p>
           
           <div className="flex flex-col gap-3">
-            {myCompany?.stripe_customer_id ? (
-              <div className="w-full flex flex-col gap-2">
-                <Button 
-                  onClick={() => window.location.href = 'https://billing.stripe.com/p/login/test_YOUR_LINK_HERE'} 
-                  className="w-full h-12 text-lg font-bold bg-amber-500 hover:bg-amber-600 text-slate-900"
-                >
-                  <Receipt className="mr-2 h-5 w-5" /> Manage Billing
-                </Button>
-                <p className="text-xs text-slate-500 text-center px-2">
-                  <span className="font-bold">💡 Note:</span> In the portal, Qty 1 is your base plan. Increase the quantity to add more team members!
-                </p>
-              </div>
-            ) : (
-              <Button 
-                onClick={() => window.location.href = 'https://www.fuzedflow.com/#pricing'} 
+            {canManageBilling ? (
+              <Button
+                onClick={openBilling}
+                disabled={isOpeningBilling}
                 className="w-full h-12 text-lg font-bold bg-amber-500 hover:bg-amber-600 text-slate-900"
               >
-                <ArrowRight className="mr-2 h-5 w-5" /> Choose a Plan
+                {isOpeningBilling ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Opening Stripe…</>
+                ) : needsBillingManagement ? (
+                  <><Receipt className="mr-2 h-5 w-5" /> Manage Billing</>
+                ) : (
+                  <><ArrowRight className="mr-2 h-5 w-5" /> {myCompany?.stripe_customer_id ? 'Resume Checkout' : 'Choose a Plan'}</>
+                )}
               </Button>
+            ) : (
+              <p className="text-sm text-slate-500">Ask your company administrator to manage billing.</p>
             )}
             
             <Button variant="ghost" onClick={() => supabase.auth.signOut()} className="text-slate-500 hover:text-slate-700 mt-2">

@@ -27,7 +27,7 @@ test('new and legacy links select the same plan and billing period in USD', () =
   assert.equal(getBillingCycleFromPrice('price_unknown'), null);
 });
 
-async function loadHandler(path) {
+async function loadHandler(path, { subscriptions = [], sessions = [], lineItems = [] } = {}) {
   let handler;
   const checkoutCalls = [];
   const companyUpdates = [];
@@ -45,10 +45,15 @@ async function loadHandler(path) {
   class Stripe {
     static createFetchHttpClient() { return {}; }
     static createSubtleCryptoProvider() { return {}; }
-    checkout = { sessions: { create: async (parameters) => {
-      checkoutCalls.push(parameters);
-      return { url: 'https://checkout.stripe.com/test' };
-    } } };
+    subscriptions = { list: async () => ({ data: subscriptions }) };
+    checkout = { sessions: {
+      list: async () => ({ data: sessions }),
+      listLineItems: async () => ({ data: lineItems }),
+      create: async (parameters, options) => {
+        checkoutCalls.push({ ...parameters, requestOptions: options });
+        return { url: 'https://checkout.stripe.com/test' };
+      },
+    } };
     webhooks = { constructEventAsync: async (body, signature, secret, tolerance, cryptoProvider) => {
       assert.equal(signature, 'test-signature');
       assert.equal(secret, env.STRIPE_WEBHOOK_SECRET);
@@ -94,7 +99,7 @@ async function loadHandler(path) {
     salesUuid, currencyFactor, crypto,
     Deno: { env: { get: (key) => env[key] || '' }, serve: (fn) => { handler = fn; } },
     serve: (fn) => { handler = fn; },
-    Request, Response, console,
+    Request, Response, TextEncoder, console,
   });
   new vm.Script(script, { filename: path }).runInContext(context);
   assert.equal(typeof handler, 'function');
@@ -170,6 +175,60 @@ test('checkout blocks FUZED25 from monthly plans before creating a session', asy
   }));
   assert.equal(response.status, 400);
   assert.equal(checkoutCalls.length, 0);
+});
+
+const resumeRequest = (companyId = 'company-test') => new Request('https://example.com/create-checkout', {
+  method: 'POST',
+  headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+  body: JSON.stringify({ company_id: companyId, resume_checkout: true }),
+});
+
+const previousCheckout = {
+  id: 'cs_test_abc12345', mode: 'subscription', status: 'open',
+  client_reference_id: 'company-test', url: 'https://checkout.stripe.com/original',
+};
+
+test('resume checkout opens the saved session for the signed-in company', async () => {
+  const { handler, checkoutCalls } = await loadHandler('../../supabase/functions/create-checkout/index.ts', {
+    sessions: [{ ...previousCheckout, client_reference_id: 'other-company' }, previousCheckout],
+  });
+  const response = await handler(resumeRequest());
+  assert.deepEqual(await response.json(), { url: previousCheckout.url });
+  assert.equal((await handler(resumeRequest('other-company'))).status, 403);
+  assert.equal(checkoutCalls.length, 0);
+});
+
+test('resume checkout recreates an expired annual session with its original discount', async () => {
+  const { handler, checkoutCalls } = await loadHandler('../../supabase/functions/create-checkout/index.ts', {
+    sessions: [{ ...previousCheckout, status: 'expired', metadata: { promotion_code: 'FUZED25' } }],
+    lineItems: [{ price: { id: SUBSCRIPTION_PRICES.professional.annual } }],
+  });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await handler(resumeRequest());
+    assert.deepEqual(await response.json(), { url: 'https://checkout.stripe.com/test' });
+  }
+  assert.deepEqual(checkoutCalls[0], checkoutCalls[1]);
+  assert.equal(checkoutCalls[0].line_items[0].price, SUBSCRIPTION_PRICES.professional.annual);
+  assert.equal(checkoutCalls[0].discounts[0].coupon, '1tJn26tf');
+  assert.equal(checkoutCalls[0].requestOptions.idempotencyKey, `resume-checkout:${previousCheckout.id}`);
+  assert.equal(checkoutCalls[0].cancel_url, 'https://app.fuzedflow.com/dashboard?canceled=true');
+});
+
+test('billing recovery reuses an existing subscription or its first invoice', async () => {
+  const path = '../../supabase/functions/create-checkout/index.ts';
+  const existing = await loadHandler(path, {
+    subscriptions: [{ status: 'past_due' }], sessions: [previousCheckout],
+  });
+  const incomplete = await loadHandler(path, {
+    subscriptions: [{ status: 'incomplete', latest_invoice: {
+      status: 'open', hosted_invoice_url: 'https://invoice.stripe.com/first-invoice',
+    } }],
+  });
+  const missing = await loadHandler(path);
+  assert.deepEqual(await (await existing.handler(resumeRequest())).json(), { action: 'portal' });
+  assert.deepEqual(await (await incomplete.handler(resumeRequest())).json(), { url: 'https://invoice.stripe.com/first-invoice' });
+  assert.deepEqual(await (await missing.handler(resumeRequest())).json(), { action: 'choose_plan' });
+  assert.equal(existing.checkoutCalls.length + incomplete.checkoutCalls.length + missing.checkoutCalls.length, 0);
 });
 
 test('subscription updates retain entitlements for all CAD and USD price variants', async () => {
