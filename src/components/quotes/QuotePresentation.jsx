@@ -108,7 +108,7 @@ export default function QuotePresentation({
 
         {quote.hero_image_url ? (
           <button type="button" onClick={() => setLightboxImage(quote.hero_image_url)} className="mt-6 block w-full overflow-hidden rounded-t-xl border border-slate-200 shadow-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300" aria-label="Open quote banner image">
-            <img src={quote.hero_image_url} alt="Quote banner" loading="eager" className="h-52 w-full object-cover transition-opacity hover:opacity-95 sm:h-64" />
+            <img src={quote.hero_image_url} alt="Quote banner" loading="eager" className="block h-auto max-h-[60vh] w-full object-contain transition-opacity hover:opacity-95" />
           </button>
         ) : null}
 

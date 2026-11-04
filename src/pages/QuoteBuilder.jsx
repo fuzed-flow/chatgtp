@@ -1523,7 +1523,7 @@ export default function QuoteBuilder() {
             <div className="flex flex-wrap gap-2 items-center">
               {form.hero_image_url ? (
                 <div className="relative w-full">
-                  <img src={form.hero_image_url} alt="Hero" className="w-full h-48 object-cover rounded border shadow-md" />
+                  <img src={form.hero_image_url} alt="Hero" className="block h-auto max-h-80 w-full rounded border object-contain shadow-md" />
                   <button
                     onClick={() => setForm({ ...form, hero_image_url: "" })}
                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center"

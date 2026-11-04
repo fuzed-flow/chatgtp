@@ -42,13 +42,16 @@ const compressImage = async (blob, maxWidth = 800, quality = 0.6) => {
   });
 };
 
+const loadPdfImage = async (url) => {
+  const response = await fetch(url);
+  return response.ok ? compressImage(await response.blob()) : null;
+};
+
 const safelyAddImage = async (doc, url, format, x, y, w, h) => {
   if (!url) return false;
   try {
-    const response = await fetch(url);
-    if (!response.ok) return false;
-    const blob = await response.blob();
-    const compressedBase64 = await compressImage(blob, 800, 0.6);
+    const compressedBase64 = await loadPdfImage(url);
+    if (!compressedBase64) return false;
     doc.addImage(compressedBase64, 'JPEG', x, y, w, h);
     return true;
   } catch (err) { return false; }
@@ -355,10 +358,27 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
 
   if (!isQuote) writeOverallScope();
   if (quote?.hero_image_url) {
-    const heroHeight = mobile ? 25 : 50;
-    checkPageBreak(heroHeight + 6 + (isQuote ? (hasDeposit ? 20 : 14) : 0));
-    const heroAdded = await safelyAddImage(doc, quote.hero_image_url, 'JPEG', margin, yPos, contentWidth, heroHeight);
-    if (heroAdded) yPos += heroHeight + 6;
+    if (isQuote) {
+      try {
+        const hero = await loadPdfImage(quote.hero_image_url);
+        if (hero) {
+          const { width, height } = doc.getImageProperties(hero);
+          const maxHeight = mobile ? 35 : 65;
+          const scale = Math.min(contentWidth / width, maxHeight / height);
+          const heroWidth = width * scale;
+          const heroHeight = height * scale;
+          const summaryHeight = hasDeposit ? 20 : 14;
+          checkPageBreak(heroHeight + 6 + summaryHeight);
+          doc.addImage(hero, 'JPEG', (pageWidth - heroWidth) / 2, yPos, heroWidth, heroHeight);
+          yPos += heroHeight + 6;
+        }
+      } catch {
+        // A failed banner download must not prevent the quote from exporting.
+      }
+    } else {
+      checkPageBreak(56);
+      if (await safelyAddImage(doc, quote.hero_image_url, 'JPEG', margin, yPos, contentWidth, 50)) yPos += 56;
+    }
   }
 
   if (isQuote) {

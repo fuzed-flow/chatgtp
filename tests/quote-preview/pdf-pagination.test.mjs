@@ -82,3 +82,42 @@ test("quote layouts wrap long items and show the same selected prices and deposi
     assert.equal((pdf.match(/CAD 1,008\.20/g) || []).length, 2);
   }
 });
+
+test("both quote PDF covers fit wide and portrait banners proportionally", async (t) => {
+  const jpegPrefix = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCA";
+  const jpegSuffix = "BAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AAAD/2Q==";
+  const savedImage = globalThis.Image;
+  const savedDocument = globalThis.document;
+  t.after(() => {
+    globalThis.Image = savedImage;
+    globalThis.document = savedDocument;
+  });
+
+  for (const [width, height, dimensions] of [[30, 10, "AKAB4"], [10, 30, "AeAAo"]]) {
+    const banner = `data:image/jpeg;base64,${jpegPrefix}${dimensions}${jpegSuffix}`;
+    globalThis.Image = class {
+      width = width;
+      height = height;
+      set src(url) {
+        URL.revokeObjectURL(url);
+        this.onload();
+      }
+    };
+    globalThis.document = { createElement: () => ({
+      getContext: () => ({ fillRect() {}, drawImage() {} }),
+      toDataURL: () => banner,
+    }) };
+
+    for (const [layout, pageWidth, margin, maxHeight] of [[undefined, 210, 15, 65], ["mobile", 100, 6, 35]]) {
+      const result = await generateQuotePDF({ returnBase64: true, hero_image_url: banner }, null, [], [], null, { layout });
+      const cover = Buffer.from(result, "base64").toString("latin1").split("endstream")[0];
+      const placement = cover.match(/([\d.]+) 0 0 ([\d.]+) ([\d.]+) [\d.]+ cm\n\/I\d+ Do/);
+      assert.ok(placement, "banner is drawn on the cover");
+      const [drawnWidth, drawnHeight, left] = placement.slice(1).map(value => Number(value) * 25.4 / 72);
+      assert.ok(Math.abs(drawnWidth / drawnHeight - width / height) < 0.001);
+      assert.ok(Math.abs(left * 2 + drawnWidth - pageWidth) < 0.01);
+      assert.ok(Math.abs((width > height ? drawnWidth : drawnHeight) - (width > height ? pageWidth - margin * 2 : maxHeight)) < 0.01);
+      assert.match(cover, /\(Quote Total\) Tj/);
+    }
+  }
+});

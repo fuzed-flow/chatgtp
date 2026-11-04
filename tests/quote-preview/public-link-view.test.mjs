@@ -40,7 +40,7 @@ async function quoteView(url) {
     assert.equal(name, 'get_public_quote_bundle');
     assert.deepEqual(JSON.parse(JSON.stringify(args)), { p_quote: ID, p_token: TOKEN });
     return { error: null, data: {
-      quote: { id: ID, quote_number: 'Q-SYNTHETIC', title: 'Synthetic Quote', status: 'Sent', subtotal: 100, total: 100 },
+      quote: { id: ID, quote_number: 'Q-SYNTHETIC', title: 'Synthetic Quote', status: 'Sent', subtotal: 100, total: 100, hero_image_url: 'https://assets.example.test/quote-banner.jpg' },
       recipient: { name: 'Synthetic Client' }, company: { name: 'Synthetic Builder', settings: { currency: 'CAD' } },
       phases: [], items: [], schedule_items: [], is_expired: false,
     } };
@@ -62,6 +62,9 @@ for (const url of [buildPublicQuoteUrl('https://app.fuzedflow.com', ID, TOKEN), 
     try {
       await view.wait(() => view.window.document.body.textContent.includes('Synthetic Client'));
       assert.ok(view.window.document.body.textContent.includes('Approve Quote'));
+      const banner = view.window.document.querySelector('img[alt="Quote banner"]');
+      assert.ok(banner?.classList.contains('object-contain'));
+      assert.ok(banner.classList.contains('h-auto'));
       await view.wait(() => view.calls.some(call => call.name === 'track_public_quote_view'));
       const buttons = [...view.window.document.querySelectorAll('button')];
       buttons.find(button => button.textContent === 'Download PDF').click();
