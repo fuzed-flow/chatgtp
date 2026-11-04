@@ -54,13 +54,20 @@ const safelyAddImage = async (doc, url, format, x, y, w, h) => {
   } catch (err) { return false; }
 };
 
-export async function generateQuotePDF(quote, client, phases, items, organization) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+export async function generateQuotePDF(quote, client, phases, items, organization, { layout } = {}) {
+  const documentType = quote?.change_order_number ? 'CHANGE ORDER' : quote?.invoice_number ? 'INVOICE' : 'QUOTE';
+  const isQuote = documentType === 'QUOTE';
+  const mobile = isQuote && layout === 'mobile';
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: mobile ? [100, 180] : 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 15;
-  const bottomLimit = pageHeight - 25;
-  let yPos = margin + 5;
+  const margin = mobile ? 6 : 15;
+  const contentWidth = pageWidth - margin * 2;
+  const bottomLimit = pageHeight - (mobile ? 17 : 25);
+  const nextPageTop = margin + (mobile ? 5 : 10);
+  const bodyFontSize = mobile ? 11 : 8;
+  const lineHeight = mobile ? 5 : 4;
+  let yPos = margin + (mobile ? 2 : 5);
 
   const settings = organization?.settings || {};
   const currencyCode = getCompanyCurrency(organization);
@@ -91,7 +98,6 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
   const PST_RATE = settings?.enable_secondary_tax ? ((settings?.secondary_tax_rate || 7) / 100) : 0;
   const secondaryTaxLabel = settings?.secondary_tax_label || 'PST';
 
-  const documentType = quote?.change_order_number ? "CHANGE ORDER" : quote?.invoice_number ? "INVOICE" : "QUOTE";
   const documentNumber = quote?.change_order_number || quote?.invoice_number || quote?.quote_number || 'N/A';
   const docNumLabel = quote?.change_order_number ? "CO #:" : quote?.invoice_number ? "Invoice #:" : "Quote #:";
 
@@ -100,51 +106,93 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
     try { clientSelections = JSON.parse(quote.client_selected_items_json); } catch (e) { }
   }
 
+  const allPhases = Array.isArray(phases) ? phases : [];
+  const allItems = Array.isArray(items) ? items : [];
+  const isIncluded = (entry) => !entry.is_optional || !clientSelections || clientSelections[entry.id] !== false;
+  const selectedPhases = allPhases.filter(isIncluded).map(phase => ({
+    phase,
+    items: allItems.filter(item => item.phase_id === phase.id && isIncluded(item)),
+  })).filter(entry => entry.items.length > 0);
+  const lineTotal = item => (item.quantity || 1) * (item.unit_price || 0);
+  let pdfSubtotal = 0;
+  let pdfTaxable = 0;
+  for (const { items: phaseItems } of selectedPhases) {
+    for (const item of phaseItems) {
+      const amount = lineTotal(item);
+      pdfSubtotal += amount;
+      if (item.taxable) pdfTaxable += amount;
+    }
+  }
+  const pdfGST = pdfTaxable * GST_RATE;
+  const pdfPST = pdfTaxable * PST_RATE;
+  const pdfSubtotalPlusTax = pdfSubtotal + pdfGST + pdfPST;
+  const discountAmt = quote?.discount_type === 'percentage'
+    ? pdfSubtotalPlusTax * (quote.discount_percentage || 0) / 100
+    : (quote?.discount_amount || 0);
+  const pdfTotal = pdfSubtotalPlusTax - discountAmt;
+  const hasDeposit = quote?.deposit_amount > 0;
+
   const addLine = () => {
     doc.setDrawColor(...colors.border);
     doc.line(margin, yPos, pageWidth - margin, yPos);
     yPos += 4;
   };
 
-  const checkPageBreak = (spaceNeeded = 20, isTableContext = false) => {
-    if (yPos + spaceNeeded > bottomLimit) {
-      doc.addPage();
-      yPos = margin + 10;
-      
-      if (isTableContext) {
-        doc.setFontSize(8);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(...colors.lightText);
-        doc.text('DESCRIPTION', margin, yPos);
-        if (showItemPrices) {
-          doc.text('QTY', pageWidth - margin - 65, yPos, { align: 'right' });
-          doc.text('PRICE', pageWidth - margin - 35, yPos, { align: 'right' });
-        }
-        doc.text('TOTAL', pageWidth - margin, yPos, { align: 'right' });
-        
-        yPos += 3;
-        doc.setDrawColor(...colors.border);
-        doc.setLineWidth(0.3);
-        doc.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 5;
+  const drawTableHeader = (first = false) => {
+    doc.setFontSize(mobile ? 10 : 8);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...colors.lightText);
+    doc.text(mobile ? 'ITEMS' : 'DESCRIPTION', margin, yPos);
+    if (!mobile) {
+      if (showItemPrices) {
+        doc.text('QTY', pageWidth - margin - 65, yPos, { align: 'right' });
+        doc.text('PRICE', pageWidth - margin - 35, yPos, { align: 'right' });
       }
+      doc.text('TOTAL', pageWidth - margin, yPos, { align: 'right' });
     }
+    yPos += 3;
+    doc.setDrawColor(...(first ? colors.accent : colors.border));
+    doc.setLineWidth(first ? 0.5 : 0.3);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 5;
+  };
+
+  const checkPageBreak = (spaceNeeded = 20, isTableContext = false) => {
+    if (yPos + spaceNeeded <= bottomLimit) return;
+    doc.addPage();
+    yPos = nextPageTop;
+    if (isTableContext) drawTableHeader();
+  };
+
+  const writeQuoteText = (lines, x, size, leading, { bold = false, color = colors.text, table = false } = {}) => {
+    for (const line of lines) {
+      checkPageBreak(leading, table);
+      doc.setFontSize(size);
+      doc.setFont(undefined, bold ? 'bold' : 'normal');
+      doc.setTextColor(...color);
+      doc.text(line, x, yPos);
+      yPos += leading;
+    }
+  };
+
+  const wrapText = (value, size, width, bold = false) => {
+    doc.setFontSize(size);
+    doc.setFont(undefined, bold ? 'bold' : 'normal');
+    return doc.splitTextToSize(String(value), width);
   };
 
   const writePaginatedSection = (title, text) => {
     if (!text) return;
 
-    const bodyFontSize = 8;
-    const lineHeight = 4;
-    const lineHeightFactor = 1.4;
-    const lines = doc.splitTextToSize(String(text), pageWidth - margin * 2);
+    const lineHeightFactor = isQuote ? lineHeight / (bodyFontSize / doc.internal.scaleFactor) : 1.4;
+    const lines = isQuote ? wrapText(text, bodyFontSize, contentWidth) : doc.splitTextToSize(String(text), contentWidth);
     let lineIndex = 0;
     let continuation = false;
 
     while (lineIndex < lines.length) {
       checkPageBreak(16);
 
-      doc.setFontSize(9);
+      doc.setFontSize(mobile ? 12 : 9);
       doc.setFont(undefined, 'bold');
       doc.setTextColor(...colors.primary);
       doc.text(continuation ? `${title} (continued)` : title, margin, yPos);
@@ -162,7 +210,7 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
 
       if (lineIndex < lines.length) {
         doc.addPage();
-        yPos = margin + 10;
+        yPos = nextPageTop;
         continuation = true;
       }
     }
@@ -171,151 +219,177 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
   };
 
   // --- HEADER SECTION ---
-  doc.setFontSize(24);
-  doc.setTextColor(...colors.primary);
-  doc.setFont(undefined, 'bold');
-  doc.text(organization?.name || 'Fuzed Flow', margin, yPos + 10);
-  
-  let addrY = yPos + 18;
-  doc.setFontSize(9);
-  doc.setTextColor(...colors.lightText);
-  doc.setFont(undefined, 'normal');
-
-  if (companyAddress) { doc.text(companyAddress, margin, addrY); addrY += 5; }
-  if (companyPhone) { doc.text(`Phone: ${companyPhone}`, margin, addrY); addrY += 5; }
-  if (companyEmail) { doc.text(`Email: ${companyEmail}`, margin, addrY); addrY += 5; }
-  if (companyWebsite) { doc.text(`Web: ${companyWebsite}`, margin, addrY); addrY += 5; }
-  if (taxId) { doc.text(`Tax ID: ${taxId}`, margin, addrY); addrY += 5; }
-
-  doc.setFontSize(10);
-  doc.setTextColor(...colors.accent);
-  doc.setFont(undefined, 'bold');
-  doc.text(documentType, margin, addrY + 2); 
-
   const logoUrl = organization?.logo_url || organization?.company_logo_url;
-  if (logoUrl) {
-    await safelyAddImage(doc, logoUrl, 'PNG', pageWidth - margin - 50, yPos, 50, 50);
-  }
-  
-  yPos = Math.max(yPos + 50, addrY + 10);
-
-  // Billing & Date
-  doc.setFontSize(9);
-  doc.setTextColor(...colors.text);
-  
-  const leftColX = margin;
-  const rightColX = pageWidth / 2 + 5;
-  
-  const billToStartY = yPos;
-  doc.setFont(undefined, 'bold');
-  doc.text('BILL TO', leftColX, yPos);
-  yPos += 5;
-  
-  doc.setFont(undefined, 'normal');
-  doc.setFontSize(10);
-  doc.text(client?.name || 'Client', leftColX, yPos);
-  yPos += 4;
-  
-  doc.setFontSize(8);
-  doc.setTextColor(...colors.lightText);
-  if (client?.billing_address) {
-    const addressLines = doc.splitTextToSize(client.billing_address, pageWidth / 2 - margin - 10);
-    doc.text(addressLines, leftColX, yPos);
-    yPos += addressLines.length * 4;
-  }
-
-  if (client?.site_address) {
+  if (mobile) {
+    if (logoUrl) await safelyAddImage(doc, logoUrl, 'PNG', pageWidth - margin - 21, yPos - 2, 21, 21);
+    const companyNameWidth = contentWidth - (logoUrl ? 24 : 0);
+    writeQuoteText(wrapText(organization?.name || 'Fuzed Flow', 16, companyNameWidth, true), margin, 16, 7, { bold: true, color: colors.primary });
+    const contactDetails = [companyAddress, companyPhone && `Phone: ${companyPhone}`, companyEmail && `Email: ${companyEmail}`, companyWebsite && `Web: ${companyWebsite}`, taxId && `Tax ID: ${taxId}`];
+    for (const detail of contactDetails.filter(Boolean)) {
+      writeQuoteText(wrapText(detail, 9, companyNameWidth), margin, 9, 4, { color: colors.lightText });
+    }
+    if (logoUrl) yPos = Math.max(yPos, margin + 25);
     yPos += 2;
+    const quoteDate = quote?.issue_date ? format(new Date(quote.issue_date), 'MMM d, yyyy') : 'N/A';
+    writeQuoteText(wrapText(`QUOTE ${documentNumber}`, 11, contentWidth, true), margin, 11, 5, { bold: true, color: colors.primary });
+    writeQuoteText([`Date: ${quoteDate}`], margin, 10, 5);
+    if (quote?.expiry_date) writeQuoteText([`Expires: ${format(new Date(quote.expiry_date), 'MMM d, yyyy')}`], margin, 10, 5);
+    for (const [label, value] of [['BILL TO', client?.name || 'Client'], ['', client?.billing_address], ['SITE ADDRESS', client?.site_address]]) {
+      if (!value) continue;
+      if (label) writeQuoteText([label], margin, 9, 4, { bold: true, color: colors.lightText });
+      writeQuoteText(wrapText(value, 10, contentWidth), margin, 10, 4.5);
+    }
+  } else {
+    doc.setFontSize(24);
+    doc.setTextColor(...colors.primary);
     doc.setFont(undefined, 'bold');
-    doc.setTextColor(...colors.text);
-    doc.text('SITE ADDRESS', leftColX, yPos);
-    yPos += 4;
-    
-    doc.setFont(undefined, 'normal');
+    doc.text(organization?.name || 'Fuzed Flow', margin, yPos + 10);
+
+    let addrY = yPos + 18;
+    doc.setFontSize(9);
     doc.setTextColor(...colors.lightText);
-    const siteLines = doc.splitTextToSize(client.site_address, pageWidth / 2 - margin - 10);
-    doc.text(siteLines, leftColX, yPos);
-    yPos += siteLines.length * 4;
+    doc.setFont(undefined, 'normal');
+
+    if (companyAddress) { doc.text(companyAddress, margin, addrY); addrY += 5; }
+    if (companyPhone) { doc.text(`Phone: ${companyPhone}`, margin, addrY); addrY += 5; }
+    if (companyEmail) { doc.text(`Email: ${companyEmail}`, margin, addrY); addrY += 5; }
+    if (companyWebsite) { doc.text(`Web: ${companyWebsite}`, margin, addrY); addrY += 5; }
+    if (taxId) { doc.text(`Tax ID: ${taxId}`, margin, addrY); addrY += 5; }
+
+    doc.setFontSize(10);
+    doc.setTextColor(...colors.accent);
+    doc.setFont(undefined, 'bold');
+    doc.text(documentType, margin, addrY + 2);
+
+    if (logoUrl) {
+      await safelyAddImage(doc, logoUrl, 'PNG', pageWidth - margin - 50, yPos, 50, 50);
+    }
+
+    yPos = Math.max(yPos + 50, addrY + 10);
+
+    // Billing & Date
+    doc.setFontSize(9);
+    doc.setTextColor(...colors.text);
+
+    const leftColX = margin;
+    const rightColX = pageWidth / 2 + 5;
+
+    const billToStartY = yPos;
+    doc.setFont(undefined, 'bold');
+    doc.text('BILL TO', leftColX, yPos);
+    yPos += 5;
+
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(10);
+    doc.text(client?.name || 'Client', leftColX, yPos);
+    yPos += 4;
+
+    doc.setFontSize(8);
+    doc.setTextColor(...colors.lightText);
+    if (client?.billing_address) {
+      const addressLines = doc.splitTextToSize(client.billing_address, pageWidth / 2 - margin - 10);
+      doc.text(addressLines, leftColX, yPos);
+      yPos += addressLines.length * 4;
+    }
+
+    if (client?.site_address) {
+      yPos += 2;
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(...colors.text);
+      doc.text('SITE ADDRESS', leftColX, yPos);
+      yPos += 4;
+
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(...colors.lightText);
+      const siteLines = doc.splitTextToSize(client.site_address, pageWidth / 2 - margin - 10);
+      doc.text(siteLines, leftColX, yPos);
+      yPos += siteLines.length * 4;
+    }
+
+    let detailY = billToStartY + 2;
+    doc.setFontSize(8);
+    doc.setTextColor(...colors.text);
+    doc.text(`${docNumLabel} ${documentNumber}`, rightColX, detailY);
+    detailY += 5;
+    doc.setTextColor(...colors.lightText);
+    doc.text(`Date: ${quote?.issue_date ? format(new Date(quote.issue_date), 'MMM d, yyyy') : 'N/A'}`, rightColX, detailY);
+    detailY += 5;
+
+    if (quote?.expiry_date && !quote?.change_order_number) {
+      doc.text(`Expires: ${format(new Date(quote.expiry_date), 'MMM d, yyyy')}`, rightColX, detailY);
+    }
+
+    yPos = Math.max(yPos, detailY + 5);
   }
-  
-  let detailY = billToStartY + 2;
-  doc.setFontSize(8);
-  doc.setTextColor(...colors.text);
-  doc.text(`${docNumLabel} ${documentNumber}`, rightColX, detailY); 
-  detailY += 5;
-  doc.setTextColor(...colors.lightText);
-  doc.text(`Date: ${quote?.issue_date ? format(new Date(quote.issue_date), 'MMM d, yyyy') : 'N/A'}`, rightColX, detailY);
-  detailY += 5;
-  
-  if (quote?.expiry_date && !quote?.change_order_number) {
-    doc.text(`Expires: ${format(new Date(quote.expiry_date), 'MMM d, yyyy')}`, rightColX, detailY);
-  }
-  
-  yPos = Math.max(yPos, detailY + 5);
   addLine();
   yPos += 3;
 
   if (quote?.title) {
     checkPageBreak(15);
-    doc.setFontSize(16);
+    if (isQuote) {
+      writeQuoteText(wrapText(quote.title, 16, contentWidth, true), margin, 16, 7, { bold: true, color: colors.primary });
+      yPos += 3;
+    } else {
+      doc.setFontSize(16);
+      doc.setTextColor(...colors.primary);
+      doc.setFont(undefined, 'bold');
+      doc.text(quote.title, margin, yPos);
+      yPos += 10;
+    }
+  }
+
+  const writeOverallScope = () => {
+    if (!quote?.show_overall_scope || !quote?.overall_scope) return;
+    const size = mobile ? 11 : 8.5;
+    const scopeLines = wrapText(quote.overall_scope, size, contentWidth);
+    if (isQuote) {
+      writeQuoteText(scopeLines, margin, size, lineHeight, { color: colors.lightText });
+      yPos += 6;
+    } else {
+      checkPageBreak(20);
+      doc.setTextColor(...colors.lightText);
+      doc.text(scopeLines, margin, yPos);
+      yPos += scopeLines.length * 4 + 6;
+    }
+  };
+
+  if (!isQuote) writeOverallScope();
+  if (quote?.hero_image_url) {
+    const heroHeight = mobile ? 25 : 50;
+    checkPageBreak(heroHeight + 6 + (isQuote ? (hasDeposit ? 20 : 14) : 0));
+    const heroAdded = await safelyAddImage(doc, quote.hero_image_url, 'JPEG', margin, yPos, contentWidth, heroHeight);
+    if (heroAdded) yPos += heroHeight + 6;
+  }
+
+  if (isQuote) {
+    checkPageBreak(hasDeposit ? 20 : 14);
+    doc.setFillColor(245, 247, 250);
+    doc.rect(margin, yPos - 4, contentWidth, hasDeposit ? 17 : 11, 'F');
     doc.setTextColor(...colors.primary);
     doc.setFont(undefined, 'bold');
-    doc.text(quote.title, margin, yPos);
-    yPos += 10;
+    doc.setFontSize(mobile ? 13 : 11);
+    doc.text('Quote Total', margin + 3, yPos + 2);
+    doc.text(quoteMoney(pdfTotal), pageWidth - margin - 3, yPos + 2, { align: 'right' });
+    if (hasDeposit) {
+      doc.setFontSize(mobile ? 10 : 9);
+      doc.text('Deposit Required', margin + 3, yPos + 8);
+      doc.text(quoteMoney(quote.deposit_amount), pageWidth - margin - 3, yPos + 8, { align: 'right' });
+    }
+    yPos += hasDeposit ? 20 : 14;
+    writeOverallScope();
   }
 
-  if (quote?.show_overall_scope && quote?.overall_scope) {
-    checkPageBreak(20);
-    doc.setFontSize(8.5);
-    doc.setTextColor(...colors.lightText);
-    doc.setFont(undefined, 'normal');
-    const scopeLines = doc.splitTextToSize(quote.overall_scope, pageWidth - margin * 2);
-    doc.text(scopeLines, margin, yPos);
-    yPos += scopeLines.length * 4 + 6;
+  if (!isQuote || selectedPhases.length) {
+    if (isQuote) checkPageBreak(35);
+    addLine();
+    yPos += 4;
+    drawTableHeader(true);
   }
-
-  if (quote?.hero_image_url) {
-    checkPageBreak(56);
-    const heroAdded = await safelyAddImage(doc, quote.hero_image_url, 'JPEG', margin, yPos, pageWidth - margin * 2, 50);
-    if (heroAdded) yPos += 56;
-  }
-
-  addLine();
-  yPos += 4;
-
-  // Table Headers
-  doc.setFontSize(8);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(...colors.lightText);
-  
-  doc.text('DESCRIPTION', margin, yPos);
-  if (showItemPrices) {
-    doc.text('QTY', pageWidth - margin - 65, yPos, { align: 'right' });
-    doc.text('PRICE', pageWidth - margin - 35, yPos, { align: 'right' });
-  }
-  doc.text('TOTAL', pageWidth - margin, yPos, { align: 'right' });
-  
-  yPos += 3;
-  doc.setDrawColor(...colors.accent);
-  doc.setLineWidth(0.5);
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
-
-  const allPhases = Array.isArray(phases) ? phases : [];
-  const allItems = Array.isArray(items) ? items : [];
-
-  let pdfSubtotal = 0;
-  let pdfTaxable = 0;
-
-  const isItemIncluded = (item) => (!item.is_optional || !clientSelections || clientSelections[item.id] !== false);
-  const isPhaseIncluded = (phase) => (!phase.is_optional || !clientSelections || clientSelections[phase.id] !== false);
 
   const imageCache = {};
   const imagePromises = [];
 
-  for (const phase of allPhases) {
-    if (!isPhaseIncluded(phase)) continue;
-    const phaseItems = allItems.filter(i => i.phase_id === phase.id && isItemIncluded(i));
+  for (const { items: phaseItems } of selectedPhases) {
     for (const item of phaseItems) {
       if (item.photo_url && !imageCache[item.photo_url]) {
         const promise = fetch(item.photo_url)
@@ -330,50 +404,117 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
 
   await Promise.all(imagePromises);
 
-  for (const phase of allPhases) {
-    if (!isPhaseIncluded(phase)) continue;
-    const phaseItems = allItems.filter(i => i.phase_id === phase.id && isItemIncluded(i));
-    if (phaseItems.length === 0) continue;
-
+  for (const { phase, items: phaseItems } of selectedPhases) {
     checkPageBreak(20, true);
 
-    doc.setFontSize(9);
+    doc.setFontSize(mobile ? 12 : 9);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(...colors.accent); 
     const phaseLabel = phase.is_optional ? `${phase.phase_name} (Optional)` : phase.phase_name || 'Phase';
-    doc.text(phaseLabel, margin, yPos);
-    yPos += 6;
+    if (isQuote) {
+      const size = mobile ? 12 : 9;
+      writeQuoteText(wrapText(phaseLabel, size, contentWidth, true), margin, size, 6, { bold: true, color: colors.accent, table: true });
+    } else {
+      doc.text(phaseLabel, margin, yPos);
+      yPos += 6;
+    }
 
     if (phase.scope_of_work && phase.show_scope_to_client !== false) {
-      doc.setFontSize(8);
-      doc.setFont(undefined, 'normal');
-      doc.setTextColor(...colors.lightText);
-      const scopeLines = doc.splitTextToSize(phase.scope_of_work, pageWidth - margin * 2);
-      
-      for (let i = 0; i < scopeLines.length; i++) {
-        if (yPos > bottomLimit) {
-          doc.addPage();
-          yPos = margin + 10;
-          doc.setFontSize(8);
-          doc.setFont(undefined, 'normal');
-          doc.setTextColor(...colors.lightText);
+      if (isQuote) {
+        writeQuoteText(wrapText(phase.scope_of_work, bodyFontSize, contentWidth), margin, bodyFontSize, lineHeight, { color: colors.lightText, table: true });
+      } else {
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(...colors.lightText);
+        const scopeLines = doc.splitTextToSize(phase.scope_of_work, pageWidth - margin * 2);
+
+        for (let i = 0; i < scopeLines.length; i++) {
+          if (yPos > bottomLimit) {
+            doc.addPage();
+            yPos = margin + 10;
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(...colors.lightText);
+          }
+          doc.text(scopeLines[i], margin, yPos);
+          yPos += 4;
         }
-        doc.text(scopeLines[i], margin, yPos);
-        yPos += 4;
       }
       yPos += 4;
     }
 
     for (const item of phaseItems) {
       const itemLabel = item.is_optional ? `${item.name} (Optional)` : item.name;
-      const itemTotal = (item.quantity || 1) * (item.unit_price || 0);
-
-      pdfSubtotal += itemTotal;
-      if (item.taxable) pdfTaxable += itemTotal;
+      const itemTotal = lineTotal(item);
 
       const hasPhoto = !!item.photo_url;
       const photoSize = 12;
       const textStartX = hasPhoto ? margin + photoSize + 4 : margin;
+      if (isQuote) {
+        const titleSize = mobile ? 11 : 9;
+        const titleLeading = mobile ? 5 : 4;
+        const descriptionSize = mobile ? 10 : 8;
+        const descriptionLeading = mobile ? 4.5 : 3.5;
+        const quantity = `${item.quantity || 1} ${item.unit || ''}`.trim();
+        const price = quoteMoney(item.unit_price || 0);
+        const total = quoteMoney(itemTotal);
+        const rightX = pageWidth - margin;
+        const quantityX = rightX - 65;
+        const priceX = rightX - 35;
+        doc.setFontSize(showItemPrices ? 8.5 : titleSize);
+        doc.setFont(undefined, showItemPrices ? 'normal' : 'bold');
+        const leftmostValueX = showItemPrices ? quantityX - doc.getTextWidth(quantity) : rightX - doc.getTextWidth(total);
+        const titleWidth = mobile ? rightX - textStartX : Math.max(10, leftmostValueX - textStartX - 3);
+        const titleLines = wrapText(itemLabel || 'Item', titleSize, titleWidth, true);
+        const description = productDescription(item);
+        const descriptionLines = description ? wrapText(description, descriptionSize, titleWidth) : [];
+        const photo = imageCache[item.photo_url];
+        const totalLabel = `Total: ${total}`;
+        let metricLines = [];
+        if (mobile && showItemPrices) {
+          doc.setFontSize(10);
+          doc.setFont(undefined, 'bold');
+          const metricWidth = contentWidth - doc.getTextWidth(totalLabel) - 5;
+          metricLines = wrapText(`${quantity} × ${price}`, 10, Math.max(metricWidth, 20));
+        }
+        const detailHeight = titleLines.length * titleLeading + descriptionLines.length * descriptionLeading;
+        const metricHeight = mobile ? Math.max(1, metricLines.length) * 5 + 2 : 2;
+        const rowHeight = Math.max(detailHeight, hasPhoto ? photoSize : 0) + metricHeight;
+        const minimumHeight = Math.max(hasPhoto ? photoSize + 2 : 0, titleLeading * Math.min(titleLines.length, 2));
+        const maxRowHeight = bottomLimit - nextPageTop - 8;
+        checkPageBreak(rowHeight <= maxRowHeight ? Math.max(minimumHeight, rowHeight) : minimumHeight, true);
+        const rowTop = yPos;
+        const rowPage = doc.getCurrentPageInfo().pageNumber;
+
+        if (photo) doc.addImage(photo, 'JPEG', margin, rowTop - 3, photoSize, photoSize);
+        if (!mobile) {
+          doc.setFontSize(showItemPrices ? 8.5 : titleSize);
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(...colors.text);
+          if (showItemPrices) {
+            doc.text(quantity, quantityX, rowTop, { align: 'right' });
+            doc.text(price, priceX, rowTop, { align: 'right' });
+          }
+          doc.setFont(undefined, 'bold');
+          doc.text(total, rightX, rowTop, { align: 'right' });
+        }
+        writeQuoteText(titleLines, textStartX, titleSize, titleLeading, { bold: true, color: colors.primary, table: true });
+        writeQuoteText(descriptionLines, textStartX, descriptionSize, descriptionLeading, { color: colors.lightText, table: true });
+        if (hasPhoto && doc.getCurrentPageInfo().pageNumber === rowPage) yPos = Math.max(yPos, rowTop + photoSize);
+
+        if (mobile) {
+          checkPageBreak(metricHeight, true);
+          doc.setFontSize(10);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(...colors.primary);
+          doc.text(totalLabel, rightX, yPos, { align: 'right' });
+          writeQuoteText(metricLines, margin, 10, 5, { color: colors.lightText, table: true });
+          yPos += metricLines.length ? 2 : 7;
+        } else {
+          yPos += 2;
+        }
+        continue;
+      }
       const maxDescWidth = pageWidth - margin - textStartX - 70; 
 
       doc.setFontSize(8.5);
@@ -446,25 +587,20 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
     yPos += 4;
   }
 
+  if (isQuote) {
+    const totalsHeight = 34 + (settings?.enable_secondary_tax ? 6 : 0) + (discountAmt > 0 ? 6 : 0) + (hasDeposit ? 10 : 0);
+    checkPageBreak(totalsHeight);
+  }
   yPos += 2;
   doc.setLineWidth(0.3);
   doc.setDrawColor(...colors.border);
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 8;
 
-  checkPageBreak(50);
-  
-  const pdfGST = pdfTaxable * GST_RATE;
-  const pdfPST = pdfTaxable * PST_RATE;
-  const pdfSubtotalPlusTax = pdfSubtotal + pdfGST + pdfPST;
-  
-  const discountAmt = quote?.discount_type === "percentage"
-    ? (pdfSubtotalPlusTax * (quote.discount_percentage || 0) / 100)
-    : (quote?.discount_amount || 0);
-  const pdfTotal = pdfSubtotalPlusTax - discountAmt;
+  if (!isQuote) checkPageBreak(50);
 
-  const totalsX = pageWidth - 65;
-  doc.setFontSize(9);
+  const totalsX = mobile ? margin + 5 : pageWidth - 65;
+  doc.setFontSize(mobile ? 10 : 9);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(...colors.text);
 
@@ -495,9 +631,9 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
   }
 
   doc.setFillColor(...colors.accent);
-  doc.rect(totalsX - 5, yPos - 3, 60, 8, 'F');
+  doc.rect(totalsX - 5, yPos - 3, mobile ? contentWidth : 60, 8, 'F');
   
-  doc.setFontSize(11);
+  doc.setFontSize(mobile ? 12 : 11);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(...colors.primary); 
   doc.text('TOTAL:', totalsX, yPos + 2);
@@ -506,13 +642,20 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
   
   yPos += 12;
 
-  if (quote?.deposit_amount > 0) {
-    checkPageBreak(15);
-    yPos += 2;
-    doc.setFontSize(8.5);
-    doc.setTextColor(...colors.accent);
+  if (hasDeposit) {
+    if (!isQuote) {
+      checkPageBreak(15);
+      yPos += 2;
+    }
+    doc.setFontSize(mobile ? 10 : 8.5);
+    doc.setTextColor(...(isQuote ? colors.primary : colors.accent));
     doc.setFont(undefined, 'bold');
-    doc.text(`Deposit Required: ${quoteMoney(quote.deposit_amount)}`, margin, yPos);
+    if (isQuote) {
+      doc.text('Deposit Required:', totalsX, yPos);
+      doc.text(quoteMoney(quote.deposit_amount), pageWidth - margin, yPos, { align: 'right' });
+    } else {
+      doc.text(`Deposit Required: ${quoteMoney(quote.deposit_amount)}`, margin, yPos);
+    }
     yPos += 8;
   }
 
@@ -567,7 +710,9 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
   }
 
   if (finalClientMessage || finalTerms) {
-    checkPageBreak(35);
+    const closingHeight = isQuote ? 12 + [finalClientMessage, finalTerms].filter(Boolean)
+      .reduce((height, section) => height + 12 + wrapText(section, bodyFontSize, contentWidth).length * lineHeight, 0) : 0;
+    checkPageBreak(closingHeight > 0 && closingHeight <= bottomLimit - nextPageTop ? closingHeight : 35);
     yPos += 4;
     addLine();
     yPos += 4;
@@ -589,14 +734,14 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
     doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
     
     const footerText = `${organization?.name || 'Fuzed Flow'} • ${documentType} ${documentNumber}`;
-    doc.text(footerText, margin, pageHeight - 7);
+    doc.text(mobile ? `${documentType} ${documentNumber}` : footerText, margin, pageHeight - 7);
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
   }
 
   if (quote?.returnBase64) {
     return doc.output('datauristring').split(',')[1];
   } else {
-    doc.save(`${documentType.replace(' ', '_').toLowerCase()}-${documentNumber}.pdf`);
+    doc.save(`${documentType.replace(' ', '_').toLowerCase()}-${documentNumber}${mobile ? '-mobile' : ''}.pdf`);
   }
 }
 

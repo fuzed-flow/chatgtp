@@ -99,9 +99,9 @@ export default function PublicQuoteView() {
     }
   };
 
-  const downloadPDF = async () => {
+  const downloadPDF = async (layout) => {
     try {
-      await generateQuotePDF({ ...quote, subtotal: totals.subtotal, tax: totals.totalTax, total: totals.total, client_selected_items_json: JSON.stringify(selections) }, client, phases.filter(totals.phaseActive), items.filter(totals.itemActive), company);
+      await generateQuotePDF({ ...quote, subtotal: totals.subtotal, tax: totals.totalTax, total: totals.total, client_selected_items_json: JSON.stringify(selections) }, client, phases.filter(totals.phaseActive), items.filter(totals.itemActive), company, { layout });
     } catch {
       toast.error("The quote PDF could not be generated.");
     }
@@ -132,7 +132,8 @@ export default function PublicQuoteView() {
       {expired && !closed ? <div role="alert" className="mb-3 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-900"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />This quote expired on {documentDate(quote.expiry_date, "MMMM d, yyyy")}. Contact the contractor for an updated quote.</div> : null}
       {quote.status === "Pending" ? <p role="status" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-950">Changes requested — the team is reviewing your request.</p> : null}
       <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-center">
-        <Button type="button" onClick={downloadPDF} variant="outline" className="min-h-11 bg-white font-bold"><Download className="mr-2 h-4 w-4" />Download PDF</Button>
+        <Button type="button" onClick={() => downloadPDF()} variant="outline" className="min-h-11 bg-white font-bold"><Download className="mr-2 h-4 w-4" />Download PDF</Button>
+        <Button type="button" onClick={() => downloadPDF("mobile")} variant="outline" className="min-h-11 bg-white font-bold"><Download className="mr-2 h-4 w-4" />Download Mobile PDF</Button>
         {!closed && !expired ? <>
           <Button type="button" onClick={() => setApproveOpen(true)} disabled={submitting} className="min-h-11 px-8 font-black shadow-md" style={{ backgroundColor: brandColor, color: brandText }}><CheckCircle className="mr-2 h-4 w-4" />Approve Quote</Button>
           <Button type="button" onClick={() => setChangesOpen(true)} disabled={submitting} variant="outline" className="min-h-11 bg-white font-bold"><MessageSquare className="mr-2 h-4 w-4" />Request Changes</Button>

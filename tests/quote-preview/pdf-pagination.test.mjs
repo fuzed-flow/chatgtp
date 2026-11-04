@@ -45,3 +45,40 @@ test("long quote terms continue across PDF pages without losing the final clause
   assert.ok(pdfSource.includes("Terms & Conditions \\(continued\\)"));
   assert.match(pdfSource, new RegExp(finalClause));
 });
+
+test("quote layouts wrap long items and show the same selected prices and deposit", async () => {
+  const flooring = "MSI Stone ULC Ibis Oak 6 MIL x 6-inch W x 36-inch L Waterproof Luxury Vinyl Plank Flooring";
+  const quote = {
+    returnBase64: true,
+    quote_number: "TEST-WRAP",
+    deposit_amount: 504.10,
+    discount_amount: 25,
+    client_selected_items_json: '{"optional":false}',
+  };
+  const phases = [{ id: "materials", phase_name: "Materials" }];
+  const items = [
+    { name: flooring, phase_id: "materials", quantity: 200, unit: "sqft", unit_price: 4.92, taxable: true },
+    { id: "optional", name: "Excluded item", phase_id: "materials", unit_price: 500, is_optional: true },
+  ];
+  const organization = { settings: { currency: "CAD", tax_rate: 5, tax_label: "GST" } };
+
+  for (const [layout, pageWidth] of [[undefined, 595], ["mobile", 283]]) {
+    const result = await generateQuotePDF(quote, null, phases, items, organization, { layout });
+    const pdf = Buffer.from(result, "base64").toString("latin1");
+    const cover = pdf.split("endstream")[0];
+    assert.match(pdf, new RegExp(`/MediaBox \\[0 0 ${pageWidth}\\.`));
+    const text = [...pdf.matchAll(/\(([^()]*)\) Tj/g)].map(match => match[1]);
+    const start = text.findIndex(line => line.startsWith("MSI Stone ULC"));
+    const end = text.findIndex(line => line.endsWith("Flooring"));
+    assert.ok(start >= 0 && end > start, "long product name must span more than one line");
+    assert.equal(text.slice(start, end + 1).join(" "), flooring);
+    assert.ok(!pdf.includes("Excluded item"));
+    assert.match(cover, /\(Quote Total\) Tj/);
+    assert.match(cover, /\(CAD 1,008\.20\) Tj/);
+    assert.match(cover, /\(CAD 504\.10\) Tj/);
+    assert.match(pdf, /CAD 984\.00/);
+    assert.match(pdf, /CAD 49\.20/);
+    assert.match(pdf, /-CAD 25\.00/);
+    assert.equal((pdf.match(/CAD 1,008\.20/g) || []).length, 2);
+  }
+});

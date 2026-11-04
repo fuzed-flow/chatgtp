@@ -76,15 +76,19 @@ export default function QuoteView() {
   const closed = ["Approved", "Accepted", "Paid", "Invoiced", "Declined", "Rejected", "Pending"].includes(quote.status);
   const expired = quote.expiry_date ? new Date(`${quote.expiry_date}T00:00:00`).getTime() < new Date(new Date().toDateString()).getTime() : false;
 
-  const downloadPDF = async () => {
+  const downloadPDF = async (layout) => {
     try {
-      await generateQuotePDF({ ...quote, subtotal: totals.subtotal, tax: totals.totalTax, total: totals.total, client_selected_items_json: JSON.stringify(selections) }, client, phases.filter(totals.phaseActive), items.filter(totals.itemActive), company);
+      await generateQuotePDF({ ...quote, subtotal: totals.subtotal, tax: totals.totalTax, total: totals.total, client_selected_items_json: JSON.stringify(selections) }, client, phases.filter(totals.phaseActive), items.filter(totals.itemActive), company, { layout });
     } catch {
       toast.error("The quote PDF could not be generated.");
     }
   };
 
-  const actions = <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-center"><Button type="button" variant="outline" className="min-h-11 bg-white font-bold" onClick={() => window.location.assign(`/QuoteBuilder?id=${quoteId}`)}><ArrowLeft className="mr-2 h-4 w-4" />Back to Builder</Button><Button type="button" variant="outline" className="min-h-11 bg-white font-bold" onClick={downloadPDF}><Download className="mr-2 h-4 w-4" />Download PDF</Button></div>;
+  const actions = <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
+    <Button type="button" variant="outline" className="min-h-11 bg-white font-bold" onClick={() => window.location.assign(`/QuoteBuilder?id=${quoteId}`)}><ArrowLeft className="mr-2 h-4 w-4" />Back to Builder</Button>
+    <Button type="button" variant="outline" className="min-h-11 bg-white font-bold" onClick={() => downloadPDF()}><Download className="mr-2 h-4 w-4" />Download PDF</Button>
+    <Button type="button" variant="outline" className="min-h-11 bg-white font-bold" onClick={() => downloadPDF("mobile")}><Download className="mr-2 h-4 w-4" />Download Mobile PDF</Button>
+  </div>;
 
   return <QuotePresentation quote={quote} client={client} company={company} phases={phases} items={items} scheduleItems={scheduleItems} selections={selections} onTogglePhase={id => setSelections(current => ({ ...current, [id]: !(current[id] ?? (phases.find(phase => phase.id === id)?.default_selected === true)) }))} onToggleItem={id => setSelections(current => ({ ...current, [id]: !(current[id] ?? (items.find(item => item.id === id)?.default_selected === true)) }))} allowSelections={!closed && !expired} preview actions={actions} />;
 }

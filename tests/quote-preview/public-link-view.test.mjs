@@ -23,18 +23,18 @@ const bundle = await build({
   plugins: [{ name: 'synthetic-quote-services', setup(builder) {
     builder.onResolve({ filter: /^@\/api\/supabaseClient$|PDFGenerator/ }, args => ({ path: args.path.includes('PDFGenerator') ? 'pdf' : 'db', namespace: 'fixture' }));
     builder.onLoad({ filter: /.*/, namespace: 'fixture' }, args => ({ loader: 'js', contents: args.path === 'pdf'
-      ? 'export const generateQuotePDF=async()=>{};'
+      ? 'export const generateQuotePDF=async(...args)=>window.quoteFixture.exportPdf(args[5]?.layout);'
       : 'export const supabase={rpc:(name,args)=>window.quoteFixture.rpc(name,args),functions:{invoke:()=>{throw new Error("Unexpected invoke");}}};' }));
   } }],
 });
 
 async function quoteView(url) {
-  const errors = [], calls = [];
+  const errors = [], calls = [], exports = [];
   const vc = new VirtualConsole(); vc.on('jsdomError', error => errors.push(error.message));
   const dom = new JSDOM('<div id="root"></div>', { url, runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole: vc });
   const { window } = dom;
   window.fetch = () => { throw new Error('No live requests are allowed.'); };
-  window.quoteFixture = { rpc: async (name, args) => {
+  window.quoteFixture = { exportPdf: layout => exports.push(layout), rpc: async (name, args) => {
     calls.push({ name, args: JSON.parse(JSON.stringify(args)) });
     if (name === 'track_public_quote_view') return { data: true, error: null };
     assert.equal(name, 'get_public_quote_bundle');
@@ -53,7 +53,7 @@ async function quoteView(url) {
     }
     throw new Error(`Quote did not render: ${window.document.body.textContent}; ${errors.join('; ')}`);
   };
-  return { window, calls, errors, wait, close() { window.quoteRoot.unmount(); window.quoteClient.clear(); dom.window.close(); } };
+  return { window, calls, errors, exports, wait, close() { window.quoteRoot.unmount(); window.quoteClient.clear(); dom.window.close(); } };
 }
 
 for (const url of [buildPublicQuoteUrl('https://app.fuzedflow.com', ID, TOKEN), `https://app.fuzedflow.com/PublicQuoteView?id=${ID}&token=${TOKEN}`]) {
@@ -63,6 +63,11 @@ for (const url of [buildPublicQuoteUrl('https://app.fuzedflow.com', ID, TOKEN), 
       await view.wait(() => view.window.document.body.textContent.includes('Synthetic Client'));
       assert.ok(view.window.document.body.textContent.includes('Approve Quote'));
       await view.wait(() => view.calls.some(call => call.name === 'track_public_quote_view'));
+      const buttons = [...view.window.document.querySelectorAll('button')];
+      buttons.find(button => button.textContent === 'Download PDF').click();
+      buttons.find(button => button.textContent === 'Download Mobile PDF').click();
+      assert.deepEqual(view.exports, [undefined, 'mobile']);
+      assert.deepEqual(view.calls.map(call => call.name), ['get_public_quote_bundle', 'track_public_quote_view']);
       assert.deepEqual(view.errors, []);
     } finally { view.close(); }
   });
