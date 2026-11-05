@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/api/supabaseClient';
 import { toast } from 'sonner';
-import { Toaster } from 'sonner';
 import { checkAccess } from '@/lib/planConfig'; // 👈 NEW IMPORT
 import UpgradeWall from '@/components/shared/UpgradeWall'; // 👈 NEW IMPORT
 import { 
@@ -243,18 +242,6 @@ export default function AdminSettings() {
         {activeTab === 'notifications' && <NotificationSettings />}
         {activeTab === 'portal' && <ClientPortalSettings />}
 
-        {/* Toaster placed here cleanly so pop-ups will render */}
-        <Toaster 
-          position="top-center" 
-          toastOptions={{
-            style: {
-              background: '#0f172a', // slate-900 to match your sidebar
-              color: '#f59e0b',      // amber-500 to match your accent color
-              border: '1px solid #334155', // subtle slate border
-              fontWeight: 'bold',
-            }
-          }}
-        />
       </main>
     </div>
   );

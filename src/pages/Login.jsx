@@ -21,11 +21,13 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
   const { status: installStatus, platform, install } = useInstallApp();
+  const { toast, dismiss } = useToast();
 
   // Add this hook right here:
   useEffect(() => {
     // 1. If Context already knows the user is logged in, redirect immediately.
     if (user) {
+      dismiss();
       navigate("/dashboard"); 
       return;
     }
@@ -33,17 +35,17 @@ export default function Login() {
     // 2. Fallback: Listen directly to Supabase for the OAuth redirect hash
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        dismiss();
         navigate("/dashboard");
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [user, navigate]); 
-  
-  const { toast } = useToast(); 
+  }, [user, navigate, dismiss]);
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
+    dismiss();
     setLoading(true);
 
     try {
@@ -58,7 +60,7 @@ export default function Login() {
       localStorage.removeItem('pending_stripe_promotion_code');
       localStorage.removeItem('google_signup_attempt');
       
-      toast({ title: "Welcome back!" });
+      dismiss();
       navigate("/dashboard"); 
       
     } catch (error) {
@@ -101,7 +103,7 @@ export default function Login() {
       
     } catch (error) {
       console.error(error);
-      toast.error(error.message || "Failed to connect via Google.");
+      toast({ variant: "destructive", title: "Failed to connect via Google", description: error.message });
       setGoogleLoading(false);
     }
   };

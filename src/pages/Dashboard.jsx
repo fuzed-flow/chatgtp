@@ -90,16 +90,6 @@ export default function Dashboard() {
       const pendingPromotionCode = localStorage.getItem('pending_stripe_promotion_code');
 
       if (isGoogleSignupAttempt) {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          const createdTime = new Date(session.user.created_at).getTime();
-          const isExistingUser = (Date.now() - createdTime) > 30000;
-
-          if (isExistingUser) {
-            toast.info("Welcome back! We securely logged you in.");
-          }
-        }
         localStorage.removeItem('google_signup_attempt');
       }
 

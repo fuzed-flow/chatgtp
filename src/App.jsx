@@ -1,5 +1,5 @@
 import { Toaster } from "@/components/ui/toaster"
-import { useToast } from "@/components/ui/use-toast";
+import { Toaster as AppToaster } from "sonner";
 import { Fragment } from 'react';
 import { createBrowserRouter, RouterProvider, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -251,6 +251,7 @@ function App() {
     <QueryClientProvider client={queryClientInstance}>
       <RouterProvider router={router} />
       <Toaster />
+      <AppToaster position="top-right" richColors closeButton visibleToasts={3} duration={5000} style={{ zIndex: 400 }} />
     </QueryClientProvider>
   )
 }
