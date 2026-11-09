@@ -23,6 +23,7 @@ import DashboardNotes from "../components/dashboard/DashboardNotes";
 import ClientFormDialog from "../components/clients/ClientFormDialog";
 import ContinueWorking from "../components/dashboard/ContinueWorking";
 import CreateTaskDialog from "../components/tasks/CreateTaskDialog";
+import CreateQuoteFromTemplateDialog from "../components/shared/CreateQuoteFromTemplateDialog";
 import ActiveProjectsSection from "../components/shared/ActiveProjects";
 import { useTaskVendors } from "@/hooks/useTaskVendors";
 
@@ -189,6 +190,7 @@ export default function Dashboard() {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
   const [isProjectNoteModalOpen, setIsProjectNoteModalOpen] = useState(false);
+  const [isQuoteTemplateDialogOpen, setIsQuoteTemplateDialogOpen] = useState(false);
 
   const { data: myCompany, isLoading: isCompanyLoading } = useQuery({
     queryKey: ["myCompany", companyId], 
@@ -449,7 +451,7 @@ export default function Dashboard() {
               <DropdownMenuItem onClick={() => navigate("/QuoteBuilder?create=true")} className="cursor-pointer">
                 <FileText className="mr-2 h-4 w-4 text-amber-500" /> New Quote
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/Templates")} className="cursor-pointer">
+              <DropdownMenuItem onSelect={() => setIsQuoteTemplateDialogOpen(true)} className="cursor-pointer">
                 <LayoutTemplate className="mr-2 h-4 w-4 text-emerald-500" /> Quote from Template
               </DropdownMenuItem>
               
@@ -553,6 +555,11 @@ export default function Dashboard() {
         </div>
 
       </div>
+
+      <CreateQuoteFromTemplateDialog
+        open={isQuoteTemplateDialogOpen}
+        onOpenChange={setIsQuoteTemplateDialogOpen}
+      />
 
       <CreateTaskDialog 
         open={isTaskModalOpen} 

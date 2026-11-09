@@ -11,11 +11,16 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import CreateClientDialog from "../quotes/CreateClientDialog";
 
-export default function CreateQuoteFromTemplateDialog({ clientId, leadId, children }) {
+export default function CreateQuoteFromTemplateDialog({ clientId, leadId, children, open, onOpenChange }) {
   const { profile } = useAuth();
   const companyId = profile?.company_id;
 
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const dialogOpen = open ?? internalOpen;
+  const setDialogOpen = (nextOpen) => {
+    if (open === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [selectedClientId, setSelectedClientId] = useState(clientId || "");
   const navigate = useNavigate();
@@ -72,7 +77,7 @@ export default function CreateQuoteFromTemplateDialog({ clientId, leadId, childr
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create Quote from Template</DialogTitle>
