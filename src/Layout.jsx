@@ -439,7 +439,8 @@ export default function Layout({ children, currentPageName }) {
         </header>
 
         {/* Page content */}
-        <main ref={pageScrollRef} data-app-scroll-container className="min-h-0 w-full flex-1 overscroll-y-contain overflow-x-hidden overflow-y-auto bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+        {/* Keep absolute page controls inside this scroll region so drag auto-scroll cannot move the outer document. */}
+        <main ref={pageScrollRef} data-app-scroll-container className="relative min-h-0 w-full flex-1 overscroll-y-contain overflow-x-hidden overflow-y-auto bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
           {children}
         </main>
       </div>
