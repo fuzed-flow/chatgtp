@@ -8,8 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Save, Mail, MessageSquare, Info, Receipt, Zap, Building2, FileText } from 'lucide-react';
-
-const DEFAULT_INVOICE_EMAIL = "Hi {{client_name}},\n\nYour invoice {{invoice_number}} for ${{balance_due}} is ready to review.\n\nUse the private secure link below to view the detailed invoice and payment options.";
+import { DEFAULT_INVOICE_EMAIL, invoiceEmailTemplate } from '@/lib/invoiceEmail';
 
 // --- CUSTOM TEMPLATE EDITOR WITH QUICK-INSERT TOKENS ---
 const TemplateEditor = ({ value, onChange, tokens, rows = 4 }) => {
@@ -91,6 +90,13 @@ export default function MessageTemplatesSettings() {
     { label: 'Invoice #', tag: '{{invoice_number}}' },
     { label: 'Balance Due', tag: '{{balance_due}}' }
   ];
+  const invoiceEmailTokens = [
+    ...invoiceTokens,
+    { label: 'Payment Summary', tag: '{{payment_summary}}' },
+    { label: 'Payment Name', tag: '{{payment_name}}' },
+    { label: 'Milestone Name', tag: '{{milestone_name}}' },
+    { label: 'Payment Balance', tag: '{{payment_balance}}' },
+  ];
 
   const coTokens = [
     { label: 'Client Name', tag: '{{client_name}}' },
@@ -114,7 +120,7 @@ export default function MessageTemplatesSettings() {
       setQuoteEmail(t.quote_email_body || "Hi {{client_name}},\n\nPlease find attached your project quote {{quote_number}} for {{quote_title}}.\n\nYou can review the line items, choose optional additions, and securely sign off on the package using the interactive link below.");
       setQuoteSms(t.quote_sms || "Hi {{client_name}}, your project quote {{quote_number}} is ready for review! Click the link to view the details and approve online:");
       
-      setInvoiceEmail(t.invoice_email_body || DEFAULT_INVOICE_EMAIL);
+      setInvoiceEmail(invoiceEmailTemplate(t.invoice_email_body));
       setInvoiceSms(t.invoice_sms || "Hi {{client_name}}, your invoice {{invoice_number}} for ${{balance_due}} is ready. Tap the link below to view and pay securely.");
       
       setChangeOrderEmail(t.co_email_body || "Hi {{client_name}},\n\nWe have submitted a scope modification request, Change Order {{co_number}}, for your project.\n\nPlease tap the link below to review the adjustment details and sign off on the variation.");
@@ -204,7 +210,7 @@ export default function MessageTemplatesSettings() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col">
             <Label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Email Body</Label>
-            <TemplateEditor value={invoiceEmail} onChange={setInvoiceEmail} tokens={invoiceTokens} rows={6} />
+            <TemplateEditor value={invoiceEmail} onChange={setInvoiceEmail} tokens={invoiceEmailTokens} rows={6} />
           </div>
           <div className="flex flex-col">
             <Label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1.5"><MessageSquare className="h-3.5 w-3.5" /> Text Message (SMS)</Label>

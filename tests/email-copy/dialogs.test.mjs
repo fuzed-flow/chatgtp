@@ -133,6 +133,7 @@ async function emailView(dialog, options = {}) {
     projects: {id: 'synthetic-project', client_id: CLIENT, company_id: COMPANY},
     leads: {id: 'synthetic-lead', contact_name: 'Synthetic Lead', contact_email: 'lead@client.example', company_id: COMPANY},
     change_order_phases: [], change_order_line_items: [],
+    invoice_payment_schedules: options.invoiceSchedule || [],
   };
   for (const [type, info] of Object.entries(types)) rows[info.table] = {
     id: DOCUMENT, company_id: COMPANY, ...(type === 'invoice' ? {} : {title: 'Synthetic ' + type}), client_id: CLIENT,
@@ -193,6 +194,7 @@ async function emailView(dialog, options = {}) {
     fixture.rpcCalls.push({name, args: plain(args)});
     if (name === 'issue_quote_share_token' || name === 'reset_quote_approval_cycle') return {data: QUOTE_TOKEN, error: null};
     if (name === 'issue_invoice_share_token') return {data: INVOICE_TOKEN, error: null};
+    if (name === 'issue_change_order_share_token') return {data: 'c'.repeat(64), error: null};
     return {data: null, error: {message: 'Unexpected synthetic RPC: ' + name}};
   };
   fixture.pdf = async (...args) => {
@@ -327,6 +329,87 @@ test('invoice: setup failure is shown inline and retry completes without creatin
   } finally {view.close();}
 });
 
+const milestoneSchedule = () => [
+  {id:'deposit',payment_name:'Deposit',due_event:'Upon Approval',amount:5473.4,amount_paid:5473.4,status:'Paid',sort_order:0},
+  {id:'rough-ins',payment_name:'Payment 2',due_event:'Rough-ins Complete',amount:5473.4,amount_paid:0,status:'Pending',sort_order:1},
+  {id:'completion',payment_name:'Payment 3',due_event:'Substantial Completion',amount:5473.4,amount_paid:0,status:'Pending',sort_order:2},
+  {id:'final',payment_name:'Final Payment',due_event:'Final Sign-off',amount:1824.47,amount_paid:0,status:'Pending',sort_order:3},
+];
+
+function choosePayment(view, value) {
+  const select = view.document.getElementById('invoice-payment-request');
+  Object.getOwnPropertyDescriptor(view.window.HTMLSelectElement.prototype, 'value').set.call(select,value);
+  select.dispatchEvent(new view.window.Event('change',{bubbles:true}));
+}
+
+test('invoice: the real outgoing email requests the next unpaid milestone instead of the overall balance', async () => {
+  const view=await emailView('invoice',{invoiceBalance:12771.27,invoiceSchedule:milestoneSchedule(),templates:{
+    invoice_email_body:'Hi {{client_name}},\n\nYour invoice {{invoice_number}} for ${{balance_due}} is ready to review.\n\nUse the private secure link below to view the detailed invoice and payment options.',
+  }});
+  try {
+    const select=view.document.getElementById('invoice-payment-request');
+    assert.equal(select.value,'rough-ins');
+    assert.ok(![...select.options].some(option=>option.value==='deposit'));
+    const message=view.document.getElementById('message').value;
+    assert.match(message,/Payment 2 — Rough-ins Complete/);
+    assert.match(message,/remaining balance of \$5,473\.40/);
+    assert.doesNotMatch(message,/12,771|overdue|now due/i);
+    const scheduleRead=view.fixture.queries.find(q=>q.table==='invoice_payment_schedules');
+    assert.deepEqual(scheduleRead.filters,[['invoice_id',DOCUMENT],['company_id',COMPANY]]);
+    view.submit();
+    await view.wait(()=>view.fixture.requests.length===1);
+    assert.match(view.fixture.requests[0].body.html_body,/Payment 2 — Rough-ins Complete/);
+    assert.match(view.fixture.requests[0].body.html_body,/\$5,473\.40/);
+    assert.doesNotMatch(view.fixture.requests[0].body.html_body,/12,771/);
+    assert.equal(select.disabled,true,'The payment scope locks with the captured email payload.');
+    view.reply(0);await view.wait(()=>view.fixture.successes===1);
+    assert.deepEqual(view.errors,[]);
+  } finally {view.close();}
+});
+
+test('invoice: partial milestone payments are subtracted and each selected payment retains its edited draft',async()=>{
+  const schedule=milestoneSchedule();schedule[1].amount_paid=1000;schedule[1].status='Partial';
+  const view=await emailView('invoice',{invoiceBalance:11771.27,invoiceSchedule:schedule});
+  try {
+    assert.match(view.document.getElementById('message').value,/\$4,473\.40/);
+    view.input(view.document.getElementById('message'),'Custom rough-in request');
+    choosePayment(view,'final');await view.wait(()=>view.document.getElementById('message').value.includes('Final Payment'));
+    assert.match(view.document.getElementById('message').value,/\$1,824\.47/);
+    choosePayment(view,'rough-ins');await view.wait(()=>view.document.getElementById('message').value==='Custom rough-in request');
+    choosePayment(view,'');await view.wait(()=>view.document.getElementById('message').value.includes('11,771.27'));
+    assert.doesNotMatch(view.document.getElementById('message').value,/Rough-ins Complete/);
+    assert.deepEqual(view.errors,[]);
+  }finally{view.close();}
+});
+
+test('invoice: recorded payments arriving while the dialog is open refresh the preview before any email is sent',async()=>{
+  const view=await emailView('invoice',{invoiceBalance:12771.27,invoiceSchedule:milestoneSchedule()});
+  try {
+    view.rows.invoices.balance_due=11771.27;
+    view.rows.invoice_payment_schedules[1].amount_paid=1000;
+    view.submit();
+    await view.wait(()=>view.document.body.textContent.includes('Recorded payments changed.'));
+    assert.equal(view.fixture.requests.length,0,'A stale request never reaches the email provider.');
+    assert.equal(view.fixture.rpcCalls.length,0,'A stale request does not issue a share token.');
+    assert.match(view.document.getElementById('message').value,/\$4,473\.40/);
+    view.submit();await view.wait(()=>view.fixture.requests.length===1);
+    assert.match(view.fixture.requests[0].body.html_body,/\$4,473\.40/);
+    view.reply(0);await view.wait(()=>view.fixture.successes===1);
+    assert.deepEqual(view.errors,[]);
+  }finally{view.close();}
+});
+
+test('invoice: payment-schedule read errors block sending rather than silently request the full invoice balance',async()=>{
+  const view=await emailView('invoice',{readErrors:{invoice_payment_schedules:['Synthetic schedule failure']},waitForSetupError:true});
+  try{
+    assert.equal(view.document.querySelector('button[type="submit"]').disabled,true);
+    view.submit();await pause(20);assert.equal(view.fixture.requests.length,0);
+    view.button('Retry').click();await view.wait(()=>!view.document.querySelector('button[type="submit"]').disabled);
+    assert.match(view.document.getElementById('message').value,/remaining balance of \$1,234\.50/);
+    assert.deepEqual(view.errors,[]);
+  }finally{view.close();}
+});
+
 for (const status of ['Partial', 'Partially Paid', 'Paid', 'Viewed', 'Overdue', 'Past Due', 'Cancelled']) {
   test(`invoice: sending preserves the ${status} accounting status`, async () => {
     const view = await emailView('invoice', {invoiceStatus: status});
@@ -439,7 +522,11 @@ for (const type of Object.keys(types)) {
       }
       assert.equal(view.fixture.writes.length, 1);
       assert.equal(view.fixture.writes[0].table, types[type].table);
-      assert.deepEqual(view.fixture.writes[0].payload, {status: 'Sent'});
+      const sentPatch=view.fixture.writes[0].payload;
+      if(type==='change_order'){
+        assert.deepEqual({...sentPatch,sent_at:'timestamp'},{status:'Sent',sent_at:'timestamp',automation_stage:0,next_follow_up_date:null});
+        assert.ok(Number.isFinite(Date.parse(sentPatch.sent_at)));
+      }else assert.deepEqual(sentPatch,{status:'Sent'});
       assert.deepEqual(view.fixture.writes[0].filters, type === 'invoice'
         ? [['id', DOCUMENT], ['status', 'Draft']]
         : [['id', DOCUMENT]]);

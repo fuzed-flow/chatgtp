@@ -10,8 +10,7 @@ import { Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 import { useDocumentEmailSend } from "@/lib/emailCopy";
 import { buildPublicInvoiceUrl, issueInvoiceShareToken } from "@/lib/invoiceSharing";
-
-const DEFAULT_INVOICE_EMAIL = "Hi {{client_name}},\n\nYour invoice {{invoice_number}} for ${{balance_due}} is ready to review.\n\nUse the private secure link below to view the detailed invoice and payment options.";
+import { formatInvoiceEmailAmount, invoiceEmailPayments, renderInvoiceEmail } from "@/lib/invoiceEmail";
 
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({
   "&": "&amp;",
@@ -47,12 +46,17 @@ const safeImageUrl = value => {
   }
 };
 
-const formatBalanceDue = value => {
-  const amount = Number(value);
-  return Number.isFinite(amount)
-    ? amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : "0.00";
-};
+async function loadInvoicePaymentContext(invoiceId) {
+  const { data: invoice, error: invoiceError } = await supabase.from("invoices")
+    .select("invoice_number, client_id, company_id, balance_due").eq("id", invoiceId).single();
+  if (invoiceError || !invoice) throw new Error("Could not load the invoice.");
+  if (!Number.isFinite(Number(invoice.balance_due))) throw new Error("Could not load the invoice balance.");
+  const { data: schedule, error: scheduleError } = await supabase.from("invoice_payment_schedules")
+    .select("id, payment_name, due_event, amount, amount_paid, status, sort_order")
+    .eq("invoice_id", invoiceId).eq("company_id", invoice.company_id).order("sort_order");
+  if (scheduleError) throw new Error("Could not load the payment milestones.");
+  return { invoice, payments: invoiceEmailPayments(invoice, schedule || []) };
+}
 
 // Invoice emails currently contain secure links rather than PDF attachments.
 // Clean up legacy/custom templates so the client is not promised a file that
@@ -76,6 +80,10 @@ export default function SendInvoiceEmailDialog({ open, onOpenChange, invoiceId, 
   
   const [companyData, setCompanyData] = useState(null);
   const [invoiceData, setInvoiceData] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [selectedPaymentId, setSelectedPaymentId] = useState("");
+  const messageContext = useRef(null);
+  const messageDrafts = useRef(new Map());
   const [readyDocumentId, setReadyDocumentId] = useState(null);
   const [setupError, setSetupError] = useState("");
   const [setupAttempt, setSetupAttempt] = useState(0);
@@ -107,6 +115,10 @@ export default function SendInvoiceEmailDialog({ open, onOpenChange, invoiceId, 
     setSignature("");
     setCompanyData(null);
     setInvoiceData(null);
+    setPayments([]);
+    setSelectedPaymentId("");
+    messageContext.current = null;
+    messageDrafts.current.clear();
     setResolvedClientId(clientId || null);
     setSetupError("");
 
@@ -114,15 +126,11 @@ export default function SendInvoiceEmailDialog({ open, onOpenChange, invoiceId, 
 
     const fetchSetupData = async () => {
       // 1. Fetch invoice details
-      const { data: iData, error: invoiceError } = await supabase
-        .from("invoices")
-        .select("invoice_number, client_id, company_id, balance_due")
-        .eq("id", invoiceId)
-        .single();
+      const { invoice: iData, payments: availablePayments } = await loadInvoicePaymentContext(invoiceId);
 
       if (!isMounted) return;
-      if (invoiceError || !iData) throw new Error("Could not load the invoice.");
       setInvoiceData(iData);
+      setPayments(availablePayments);
       
       // Update our resolved client ID fallback
       if (iData?.client_id) setResolvedClientId(iData.client_id);
@@ -169,27 +177,17 @@ export default function SendInvoiceEmailDialog({ open, onOpenChange, invoiceId, 
       // 4. Populate Form State
       setEmail(resolvedEmail || "");
 
-      const iNum = iData?.invoice_number || invoiceNumber || "Draft";
-      const iTitle = `Invoice ${iNum}`;
-      const balanceDue = formatBalanceDue(iData?.balance_due);
-      
       const finalCompanyName = compData?.name || authSettings?.company_name || authSettings?.name || "Our Company";
       setSubject(`Your Invoice From ${finalCompanyName} is Ready`);
 
-      const cName = resolvedName ? resolvedName.split(' ')[0] : 'there';
       const myName = profile?.full_name || "Your Fuzed Flow Team";
 
       // 5. Build Dynamic Message Body for Invoices
-      const rawBody = normalizeLinkOnlyWording(authSettings?.templates?.invoice_email_body || DEFAULT_INVOICE_EMAIL);
-
-      const personalizedBody = rawBody
-        .replace(/{{client_name}}/g, cName)
-        .replace(/{{invoice_number}}/g, iNum)
-        .replace(/{{invoice_title}}/g, iTitle)
-        .replace(/{{balance_due}}/g, balanceDue)
-        .replace(/{{\s*[\w.-]+\s*}}/g, "");
-      
-      setMessage(personalizedBody.trim());
+      const context = { template: authSettings?.templates?.invoice_email_body, clientName: resolvedName, invoiceNumber };
+      messageContext.current = context;
+      const payment = availablePayments[0] || null;
+      setSelectedPaymentId(payment?.id || "");
+      setMessage(normalizeLinkOnlyWording(renderInvoiceEmail({ ...context, invoice: iData, payment })));
 
       // 6. Build Dynamic Signature
       const defaultSignature = "Thank you for your business,\n{{my_name}}\n{{company_name}}";
@@ -218,6 +216,16 @@ export default function SendInvoiceEmailDialog({ open, onOpenChange, invoiceId, 
     profile?.full_name, authSettings?.company_name, authSettings?.name,
     authSettings?.templates?.invoice_email_body, authSettings?.templates?.email_signature, setupAttempt]);
 
+  const selectedPayment = payments.find(payment => payment.id === selectedPaymentId) || null;
+  const selectPayment = id => {
+    messageDrafts.current.set(selectedPaymentId, message);
+    const payment = payments.find(item => item.id === id) || null;
+    setSelectedPaymentId(id);
+    setMessage(messageDrafts.current.get(id) ?? normalizeLinkOnlyWording(renderInvoiceEmail({
+      ...messageContext.current, invoice: invoiceData, payment,
+    })));
+  };
+
   // --- SENDING LOGIC & HTML EMAIL GENERATION ---
   const handleSend = async (e) => {
     if (e) e.preventDefault();
@@ -228,6 +236,21 @@ export default function SendInvoiceEmailDialog({ open, onOpenChange, invoiceId, 
     }
 
     await delivery.send(async () => {
+      // Recheck before capturing a new send intent. An uncertain-delivery retry
+      // reuses the hook's frozen payload instead of generating a different bill.
+      const fresh = await loadInvoicePaymentContext(invoiceId);
+      const payment = fresh.payments.find(item => item.id === selectedPaymentId) || null;
+      if (Number(fresh.invoice.balance_due) !== Number(invoiceData.balance_due)
+        || fresh.invoice.invoice_number !== invoiceData.invoice_number
+        || (selectedPaymentId && (!payment || payment.balance !== selectedPayment?.balance || payment.label !== selectedPayment?.label))) {
+        const nextPayment = selectedPaymentId ? payment || fresh.payments[0] || null : null;
+        setInvoiceData(fresh.invoice);
+        setPayments(fresh.payments);
+        setSelectedPaymentId(nextPayment?.id || "");
+        messageDrafts.current.clear();
+        setMessage(normalizeLinkOnlyWording(renderInvoiceEmail({ ...messageContext.current, invoice: fresh.invoice, payment: nextPayment })));
+        throw new Error("Recorded payments changed. Review the updated message before sending.");
+      }
       const customMessageHtml = textToHtml(message);
       const sigHtml = textToHtml(signature);
       const baseUrl = window.location.origin;
@@ -274,6 +297,8 @@ export default function SendInvoiceEmailDialog({ open, onOpenChange, invoiceId, 
                 <p style="margin: 0 0 25px 0; font-size: 18px; font-weight: 700; color: #0f172a;">
                   ${safeDisplayTitle}
                 </p>
+                ${selectedPayment ? `<p style="margin: 0 0 8px; font-size: 16px; font-weight: 700;">${escapeHtml(selectedPayment.label)}</p>` : ""}
+                <p style="margin: 0 0 25px; font-size: 16px;">${selectedPayment ? "Remaining for this payment" : "Remaining invoice balance"}: <strong>$${formatInvoiceEmailAmount(selectedPayment?.balance ?? invoiceData?.balance_due)}</strong></p>
                 
                 <a href="${safeInvoiceUrl}" target="_blank" rel="noopener noreferrer" style="font-size: 16px; font-weight: 700; font-family: Helvetica, Arial, sans-serif; color: ${buttonTextColor}; background-color: ${buttonColor}; text-decoration: none; border-radius: 999px; padding: 16px 32px; display: inline-block; border: 1px solid ${buttonColor};">
                   View & Pay Invoice
@@ -334,6 +359,19 @@ export default function SendInvoiceEmailDialog({ open, onOpenChange, invoiceId, 
               className="border-slate-300 focus-visible:ring-amber-500"
             />
           </div>
+
+          {payments.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="invoice-payment-request" className="text-slate-700 font-bold">Payment requested</Label>
+              <select id="invoice-payment-request" value={selectedPaymentId} onChange={event => selectPayment(event.target.value)}
+                disabled={inputsLocked || setupLoading}
+                className="min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-amber-500">
+                {payments.map(payment => <option key={payment.id} value={payment.id}>{payment.label} — ${formatInvoiceEmailAmount(payment.balance)}</option>)}
+                <option value="">Full invoice balance — ${formatInvoiceEmailAmount(invoiceData?.balance_due)}</option>
+              </select>
+              <p className="text-sm font-semibold text-slate-700">{selectedPayment ? "Remaining for this payment" : "Remaining invoice balance"}: ${formatInvoiceEmailAmount(selectedPayment?.balance ?? invoiceData?.balance_due)}</p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="subject" className="text-slate-700 font-bold">Subject</Label>
