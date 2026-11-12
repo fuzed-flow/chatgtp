@@ -92,24 +92,29 @@ Deno.serve(async (req) => {
       accessMode = "staff";
     }
 
-    let amount = checkoutAmount(document, kind, undefined);
-    let scheduleItemId: string | null = null;
-    if (kind === 'invoice' && document.has_payment_schedule) {
-      const { data: schedule, error: scheduleError } = await db.from('invoice_payment_schedules').select('id,amount,amount_type,percentage,amount_paid,sort_order').eq('invoice_id', id).eq('company_id', document.company_id).order('sort_order');
-      if (scheduleError) throw new Error('Payment schedule unavailable.');
-      const due = row => (row.amount_type === 'percentage' ? Number(document.total) * Number(row.percentage || 0) / 100 : Number(row.amount || 0)) - Number(row.amount_paid || 0);
-      const next = (schedule || []).find(row => due(row) > 0);
-      if (next) {
-        amount = Math.min(amount, due(next));
-        scheduleItemId = next.id;
-      }
-    }
     const { data: company, error: companyError } = await db.from("companies").select("stripe_account_id,settings").eq("id", document.company_id).single();
     if (companyError || !company?.stripe_account_id) throw new Error("Online payments are not connected for this company.");
     const currency = String(company.settings?.currency || "cad").toLowerCase();
     if (!/^[a-z]{3}$/.test(currency)) throw new Error("Invalid document currency.");
     const factor = currencyFactor(currency);
-    const unitAmount = Math.round(amount * factor);
+    let unitAmount = Math.round(checkoutAmount(document, kind, undefined) * factor);
+    let scheduleItemId: string | null = null;
+    if (kind === 'invoice' && document.has_payment_schedule) {
+      const { data: schedule, error: scheduleError } = await db.from('invoice_payment_schedules').select('id,amount,amount_type,percentage,amount_paid,status,sort_order').eq('invoice_id', id).eq('company_id', document.company_id).order('sort_order');
+      if (scheduleError) throw new Error('Payment schedule unavailable.');
+      const dueUnits = row => {
+        if (String(row.status || '').toLowerCase() === 'paid') return 0;
+        const target = row.amount_type === 'percentage' ? Number(document.total) * Number(row.percentage || 0) / 100 : Number(row.amount || 0);
+        // Round each monetary value before subtraction: a settled percentage
+        // milestone must not leave a fractional-cent balance ahead of the next one.
+        return Math.max(0, Math.round(target * factor) - Math.round(Number(row.amount_paid || 0) * factor));
+      };
+      const next = (schedule || []).find(row => dueUnits(row) > 0);
+      if (next) {
+        unitAmount = Math.min(unitAmount, dueUnits(next));
+        scheduleItemId = next.id;
+      }
+    }
     if (unitAmount <= 0) throw new Error("The payment amount is too small.");
     const appUrl = Deno.env.get("APP_URL") || "https://app.fuzedflow.com";
     const docPath = kind === "quote" ? "PublicQuoteView" : "PublicInvoiceView";
