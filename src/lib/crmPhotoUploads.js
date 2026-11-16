@@ -155,7 +155,7 @@ export async function saveLeadPhoto(client, { companyId, recordId }, job) {
 }
 
 export async function saveClientPhoto(client, { companyId, recordId }, job) {
-  const row = { id: job.id, company_id: companyId, related_type: 'Client', related_id: recordId, file_url: job.url, file_name: job.name, caption: 'Site Photos/Info' };
+  const row = { id: job.id, company_id: companyId, related_type: 'Client', related_id: recordId, file_url: job.url, file_name: job.prepared?.name || job.name, caption: 'Site Photos/Info' };
   const result = await client.from('attachments').insert([row]).select('*').single();
   if (!result.error) return result.data;
   if (result.error.code === '23505') {

@@ -101,10 +101,11 @@ test('parallel lead saves and concurrent edits retain existing and newly appende
 });
 
 test('client save is idempotent after a lost database success response', async () => {
-  const db = photoDb(); const job = { id: 'same-job', name: 'photo.jpg', url: 'photo.webp' };
+  const db = photoDb(); const job = { id: 'same-job', name: 'photo.jpg', prepared: file('photo.webp'), url: 'photo.webp' };
   await saveClientPhoto(db.client, context, job);
   await saveClientPhoto(db.client, context, job);
   assert.equal(db.state.attachments.length, 1);
+  assert.equal(db.state.attachments[0].file_name, 'photo.webp', 'Downloads retain a filename matching the optimized format.');
 });
 
 test('standard upload retries network errors and recovers a lost success without overwriting', async () => {
