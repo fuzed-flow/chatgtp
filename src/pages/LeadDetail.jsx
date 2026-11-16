@@ -32,6 +32,7 @@ import ClientActivityPanel from "../components/clients/ClientActivityPanel";
 import ConfirmDeleteDialog from "../components/shared/ConfirmDeleteDialog";
 import { useTaskVendors } from "@/hooks/useTaskVendors";
 import { convertLeadToClient } from "@/lib/leadClientConversion";
+import { useCrmPhotoUploads } from '@/hooks/useCrmPhotoUploads';
 
 // --- CONSTANTS & HELPERS ---
 const STATUSES = ["To Do", "Doing", "Blocked", "Done", "Pending", "Active", "Under Review", "Completed"];
@@ -103,9 +104,7 @@ export default function LeadDetail() {
   const [descExpanded, setDescExpanded] = useState(false);
   const [viewingPhotoIndex, setViewingPhotoIndex] = useState(null);
 
-  // Photo Uploader States (Safely inside the component now!)
-  const photoInputRef = React.useRef(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoUploads = useCrmPhotoUploads({ kind: 'Lead', recordId: leadId, companyId });
 
   React.useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -283,41 +282,6 @@ export default function LeadDetail() {
   });
   
   // --- HANDLERS ---
- const handlePhotoUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setUploadingPhoto(true);
-    
-    try {
-      const uploadedUrls = [];
-      for (const file of files) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${lead.id}/photo-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-        // Fixed: Changed bucket name from 'leads' to 'lead_files'
-        const { error: uploadError } = await supabase.storage.from('lead_files').upload(fileName, file);
-        if (uploadError) throw uploadError;
-
-        // Fixed: Changed bucket name from 'leads' to 'lead_files'
-        const { data: { publicUrl } } = supabase.storage.from('lead_files').getPublicUrl(fileName);
-        uploadedUrls.push(publicUrl);
-      }
-
-      // Update the Lead record with the new combined photo array
-      const currentPhotos = lead.photos || [];
-      const updatedPhotos = [...currentPhotos, ...uploadedUrls];
-      
-      await updateMutation.mutateAsync({ id: lead.id, data: { photos: updatedPhotos } });
-      toast.success("Photo(s) uploaded successfully");
-      
-    } catch (error) {
-      toast.error("Failed to upload photos: " + error.message);
-    } finally {
-      setUploadingPhoto(false);
-      e.target.value = "";
-    }
-  };
-
   const removePhoto = async (photoUrlToRemove) => {
     if(!window.confirm("Delete this photo?")) return;
     const currentPhotos = lead.photos || [];
@@ -765,8 +729,10 @@ export default function LeadDetail() {
         <PhotoGallery
           title="Lead Photos"
           photos={(lead?.photos || []).map((url, i) => ({ id: url, url: url, name: `Photo ${i+1}` }))}
-          isUploading={uploadingPhoto}
-          onUpload={(files) => handlePhotoUpload({ target: { files } })} // Adapt to your existing handler
+          isUploading={photoUploads.active}
+          uploadItems={photoUploads.items}
+          onUpload={photoUploads.start}
+          onRetryUpload={photoUploads.retry}
           onDelete={(photo) => removePhoto(photo.url)}
         />
 

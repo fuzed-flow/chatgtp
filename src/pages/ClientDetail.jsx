@@ -32,6 +32,7 @@ import { useTaskVendors } from "@/hooks/useTaskVendors";
 import CommunicationPanel from "../components/clients/CommunicationPanel";
 import ClientActivityPanel from "../components/clients/ClientActivityPanel";
 import { loadClientTasks, clientTaskUpdates, updateClientTask, deleteClientTask } from "@/lib/clientTasks";
+import { useCrmPhotoUploads } from '@/hooks/useCrmPhotoUploads';
 
 // --- CONSTANTS & HELPERS ---
 const STATUSES = ["To Do", "Doing", "Blocked", "Done", "Pending", "Active", "Under Review", "Completed"];
@@ -86,9 +87,8 @@ export default function ClientDetail() {
   const [descExpanded, setDescExpanded] = useState(false);
   const [viewingPhotoIndex, setViewingPhotoIndex] = useState(null);
 
-  const photoInputRef = React.useRef(null);
   const docInputRef = React.useRef(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoUploads = useCrmPhotoUploads({ kind: 'Client', recordId: clientId, companyId });
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
   React.useEffect(() => {
@@ -283,40 +283,6 @@ export default function ClientDetail() {
   });
   
   // --- HANDLERS ---
-  const handlePhotoUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setUploadingPhoto(true);
-    
-    try {
-      for (const file of files) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${clientId}/photo-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage.from('attachments').upload(fileName, file);
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(fileName);
-        
-        await supabase.from('attachments').insert([{
-          company_id: companyId,
-          related_type: "Client",
-          related_id: clientId,
-          file_url: publicUrl,
-          file_name: file.name,
-          caption: "Site Photos/Info"
-        }]);
-      }
-      queryClient.invalidateQueries({ queryKey: ["client-attachments", clientId] });
-      toast.success("Photo(s) uploaded successfully");
-    } catch (error) {
-      toast.error("Failed to upload photos: " + error.message);
-    } finally {
-      setUploadingPhoto(false);
-      if (photoInputRef.current) photoInputRef.current.value = "";
-    }
-  };
-
   const handleDocUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -767,8 +733,10 @@ export default function ClientDetail() {
         <PhotoGallery
           title="Client Photos"
           photos={clientPhotos.map(file => ({ id: file.id, url: file.file_url, name: file.file_name }))}
-          isUploading={uploadingPhoto}
-          onUpload={(files) => handlePhotoUpload({ target: { files } })}
+          isUploading={photoUploads.active}
+          uploadItems={photoUploads.items}
+          onUpload={photoUploads.start}
+          onRetryUpload={photoUploads.retry}
           onDelete={(photo) => {
              if (window.confirm("Delete photo?")) {
                deleteAttachmentMutation.mutate(photo.id);

@@ -18,6 +18,9 @@ const bundle = await build({
       window.galleryRoot=createRoot(document.getElementById('root'));
       window.renderGallery=(photos=window.fixture.photos)=>window.galleryRoot.render(<PhotoGallery
         photos={photos} onUpload={files=>window.fixture.uploads.push(files.length)}
+        isUploading={window.fixture.isUploading || false}
+        uploadItems={window.fixture.uploadItems || []}
+        onRetryUpload={()=>window.fixture.retries++}
         onDelete={photo=>window.fixture.deletes.push(photo.id)} />);
       window.renderGallery();`,
   },
@@ -41,7 +44,7 @@ async function view(connection) {
   const requests = [];
   const idle = new Map();
   let idleId = 0;
-  window.fixture = { photos, uploads: [], deletes: [] };
+  window.fixture = { photos, uploads: [], deletes: [], retries: 0 };
   if (connection) Object.defineProperty(window.navigator, "connection", { value: connection });
   window.requestIdleCallback = callback => { idle.set(++idleId, callback); return idleId; };
   window.cancelIdleCallback = id => idle.delete(id);
@@ -73,6 +76,32 @@ async function view(connection) {
     close: async () => { window.galleryRoot.unmount(); await pause(); dom.window.close(); },
   };
 }
+
+test('upload progress disables new uploads, pauses background preloading and exposes failed-photo retry', async () => {
+  const v = await view();
+  try {
+    v.window.fixture.isUploading = true;
+    v.window.fixture.uploadItems = [
+      { id: 'saved', name: 'Saved.jpg', status: 'done', percent: 100 },
+      { id: 'active', name: 'Bathroom.jpg', status: 'uploading', percent: 40 },
+      { id: 'failed', name: 'Kitchen.jpg', status: 'error', error: 'Connection interrupted' },
+    ];
+    v.window.renderGallery();
+    await v.wait(() => v.document.querySelector('[data-photo-upload-status]'));
+    assert.match(v.document.querySelector('[role="status"]').textContent, /1 of 3 photos uploaded/);
+    assert.equal(v.document.querySelector('[role="progressbar"]').getAttribute('aria-valuenow'), '1');
+    assert.equal(v.button('Uploading...').disabled, true);
+    assert.match(v.document.body.textContent, /Uploading 40%/);
+    v.runIdle(); await pause();
+    assert.equal(v.requests.length, 0, 'Background image downloads wait until uploading finishes.');
+    v.window.fixture.isUploading = false;
+    v.window.renderGallery();
+    await v.wait(() => v.button('Retry failed photos'));
+    v.button('Retry failed photos').click();
+    assert.equal(v.window.fixture.retries, 1);
+    assert.match(v.document.body.textContent, /Connection interrupted/);
+  } finally { await v.close(); }
+});
 
 test("viewing images fit within 1920 pixels without cropping; private and external URLs remain unchanged", () => {
   const viewer = new URL(galleryViewerUrl(original(0)));

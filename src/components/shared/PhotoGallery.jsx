@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Image as ImageIcon, Trash2, Upload, Loader2, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cachedGalleryImage, canPreloadGalleryImages, galleryThumbnailUrl, galleryViewerUrl, preloadGalleryImage } from "@/lib/galleryImages";
+import PhotoUploadStatus from './PhotoUploadStatus';
 
 export { galleryThumbnailUrl } from "@/lib/galleryImages";
 
@@ -112,7 +113,9 @@ export default function PhotoGallery({
   photos = [], // Expected format: [{ id: '1', url: '...', name: '...' }]
   onUpload, 
   onDelete, 
-  isUploading = false 
+  isUploading = false,
+  uploadItems = [],
+  onRetryUpload,
 }) {
   const fileInputRef = useRef(null);
   const [viewingIndex, setViewingIndex] = useState(null);
@@ -129,7 +132,7 @@ export default function PhotoGallery({
   }, [photos.length]);
 
   useEffect(() => {
-    if (viewingIndex !== null || !canPreloadGalleryImages()) return;
+    if (isUploading || viewingIndex !== null || !canPreloadGalleryImages()) return;
     let cancelled = false;
     const preload = async () => {
       const thumbnails = photoUrls.slice(0, PRELOAD_PHOTO_COUNT).map(url => galleryThumbnailUrl(url));
@@ -145,10 +148,10 @@ export default function PhotoGallery({
     }
     const handle = window.setTimeout(preload, 250);
     return () => { cancelled = true; window.clearTimeout(handle); };
-  }, [photoUrls, viewingIndex]);
+  }, [photoUrls, viewingIndex, isUploading]);
 
   useEffect(() => {
-    if (viewingIndex === null || readyPhotoUrl !== photoUrls[viewingIndex] || photoUrls.length < 2 || !canPreloadGalleryImages()) return;
+    if (isUploading || viewingIndex === null || readyPhotoUrl !== photoUrls[viewingIndex] || photoUrls.length < 2 || !canPreloadGalleryImages()) return;
     let cancelled = false;
     const preloadNeighbours = async () => {
       const neighbours = new Set([photoUrls[(viewingIndex + 1) % photoUrls.length], photoUrls[(viewingIndex - 1 + photoUrls.length) % photoUrls.length]]);
@@ -160,7 +163,7 @@ export default function PhotoGallery({
     };
     void preloadNeighbours();
     return () => { cancelled = true; };
-  }, [photoUrls, viewingIndex, readyPhotoUrl]);
+  }, [photoUrls, viewingIndex, readyPhotoUrl, isUploading]);
 
   const visiblePhotos = photos.slice(0, visibleCount);
 
@@ -184,7 +187,9 @@ export default function PhotoGallery({
               multiple 
               className="hidden" 
               onChange={(e) => {
-                if (e.target.files?.length) onUpload(e.target.files);
+                const files = Array.from(e.target.files || []);
+                e.target.value = '';
+                if (files.length) onUpload(files);
               }} 
             />
             <Button 
@@ -200,6 +205,7 @@ export default function PhotoGallery({
           </div>
         </div>
         
+        <PhotoUploadStatus items={uploadItems} active={isUploading} onRetry={onRetryUpload} />
         {/* Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 min-h-[100px]">
            {visiblePhotos.map((photo, i) => (
