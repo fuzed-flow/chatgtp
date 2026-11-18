@@ -28,7 +28,7 @@ const bundle = await build({
   } }],
 });
 
-async function quoteView(url) {
+async function quoteView(url, { clientMessage, defaultMessage } = {}) {
   const errors = [], calls = [];
   const vc = new VirtualConsole(); vc.on('jsdomError', error => errors.push(error.message));
   const dom = new JSDOM('<div id="root"></div>', { url, runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole: vc });
@@ -40,8 +40,8 @@ async function quoteView(url) {
     assert.equal(name, 'get_public_quote_bundle');
     assert.deepEqual(JSON.parse(JSON.stringify(args)), { p_quote: ID, p_token: TOKEN });
     return { error: null, data: {
-      quote: { id: ID, quote_number: 'Q-SYNTHETIC', title: 'Synthetic Quote', status: 'Sent', subtotal: 100, total: 100 },
-      recipient: { name: 'Synthetic Client' }, company: { name: 'Synthetic Builder', settings: { currency: 'CAD' } },
+      quote: { id: ID, quote_number: 'Q-SYNTHETIC', title: 'Synthetic Quote', status: 'Sent', subtotal: 100, total: 100, client_message: clientMessage },
+      recipient: { name: 'Synthetic Client' }, company: { name: 'Synthetic Builder', settings: { currency: 'CAD', quote_client_message: defaultMessage } },
       phases: [], items: [], schedule_items: [], is_expired: false,
     } };
   } };
@@ -76,3 +76,18 @@ test('an incomplete link shows recovery instructions without requesting private 
     assert.equal(view.calls.length, 0);
   } finally { view.close(); }
 });
+
+for (const clientMessage of ['', 'Quote-specific message', null]) {
+  test(`public quote respects the saved client message: ${JSON.stringify(clientMessage)}`, async () => {
+    const defaultMessage = 'Company default message';
+    const view = await quoteView(buildPublicQuoteUrl('https://app.fuzedflow.com', ID, TOKEN), { clientMessage, defaultMessage });
+    try {
+      await view.wait(() => view.window.document.body.textContent.includes('Synthetic Client'));
+      const text = view.window.document.body.textContent;
+      assert.equal(text.includes(defaultMessage), clientMessage === null);
+      assert.equal(text.includes('Quote-specific message'), clientMessage === 'Quote-specific message');
+      assert.equal(text.includes('Message from the Team'), clientMessage !== '');
+      assert.deepEqual(view.errors, []);
+    } finally { view.close(); }
+  });
+}
