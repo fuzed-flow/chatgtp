@@ -806,7 +806,7 @@ export default function QuoteBuilder() {
       let matchedSelectionCount = 0;
       const latestForm = { ...form, title: activeTitle, overall_scope: localOverallScope, client_message: localClientMessage, terms: localTerms, notes: localNotes };
       finalStatus = newStatus !== null ? newStatus : latestForm.status;
-      const shouldRemapSelections = finalStatus !== "Sent";
+      const shouldRemapSelections = newStatus !== "Sent";
       
       let quoteNumber = latestForm.quote_number;
       let shouldIncrementCounter = false;
@@ -860,7 +860,7 @@ export default function QuoteBuilder() {
         is_archived: Boolean(latestForm.is_archived)
       };
 
-      if (finalStatus === "Sent") {
+      if (newStatus === "Sent") {
         Object.assign(quoteData, {
           client_selected_items: {},
           client_selected_items_json: null,
@@ -1052,12 +1052,30 @@ export default function QuoteBuilder() {
   };
 
   const handlePreview = async () => {
-    let idToPreview = quoteId;
-    if (!idToPreview) {
-       idToPreview = await handleSave(null, false, true); 
-       if (!idToPreview) return; 
+    if (saveInFlight.current || isDocumentLoading) {
+      toast.info("Please wait for the quote to finish loading or saving before previewing.");
+      return;
     }
-    window.open(`/QuoteView?id=${idToPreview}`, '_blank');
+
+    // Open during the click so a pending save does not trigger popup blocking.
+    const previewWindow = window.open("about:blank", "_blank");
+    if (!previewWindow) {
+      toast.error("Allow pop-ups for FuzedFlow to open the client preview.");
+      return;
+    }
+    previewWindow.opener = null;
+
+    let idToPreview = quoteId;
+    if (!idToPreview || hasUnsavedChanges()) {
+      idToPreview = await handleSave(null, false, true, true);
+      if (!idToPreview || hasUnsavedChanges()) {
+        previewWindow.close();
+        if (idToPreview) toast.info("Your latest edits are still unsaved. Open Client Preview again to save and preview them.");
+        return;
+      }
+    }
+    if (!quoteId) window.history.replaceState(window.history.state, "", `/QuoteBuilder?id=${idToPreview}`);
+    previewWindow.location.replace(`/QuoteView?id=${idToPreview}`);
   };
 
   const handleSendEmail = async () => {

@@ -92,7 +92,7 @@ export default function QuotePresentation({
     }
     return grouped;
   }, [items]);
-  const finalClientMessage = quote?.client_message || settings.quote_client_message || "";
+  const finalClientMessage = quote?.client_message ?? settings.quote_client_message ?? "";
   const finalTerms = quote?.terms || settings.default_terms || "";
 
   return (

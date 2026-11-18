@@ -48,6 +48,7 @@ async function fixture(builder, options = {}) {
     markSaved: value => { savedRevision = value; if (value !== revision) return false; dirty = false; return true; },
     setSaving: value => { saving = value; },
     hydrateForm: value => { state.form = typeof value === 'function' ? value(state.form) : value; },
+    hydratePhases: value => { state.phases = value; },
     setQuoteId: value => { state.quoteId = value; }, setCoId: value => { state.coId = value; }, setInvoiceId: value => { state.invoiceId = value; },
     createPageUrl: value => `/${value}`, navigate: path => { calls.push({ navigation: path }); },
     window: { history: { state: { idx: 1, key: 'original' }, replaceState: (...args) => { calls.push({ history: args }); } } },
@@ -70,6 +71,9 @@ async function fixture(builder, options = {}) {
           if (query.table === builder.table && query.action === 'insert') parentInserts += 1;
           if (options.onQuery) await options.onQuery(query, () => { revision += 1; });
           if (options.fail?.table === query.table && options.fail.action === query.action) return { data: null, error: { message: 'Synthetic persistence failure' } };
+          if (query.table === 'quote_line_items' && query.action === 'insert') {
+            return { data: query.payload.map((item, index) => ({ ...item, id: `saved-item-${index}` })), error: null };
+          }
           return { data: { id: query.table === builder.table ? 'saved-document' : `${query.table}-one`, ...(query.table === 'invoices' ? { status: options.persistedStatus || query.payload?.status || query.payload?.[0]?.status || 'Draft' } : {}) }, error: null };
         })();
         return result.then(resolve, reject);
@@ -176,6 +180,30 @@ for (const builder of builders) {
     assert.equal(view.dirty, false);
   });
 }
+
+test('saving a deleted message on a sent quote preserves its response and remaps selections', async () => {
+  const view = await fixture(builders[0]);
+  view.state.localClientMessage = '';
+  view.state.form.status = 'Sent';
+  view.state.phases[0].id = 'old-phase';
+  view.state.phases[0].items[0].id = 'old-item';
+  view.state.existingQuote = { client_selected_items: { 'old-phase': true, 'old-item': false } };
+  assert.equal(await view.save(), 'document-one');
+  const updates = view.calls.filter(call => call.table === 'quotes' && call.action === 'update');
+  assert.equal(updates[0].payload.client_message, '');
+  assert.equal(updates[0].payload.status, 'Sent');
+  assert.equal(Object.hasOwn(updates[0].payload, 'client_signature'), false);
+  assert.equal(Object.hasOwn(updates[0].payload, 'viewed_at'), false);
+  assert.deepEqual(JSON.parse(updates[1].payload.client_selected_items_json), { 'quote_phases-one': true, 'saved-item-0': false });
+});
+
+test('explicitly resending a quote still resets its response cycle', async () => {
+  const view = await fixture(builders[0]);
+  assert.equal(await view.save('Sent'), 'document-one');
+  const update = view.calls.find(call => call.table === 'quotes' && call.action === 'update');
+  assert.equal(update.payload.client_signature, null);
+  assert.deepEqual(JSON.parse(JSON.stringify(update.payload.client_selected_items)), {});
+});
 
 test('invoice saves ordinary edits without overwriting a newer accounting status', async () => {
   const invoice = builders.find(builder => builder.name === 'invoice');

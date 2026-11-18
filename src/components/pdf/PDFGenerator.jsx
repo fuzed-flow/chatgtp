@@ -73,7 +73,7 @@ export async function generateQuotePDF(quote, client, phases, items, organizatio
   const companyWebsite = settings?.website || '';
   const taxId = settings?.tax_id || '';
   
-  const finalClientMessage = quote?.client_message || settings?.quote_client_message || '';
+  const finalClientMessage = quote?.client_message ?? settings?.quote_client_message ?? '';
   const finalTerms = quote?.terms || settings?.default_terms || '';
 
   const colors = {
