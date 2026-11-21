@@ -15,8 +15,13 @@ export function deficiencyPhotoUrls(item) {
     .filter(Boolean))];
 }
 
-export function projectCloseoutPortalUrl(origin, clientId, closeoutId) {
-  return `${origin}/ClientPortal?id=${encodeURIComponent(clientId)}&tab=closeouts&closeout=${encodeURIComponent(closeoutId)}`;
+export function projectCloseoutPortalUrl(origin, clientId, closeoutId, token) {
+  const url = new URL('/ClientPortal', origin);
+  url.searchParams.set('id', clientId);
+  url.searchParams.set('tab', 'closeouts');
+  url.searchParams.set('closeout', closeoutId);
+  if (token) url.searchParams.set('portal_token', token);
+  return url.toString();
 }
 
 export function matchesProjectCloseout(closeout, project, client, search) {

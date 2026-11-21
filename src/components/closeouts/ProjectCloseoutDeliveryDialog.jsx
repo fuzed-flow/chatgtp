@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { escapeEmailHtml } from "@/lib/clientUpdates";
 import { projectCloseoutPortalUrl } from "@/lib/projectCloseouts";
+import { issueClientPortalToken } from '@/lib/clientPortal';
 import { isValidCompanyEmail } from "@/lib/emailCopy";
 
 async function edgeFunctionError(error, fallback) {
@@ -120,7 +121,8 @@ export default function ProjectCloseoutDeliveryDialog({ open, onOpenChange, mode
         toast.success(`Closeout sent to ${deliverableAssignments.length} subcontractor${deliverableAssignments.length === 1 ? "" : "s"}.`, { id: loadingToast });
       } else {
         await publish();
-        const portalUrl = projectCloseoutPortalUrl(window.location.origin, client.id, closeout.id);
+        const portalToken = await issueClientPortalToken(client.id);
+        const portalUrl = projectCloseoutPortalUrl(window.location.origin, client.id, closeout.id, portalToken);
         const signature = JSON.stringify([mode, closeout.id, recipient.trim(), subject, message, attachPdf, sendCopy]);
         if (intent.current?.signature !== signature) intent.current = { signature, requestId: crypto.randomUUID(), accepted: false };
         if (!intent.current.accepted && mode === "email") {

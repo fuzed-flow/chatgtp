@@ -35,10 +35,11 @@ export function escapeEmailHtml(value) {
   })[character]);
 }
 
-export function clientUpdatePortalUrl(origin, clientId, updateId) {
+export function clientUpdatePortalUrl(origin, clientId, updateId, token) {
   const url = new URL("/ClientPortal", origin);
   url.searchParams.set("id", clientId);
   url.searchParams.set("tab", "updates");
   if (updateId) url.searchParams.set("update", updateId);
+  if (token) url.searchParams.set('portal_token', token);
   return url.toString();
 }

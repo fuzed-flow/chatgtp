@@ -15,8 +15,11 @@ import { ClientUpdatePreview } from "@/components/client-updates/ClientUpdatePre
 import { generateClientUpdatePDF, generateProjectCloseoutPDF } from "@/components/pdf/PDFGenerator";
 import ProjectCloseoutPreview from "@/components/closeouts/ProjectCloseoutPreview";
 import { buildPublicQuoteUrl } from "@/lib/quoteSharing";
-import { buildPublicInvoiceUrl, getClientPortalInvoices } from "@/lib/invoiceSharing";
+import { buildPublicInvoiceUrl } from "@/lib/invoiceSharing";
 import { buildPublicChangeOrderUrl } from "@/lib/changeOrderSharing";
+import { issueClientPortalToken, loadClientPortal, clientPortalDocumentToken } from '@/lib/clientPortal';
+import ClientPortalInstall from '@/components/clients/ClientPortalInstall';
+import { toast } from 'sonner';
 
 export default function ClientPortal() {
   const params = new URLSearchParams(window.location.search);
@@ -26,6 +29,8 @@ export default function ClientPortal() {
   const quoteAccessToken = params.get("quote_token");
   const invoiceAccessToken = params.get("invoice_token");
   const changeOrderAccessToken = params.get("co_token");
+  const portalAccessToken = params.get('portal_token');
+  const [accessToken, setAccessToken] = useState(null);
 
   // --- UI STATE ---
   const [activeTab, setActiveTab] = useState(() => params.get("tab") || "quotes");
@@ -52,6 +57,23 @@ export default function ClientPortal() {
           return;
         }
 
+        let tokens = [portalAccessToken, quoteAccessToken, invoiceAccessToken, changeOrderAccessToken].filter(Boolean);
+        if (!tokens.length) {
+          try { tokens = [await issueClientPortalToken(clientId)]; } catch { /* Legacy update links remain readable. */ }
+        }
+        if (tokens.length) {
+          const bundle = await loadClientPortal(clientId, tokens);
+          setClient(bundle.client); setCompany(bundle.company);
+          setQuotes(bundle.quotes || []); setInvoices(bundle.invoices || []);
+          setChangeOrders(bundle.change_orders || []); setClientUpdates(bundle.updates || []);
+          setProjectCloseouts(bundle.closeouts || []); setAccessToken(bundle.token);
+          const canonical = new URL(window.location.href);
+          canonical.searchParams.set('portal_token', bundle.token);
+          ['quote_token', 'invoice_token', 'co_token'].forEach(key => canonical.searchParams.delete(key));
+          window.history.replaceState(window.history.state, '', canonical.pathname + canonical.search);
+          return;
+        }
+
         const { data: clientData, error: clientError } = await supabase
           .from("clients")
           .select("*")
@@ -66,31 +88,16 @@ export default function ClientPortal() {
         
         setClient(clientData);
 
-        const [companyRes, quotesRes, coRes, invoiceRows, updatesRes, closeoutsRes] = await Promise.all([
+        const [companyRes, updatesRes, closeoutsRes] = await Promise.all([
           supabase.from("companies").select("*").eq("id", clientData.company_id).maybeSingle(),
-          quoteAccessToken
-            ? supabase.rpc("get_client_portal_quotes", { p_client: clientId, p_token: quoteAccessToken })
-            : Promise.resolve({ data: [], error: null }),
-          changeOrderAccessToken
-            ? supabase.rpc("get_client_portal_change_orders", { p_client: clientId, p_token: changeOrderAccessToken })
-            : Promise.resolve({ data: [], error: null }),
-          invoiceAccessToken
-            ? getClientPortalInvoices(clientId, invoiceAccessToken)
-            : Promise.resolve([]),
           supabase.rpc("get_client_portal_updates", { p_client: clientId }),
           supabase.rpc("get_client_portal_closeouts", { p_client: clientId })
         ]);
 
         if (companyRes.data) setCompany(companyRes.data);
-        if (quotesRes.data) setQuotes(quotesRes.data);
-        setInvoices(invoiceRows);
         if (updatesRes.data && !updatesRes.error) setClientUpdates(updatesRes.data);
         if (closeoutsRes.data && !closeoutsRes.error) setProjectCloseouts(closeoutsRes.data);
         
-        if (coRes.data && !coRes.error) {
-          setChangeOrders(coRes.data);
-        }
-
       } catch (err) {
         console.error("Portal Error:", err);
         setIsError(true);
@@ -100,13 +107,13 @@ export default function ClientPortal() {
     };
 
     fetchPortalData();
-  }, [clientId, quoteAccessToken, invoiceAccessToken, changeOrderAccessToken]);
+  }, [clientId, portalAccessToken, quoteAccessToken, invoiceAccessToken, changeOrderAccessToken]);
 
   // --- EXTRACT PORTAL SETTINGS ---
   const portalSettings = company?.settings?.client_portal || {};
-  const showQuotes = portalSettings.show_quotes !== false && Boolean(quoteAccessToken);
-  const showCOs = portalSettings.show_change_orders !== false && Boolean(changeOrderAccessToken);
-  const showInvoices = portalSettings.show_invoices !== false && Boolean(invoiceAccessToken);
+  const showQuotes = portalSettings.show_quotes !== false;
+  const showCOs = portalSettings.show_change_orders !== false;
+  const showInvoices = portalSettings.show_invoices !== false;
   const showDocs = portalSettings.show_documents !== false;
   const showPortfolio = portalSettings.show_portfolio !== false;
   const showUpdates = portalSettings.show_client_updates !== false;
@@ -174,6 +181,21 @@ export default function ClientPortal() {
   }
   
   const contractorName = company?.name || "Your Contractor";
+  const contractorLogo = company?.logo_url || company?.company_logo_url;
+
+  const openDocument = async (kind, documentId) => {
+    if (!accessToken) { toast.error('Open the portal link in a recent email from your contractor to view this document.'); return; }
+    const tab = window.open('about:blank', '_blank');
+    if (!tab) { toast.error('Allow pop-ups to view this document.'); return; }
+    tab.opener = null;
+    try {
+      const token = await clientPortalDocumentToken(clientId, accessToken, kind, documentId);
+      const url = kind === 'quote' ? buildPublicQuoteUrl(window.location.origin, documentId, token)
+        : kind === 'invoice' ? buildPublicInvoiceUrl(window.location.origin, documentId, token)
+        : buildPublicChangeOrderUrl(documentId, token, window.location.origin);
+      tab.location.replace(url);
+    } catch { tab.close(); toast.error('This document is unavailable. Refresh the portal or contact your contractor.'); }
+  };
 
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans pb-12 flex flex-col">
@@ -182,11 +204,7 @@ export default function ClientPortal() {
         <div className="max-w-6xl mx-auto px-4 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
           
           <div className="flex items-center gap-3">
-            <img 
-              src="https://ochqexofahdssmarnict.supabase.co/storage/v1/object/public/logos/fuzed-flow-logo.png" 
-              alt="FuzedFlow Logo" 
-              className="h-8 w-auto object-contain"
-            />
+            {contractorLogo ? <img src={contractorLogo} alt={`${contractorName} logo`} className="h-14 max-w-48 rounded-lg bg-white object-contain p-2" /> : <span className="text-xl font-bold text-white">{contractorName}</span>}
             <div className="h-6 w-px bg-slate-700 mx-2 hidden sm:block"></div>
             <span className="text-white text-xl font-light tracking-wide hidden sm:block">
               Client <span className="font-bold">Portal</span>
@@ -207,6 +225,8 @@ export default function ClientPortal() {
 
       {/* 🧭 MAIN CONTENT AREA */}
       <div className="max-w-6xl mx-auto px-4 mt-8 flex-1 w-full">
+        <ClientPortalInstall company={company || { name: contractorName }} clientId={clientId} token={accessToken} />
+        {!accessToken && <p role="status" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">This older link shows published project updates. To view quotes, change orders and invoices, open the portal link in a recent email from your contractor or ask for a fresh link.</p>}
         
         {/* 💬 CUSTOM WELCOME MESSAGE */}
         {portalSettings.welcome_message && (
@@ -361,7 +381,7 @@ export default function ClientPortal() {
                           </div>
                         </div>
                         <Button 
-                          onClick={() => window.open(buildPublicQuoteUrl(window.location.origin, quote.id, quote.approval_token), "_blank", "noopener,noreferrer")}
+                          onClick={() => openDocument('quote', quote.id)}
                           className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-md rounded-lg h-11 px-6"
                         >
                           <Eye className="w-4 h-4 mr-2" /> View & Accept Quote
@@ -406,7 +426,7 @@ export default function ClientPortal() {
                           </div>
                         </div>
                         <Button 
-                          onClick={() => window.open(buildPublicChangeOrderUrl(co.id, co.share_token), "_blank", "noopener,noreferrer")}
+                          onClick={() => openDocument('change_order', co.id)}
                           className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-md rounded-lg h-11 px-6"
                         >
                           <Eye className="w-4 h-4 mr-2" /> View & Accept
@@ -448,7 +468,7 @@ export default function ClientPortal() {
                             <span className="flex items-center text-rose-600 font-bold"><AlertCircle className="w-4 h-4 mr-1 text-rose-500" /> Balance: {formatCurrencyUSD(invoice.balance_due || 0)}</span>
                           </div>
                         </div>
-                        <Button onClick={() => window.open(buildPublicInvoiceUrl(window.location.origin, invoice.id, invoice.share_token), "_blank", "noopener,noreferrer")} variant="outline" className="w-full sm:w-auto font-bold border-slate-300 hover:bg-slate-50 rounded-lg h-11 px-6 shadow-sm">
+                        <Button onClick={() => openDocument('invoice', invoice.id)} variant="outline" className="w-full sm:w-auto font-bold border-slate-300 hover:bg-slate-50 rounded-lg h-11 px-6 shadow-sm">
                           <Eye className="w-4 h-4 mr-2 text-slate-400" /> View Invoice
                         </Button>
                       </div>
@@ -548,7 +568,7 @@ export default function ClientPortal() {
           <span className="text-xs font-bold text-emerald-800 uppercase tracking-widest">256-Bit Encrypted Portal</span>
         </div>
         <p className="text-xs font-medium text-slate-400">
-          Secure Client Access • Last Updated: {format(new Date(), "MMM d, yyyy")} • © {new Date().getFullYear()} FuzedFlow
+          Secure Client Access • Last Updated: {format(new Date(), "MMM d, yyyy")} • Powered by FuzedFlow
         </p>
       </div>
 

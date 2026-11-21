@@ -34,6 +34,11 @@ export const getInstallState = () => {
 
 export const getInstallServerState = () => 'manual';
 
+export function resetAppInstallPrompt() {
+  deferredInstallPrompt = null;
+  notifyInstallState();
+}
+
 export async function requestAppInstall() {
   if (!deferredInstallPrompt) return { outcome: 'unavailable' };
   const prompt = deferredInstallPrompt;

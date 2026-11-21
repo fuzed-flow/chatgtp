@@ -25,6 +25,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/client-portal-assets",
+      "destination": "/api/client-portal-assets"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
